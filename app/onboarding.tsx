@@ -109,8 +109,8 @@ export default function OnboardingScreen() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id ?? signedUpUserId;
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const userId = currentUser?.id ?? signedUpUserId;
       if (!userId) throw new Error('Keine Session. Bitte neu einloggen.');
 
       // 1. Haushalt erstellen
