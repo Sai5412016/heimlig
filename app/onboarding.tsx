@@ -34,6 +34,7 @@ export default function OnboardingScreen() {
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [signedUpUserId, setSignedUpUserId] = useState<string | null>(null);
 
   // ─── AUTH ────────────────────────────────────────────────
   const handleAuth = async () => {
@@ -45,8 +46,9 @@ export default function OnboardingScreen() {
         if (error) throw error;
         await loadExistingHousehold(data.user.id);
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error, data } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
+        if (data.user) setSignedUpUserId(data.user.id);
         setStep('name');
       }
     } catch (e: any) {
@@ -102,7 +104,7 @@ export default function OnboardingScreen() {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
+      const userId = session?.user?.id ?? signedUpUserId;
       if (!userId) throw new Error('Keine Session. Bitte neu einloggen.');
 
       // 1. Haushalt erstellen
