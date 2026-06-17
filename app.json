@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "heimlig",
+    "slug": "heimlig",
+    "scheme": "heimlig",
+    "version": "1.0.2",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.fledderman.heimlig",
+       "versionCode": 6,
+      "permissions": ["NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED", "VIBRATE"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      ["expo-notifications", {
+        "icon": "./assets/icon.png",
+        "color": "#2D6A4F"
+      }]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8a17131d-7504-488b-a52b-81b0414105b1"
+      }
+    }
+  }
+}
