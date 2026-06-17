@@ -109,37 +109,24 @@ export default function OnboardingScreen() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      const userId = currentUser?.id ?? signedUpUserId;
-      if (!userId) throw new Error('Keine Session. Bitte neu einloggen.');
+      // Use SECURITY DEFINER function to bypass RLS (works even if session not in storage)
+      const { data: result, error: fnError } = await supabase.rpc('create_household_for_user', {
+        p_name: householdName,
+        p_display_name: displayName,
+        p_avatar_color: avatarColor,
+      });
+      if (fnError) throw fnError;
 
-      // 1. Haushalt erstellen
-      const { data: household, error: hError } = await supabase
-        .from('households')
-        .insert({ name: householdName })
-        .select().single();
-      if (hError) throw hError;
+      const { household_id, member_id, list_id } = result as any;
 
-      // 2. Member erstellen
-      const { data: member, error: mError } = await supabase
-        .from('members')
-        .insert({ user_id: userId, household_id: household.id, display_name: displayName, avatar_color: avatarColor, role: 'admin' })
-        .select().single();
-      if (mError) throw mError;
+      // Load the created data for the store
+      const { data: household } = await supabase.from('households').select('*').eq('id', household_id).single();
+      const { data: member } = await supabase.from('members').select('*').eq('id', member_id).single();
+      const { data: shoppingList } = await supabase.from('shopping_lists').select('*').eq('id', list_id).single();
 
-      // 3. Standard Einkaufsliste erstellen
-      const { data: shoppingList, error: slError } = await supabase
-        .from('shopping_lists')
-        .insert({ household_id: household.id, name: 'Einkaufsliste', emoji: '🛒', created_by: member.id })
-        .select().single();
-      if (slError) throw slError;
-
-      // 4. Store befüllen
-      setHousehold(household);
-      setCurrentMember(member);
-      setMembers([member]);
-      setShoppingLists([shoppingList]);
-      setActiveListId(shoppingList.id);
+      if (household) setHousehold(household);
+      if (member) { setCurrentMember(member); setMembers([member]); }
+      if (shoppingList) { setShoppingLists([shoppingList]); setActiveListId(shoppingList.id); }
       setItems([]);
 
       router.replace('/(tabs)');
