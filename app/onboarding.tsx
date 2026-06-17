@@ -239,7 +239,7 @@ export default function OnboardingScreen() {
           <Text style={styles.inputLabel}>Dein Name</Text>
           <TextInput style={styles.textInput} placeholder="z.B. Andi" value={displayName} onChangeText={setDisplayName} placeholderTextColor={colors.textMuted} />
           <Text style={styles.inputLabel}>Haushaltsname</Text>
-          <TextInput style={styles.textInput} placeholder="z.B. Zuhause in Großaitingen" value={householdName} onChangeText={setHouseholdName} placeholderTextColor={colors.textMuted} />
+          <TextInput style={styles.textInput} placeholder="z.B. Unser Zuhause" value={householdName} onChangeText={setHouseholdName} placeholderTextColor={colors.textMuted} />
           <Text style={styles.inputLabel}>Deine Farbe</Text>
           <View style={styles.colorRow}>
             {AVATAR_COLORS.map(c => (
