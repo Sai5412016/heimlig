@@ -15,7 +15,7 @@ import {
 } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { colors, spacing, radius, typography, shadow } from '../../constants/theme';
-import { supabase, Task } from '../../lib/supabase';
+import { supabase, Task, MealPlan, MealType } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { scheduleTaskNotification, requestNotificationPermission } from '../../lib/notifications';
 
@@ -311,8 +311,8 @@ function TaskCard({ task, onComplete, onDelete, members }: {
 }
 
 // ─── CALENDAR VIEW ────────────────────────────────────────────
-function CalendarView({ tasks, onDayPress, selectedDate }: {
-  tasks: Task[]; onDayPress: (date: Date) => void; selectedDate: Date | null;
+function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
+  tasks: Task[]; onDayPress: (date: Date) => void; selectedDate: Date | null; mealPlans: MealPlan[];
 }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const monthStart = startOfMonth(currentMonth);
@@ -348,11 +348,14 @@ function CalendarView({ tasks, onDayPress, selectedDate }: {
           return (
             <TouchableOpacity key={key} style={[styles.dayCell, isSelected && styles.dayCellSelected, isToday_ && !isSelected && styles.dayCellToday]} onPress={() => onDayPress(day)}>
               <Text style={[styles.dayNumber, !isCurrentMonth && { opacity: 0.3 }, isSelected && { color: '#fff' }, isToday_ && !isSelected && { color: colors.brand, fontWeight: '700' }]}>{format(day, 'd')}</Text>
-              {dayTasks.length > 0 && (
+              {(dayTasks.length > 0 || mealPlans.some(m => m.planned_date === key)) && (
                 <View style={styles.dotRow}>
-                  {dayTasks.slice(0, 3).map((t, i) => (
+                  {dayTasks.slice(0, 2).map((t, i) => (
                     <View key={i} style={[styles.taskDotCal, { backgroundColor: t.completed_at ? colors.textMuted : PRIORITY_COLORS[t.priority as Priority] || colors.brand }, isSelected && { backgroundColor: 'rgba(255,255,255,0.8)' }]} />
                   ))}
+                  {mealPlans.some(m => m.planned_date === key) && (
+                    <View style={[styles.taskDotCal, { backgroundColor: colors.accent }, isSelected && { backgroundColor: 'rgba(255,255,255,0.8)' }]} />
+                  )}
                 </View>
               )}
             </TouchableOpacity>
@@ -394,6 +397,7 @@ export default function TasksScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('calendar');
   const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [toastPoints, setToastPoints] = useState(0);
@@ -405,11 +409,18 @@ export default function TasksScreen() {
     if (data) setTasks(data);
   }, [household]);
 
+  const loadMealPlans = useCallback(async () => {
+    if (!household) return;
+    const { data } = await supabase.from('meal_plans').select('*').eq('household_id', household.id);
+    if (data) setMealPlans(data);
+  }, [household]);
+
   useEffect(() => {
     loadTasks();
     loadWeekScores();
+    loadMealPlans();
     requestNotificationPermission();
-  }, [loadTasks]);
+  }, [loadTasks, loadMealPlans]);
 
   const handleAddTask = async (taskData: Partial<Task> & { due_time?: string; notify?: boolean }) => {
     if (!household || !currentMember) return;
@@ -487,7 +498,7 @@ export default function TasksScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {viewMode === 'calendar' && (
-          <CalendarView tasks={tasks} selectedDate={selectedDate} onDayPress={(day) => setSelectedDate(isSameDay(day, selectedDate || new Date(-1)) ? null : day)} />
+          <CalendarView tasks={tasks} selectedDate={selectedDate} mealPlans={mealPlans} onDayPress={(day) => setSelectedDate(isSameDay(day, selectedDate || new Date(-1)) ? null : day)} />
         )}
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
@@ -508,6 +519,22 @@ export default function TasksScreen() {
             <TouchableOpacity onPress={() => setShowModal(true)}>
               <Text style={styles.addForDayText}>+ Aufgabe</Text>
             </TouchableOpacity>
+          </View>
+        )}
+        {selectedDate && mealPlans.filter(m => m.planned_date === format(selectedDate, 'yyyy-MM-dd')).length > 0 && (
+          <View style={styles.mealPlanSection}>
+            <Text style={styles.mealPlanTitle}>🍽️ Mahlzeiten</Text>
+            {(['fruehstueck', 'mittag', 'abendessen'] as MealType[]).map(type => {
+              const meal = mealPlans.find(m => m.planned_date === format(selectedDate, 'yyyy-MM-dd') && m.meal_type === type);
+              if (!meal) return null;
+              const labels: Record<MealType, string> = { fruehstueck: '🌅 Frühstück', mittag: '☀️ Mittagessen', abendessen: '🌙 Abendessen' };
+              return (
+                <View key={type} style={styles.mealPlanRow}>
+                  <Text style={styles.mealPlanLabel}>{labels[type]}</Text>
+                  <Text style={styles.mealPlanName}>{meal.recipe_name}</Text>
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -582,6 +609,11 @@ const styles = StyleSheet.create({
   selectedDateHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   selectedDateText: { ...typography.h3, color: colors.text },
   addForDayText: { ...typography.sm, color: colors.brand, fontWeight: '700' },
+  mealPlanSection: { marginHorizontal: spacing.lg, marginBottom: spacing.sm, backgroundColor: '#FFF5F0', borderRadius: radius.md, padding: spacing.md, borderLeftWidth: 3, borderLeftColor: colors.accent },
+  mealPlanTitle: { ...typography.label, color: colors.accent, marginBottom: spacing.xs },
+  mealPlanRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 2 },
+  mealPlanLabel: { ...typography.sm, color: colors.textSecondary, width: 110 },
+  mealPlanName: { ...typography.sm, color: colors.text, fontWeight: '600', flex: 1 },
   taskList: { paddingHorizontal: spacing.md },
   taskCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, marginBottom: spacing.sm, ...shadow.sm, overflow: 'hidden' },
   priorityBar: { width: 4, alignSelf: 'stretch' },

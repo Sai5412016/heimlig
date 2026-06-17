@@ -10,7 +10,9 @@ import * as Haptics from 'expo-haptics';
 const hapticImpact = (style: Haptics.ImpactFeedbackStyle) => { if (Platform.OS !== 'web') Haptics.impactAsync(style); };
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 import { colors, spacing, radius, typography, shadow, SHOPPING_CATEGORIES, CATEGORY_COLORS } from '../../constants/theme';
-import { supabase, ShoppingItem } from '../../lib/supabase';
+import { supabase, ShoppingItem, RecipeIngredient, MealType } from '../../lib/supabase';
+import { format, addDays } from 'date-fns';
+import { de } from 'date-fns/locale';
 import { useStore } from '../../store/useStore';
 
 // ─── ITEM CARD ────────────────────────────────────────────────
@@ -160,12 +162,177 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
   );
 };
 
+// ─── RECIPE IMPORT MODAL ──────────────────────────────────────
+const MEAL_LABELS: Record<MealType, string> = { fruehstueck: '🌅 Frühstück', mittag: '☀️ Mittagessen', abendessen: '🌙 Abendessen' };
+
+const RecipeImportModal = ({ visible, onClose, onAdd }: {
+  visible: boolean;
+  onClose: () => void;
+  onAdd: (ingredients: RecipeIngredient[], recipeName: string, date?: string, mealType?: MealType) => void;
+}) => {
+  const [inputMode, setInputMode] = useState<'url' | 'text'>('url');
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<'input' | 'review'>('input');
+  const [recipeName, setRecipeName] = useState('');
+  const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
+  const [planDate, setPlanDate] = useState('');
+  const [mealType, setMealType] = useState<MealType>('abendessen');
+  const [planEnabled, setPlanEnabled] = useState(false);
+
+  const reset = () => { setStep('input'); setInput(''); setIngredients([]); setRecipeName(''); setPlanDate(''); setPlanEnabled(false); };
+
+  useEffect(() => { if (!visible) reset(); }, [visible]);
+
+  const handleExtract = async () => {
+    if (!input.trim()) return;
+    setLoading(true);
+    try {
+      const body = inputMode === 'url' ? { url: input.trim() } : { text: input.trim() };
+      const { data, error } = await supabase.functions.invoke('extract-recipe', { body });
+      if (error) throw error;
+      setRecipeName(data.name || 'Rezept');
+      setIngredients(data.ingredients || []);
+      setStep('review');
+    } catch (e) {
+      Alert.alert('Fehler', 'Zutaten konnten nicht extrahiert werden. Bitte prüfe den Link oder den Text.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleIngredient = (idx: number) => {
+    setIngredients(prev => prev.map((ing, i) => i === idx ? { ...ing, include: !ing.include } : ing));
+  };
+
+  const toggleAll = () => {
+    const allOn = ingredients.every(i => i.include);
+    setIngredients(prev => prev.map(i => ({ ...i, include: !allOn })));
+  };
+
+  const handleAdd = () => {
+    onAdd(ingredients, recipeName, planEnabled && planDate ? planDate : undefined, planEnabled ? mealType : undefined);
+    onClose();
+  };
+
+  const quickDates = [
+    { label: 'Heute', value: format(new Date(), 'yyyy-MM-dd') },
+    { label: 'Morgen', value: format(addDays(new Date(), 1), 'yyyy-MM-dd') },
+    { label: format(addDays(new Date(), 2), 'EEE', { locale: de }), value: format(addDays(new Date(), 2), 'yyyy-MM-dd') },
+    { label: format(addDays(new Date(), 3), 'EEE', { locale: de }), value: format(addDays(new Date(), 3), 'yyyy-MM-dd') },
+  ];
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable style={styles.modalOverlay} onPress={onClose}>
+          <Pressable style={[styles.modalSheet, { maxHeight: '90%' }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>🍳 Rezept importieren</Text>
+
+            {step === 'input' ? (
+              <>
+                {/* Mode Tabs */}
+                <View style={styles.recipeTabRow}>
+                  {(['url', 'text'] as const).map(mode => (
+                    <TouchableOpacity key={mode} style={[styles.recipeTab, inputMode === mode && styles.recipeTabActive]} onPress={() => setInputMode(mode)}>
+                      <Text style={[styles.recipeTabText, inputMode === mode && styles.recipeTabTextActive]}>
+                        {mode === 'url' ? '🔗 Link' : '📝 Text'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <TextInput
+                  style={[styles.input, inputMode === 'text' && { height: 120, textAlignVertical: 'top' }]}
+                  placeholder={inputMode === 'url' ? 'https://www.chefkoch.de/rezepte/...' : 'Rezepttext hier einfügen...'}
+                  placeholderTextColor={colors.textMuted}
+                  value={input}
+                  onChangeText={setInput}
+                  multiline={inputMode === 'text'}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                <TouchableOpacity style={[styles.addBtn, (!input.trim() || loading) && styles.addBtnDisabled]} onPress={handleExtract} disabled={!input.trim() || loading}>
+                  <Text style={styles.addBtnText}>{loading ? '⏳ Zutaten werden erkannt...' : 'Zutaten extrahieren →'}</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Recipe Name */}
+                <TextInput style={[styles.input, { marginBottom: spacing.md, fontWeight: '700' }]} value={recipeName} onChangeText={setRecipeName} placeholderTextColor={colors.textMuted} />
+
+                {/* Ingredient List */}
+                <View style={styles.ingredientHeader}>
+                  <Text style={styles.sectionLabel}>ZUTATEN ({ingredients.filter(i => i.include).length} ausgewählt)</Text>
+                  <TouchableOpacity onPress={toggleAll}>
+                    <Text style={styles.toggleAllText}>{ingredients.every(i => i.include) ? 'Alle abwählen' : 'Alle auswählen'}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {ingredients.map((ing, idx) => (
+                  <TouchableOpacity key={idx} style={styles.ingredientRow} onPress={() => toggleIngredient(idx)}>
+                    <View style={[styles.checkbox, ing.include && styles.checkboxChecked]}>
+                      {ing.include && <Text style={styles.checkmark}>✓</Text>}
+                    </View>
+                    <Text style={[styles.ingredientName, !ing.include && { color: colors.textMuted, textDecorationLine: 'line-through' }]}>{ing.name}</Text>
+                    {ing.quantity && <Text style={styles.ingredientQty}>{ing.quantity}</Text>}
+                  </TouchableOpacity>
+                ))}
+
+                {/* Meal Planning */}
+                <TouchableOpacity style={styles.planToggleRow} onPress={() => setPlanEnabled(v => !v)}>
+                  <View style={[styles.checkbox, planEnabled && styles.checkboxChecked]}>
+                    {planEnabled && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.planToggleText}>Als Mahlzeit im Kalender eintragen</Text>
+                </TouchableOpacity>
+
+                {planEnabled && (
+                  <View style={styles.planSection}>
+                    {/* Quick Date Chips */}
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
+                      {quickDates.map(d => (
+                        <TouchableOpacity key={d.value} style={[styles.categoryChip, planDate === d.value && styles.categoryChipActive]} onPress={() => setPlanDate(d.value)}>
+                          <Text style={[styles.categoryChipText, planDate === d.value && styles.categoryChipTextActive]}>{d.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+
+                    {/* Meal Type */}
+                    <View style={styles.mealTypeRow}>
+                      {(Object.entries(MEAL_LABELS) as [MealType, string][]).map(([type, label]) => (
+                        <TouchableOpacity key={type} style={[styles.mealTypeChip, mealType === type && styles.mealTypeChipActive]} onPress={() => setMealType(type)}>
+                          <Text style={[styles.mealTypeText, mealType === type && styles.mealTypeTextActive]}>{label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                <TouchableOpacity style={[styles.addBtn, { marginTop: spacing.lg }]} onPress={handleAdd} disabled={ingredients.filter(i => i.include).length === 0}>
+                  <Text style={styles.addBtnText}>
+                    {ingredients.filter(i => i.include).length} Zutaten zur Liste hinzufügen ✓
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
+
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function ShoppingScreen() {
   const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists } = useStore();
   const [showModal, setShowModal] = useState(false);
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showChecked, setShowChecked] = useState(true);
+  const isPremium = household?.plan_tier !== 'free';
 
   const activeList = shoppingLists.find(l => l.id === activeListId);
   const unchecked = items.filter(i => !i.checked);
@@ -212,6 +379,34 @@ export default function ShoppingScreen() {
     await addItem(activeListId, name, quantity || undefined, category);
     setShowModal(false);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleRecipeAdd = async (ingredients: RecipeIngredient[], recipeName: string, date?: string, mealType?: MealType) => {
+    if (!activeListId || !household || !currentMember) return;
+    const toAdd = ingredients.filter(i => i.include);
+    for (const ing of toAdd) {
+      await addItem(activeListId, ing.name, ing.quantity, ing.category);
+    }
+    // Save recipe
+    const { data: recipe } = await supabase.from('recipes').insert({
+      household_id: household.id,
+      name: recipeName,
+      ingredients,
+      created_by: currentMember.id,
+    }).select().single();
+    // Save meal plan if date selected
+    if (date && mealType && recipe) {
+      await supabase.from('meal_plans').insert({
+        household_id: household.id,
+        recipe_id: recipe.id,
+        recipe_name: recipeName,
+        planned_date: date,
+        meal_type: mealType,
+        created_by: currentMember.id,
+      });
+    }
+    hapticNotification(Haptics.NotificationFeedbackType.Success);
+    Alert.alert('✓ Fertig', `${toAdd.length} Zutaten aus "${recipeName}" wurden hinzugefügt.`);
   };
 
   const handleClearChecked = () => {
@@ -305,16 +500,20 @@ export default function ShoppingScreen() {
         }
       />
 
-      {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setShowModal(true)}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
+      {/* FABs */}
+      <View style={styles.fabGroup}>
+        {isPremium && (
+          <TouchableOpacity style={styles.fabRecipe} onPress={() => setShowRecipeModal(true)} activeOpacity={0.85}>
+            <Text style={styles.fabRecipeIcon}>🍳</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity style={styles.fab} onPress={() => setShowModal(true)} activeOpacity={0.85}>
+          <Text style={styles.fabIcon}>+</Text>
+        </TouchableOpacity>
+      </View>
 
       <AddItemModal visible={showModal} onClose={() => setShowModal(false)} onAdd={handleAdd} />
+      <RecipeImportModal visible={showRecipeModal} onClose={() => setShowRecipeModal(false)} onAdd={handleRecipeAdd} />
     </SafeAreaView>
   );
 }
@@ -394,13 +593,41 @@ const styles = StyleSheet.create({
   emptyTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.sm },
   emptyBody: { ...typography.body, color: colors.textSecondary },
 
+  fabGroup: { position: 'absolute', right: spacing.lg, bottom: spacing.xl, flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   fab: {
-    position: 'absolute', right: spacing.lg, bottom: spacing.xl,
     width: 60, height: 60, borderRadius: 30,
     backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center',
     ...shadow.lg,
   },
   fabIcon: { color: colors.textInverse, fontSize: 28, lineHeight: 30, fontWeight: '300' },
+  fabRecipe: {
+    width: 50, height: 50, borderRadius: 25,
+    backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center',
+    ...shadow.md,
+  },
+  fabRecipeIcon: { fontSize: 22 },
+
+  // Recipe Modal
+  recipeTabRow: { flexDirection: 'row', marginBottom: spacing.md, gap: spacing.sm },
+  recipeTab: { flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center' },
+  recipeTabActive: { borderColor: colors.brand, backgroundColor: colors.brandPale },
+  recipeTabText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
+  recipeTabTextActive: { color: colors.brand },
+  ingredientHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  toggleAllText: { ...typography.sm, color: colors.brand, fontWeight: '600' },
+  ingredientRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
+  ingredientName: { flex: 1, ...typography.body, color: colors.text },
+  ingredientQty: { ...typography.sm, color: colors.textSecondary },
+  planToggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg, marginBottom: spacing.md },
+  planToggleText: { ...typography.body, color: colors.text, fontWeight: '500' },
+  planSection: { backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm },
+  categoryChipActive: { borderColor: colors.brand, backgroundColor: colors.brandPale },
+  categoryChipTextActive: { color: colors.brand },
+  mealTypeRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+  mealTypeChip: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  mealTypeChipActive: { borderColor: colors.brand, backgroundColor: colors.brandPale },
+  mealTypeText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
+  mealTypeTextActive: { color: colors.brand },
 
   // Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },

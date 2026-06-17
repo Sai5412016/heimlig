@@ -104,3 +104,34 @@ export interface BudgetLimit {
   category: string;
   monthly_limit: number;
 }
+
+export interface RecipeIngredient {
+  name: string;
+  quantity?: string;
+  category: string;
+  include: boolean;
+}
+
+export interface Recipe {
+  id: string;
+  household_id: string;
+  name: string;
+  source_url?: string;
+  source_text?: string;
+  ingredients: RecipeIngredient[];
+  created_by?: string;
+  created_at: string;
+}
+
+export type MealType = 'fruehstueck' | 'mittag' | 'abendessen';
+
+export interface MealPlan {
+  id: string;
+  household_id: string;
+  recipe_id?: string;
+  recipe_name: string;
+  planned_date: string;
+  meal_type: MealType;
+  created_by?: string;
+  created_at: string;
+}
