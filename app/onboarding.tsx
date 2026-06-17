@@ -50,6 +50,7 @@ export default function OnboardingScreen() {
       } else {
         const { error, data } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
+        if (data.session) await supabase.auth.setSession(data.session);
         if (data.user) setSignedUpUserId(data.user.id);
         setStep('name');
       }
