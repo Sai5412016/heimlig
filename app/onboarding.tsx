@@ -48,10 +48,12 @@ export default function OnboardingScreen() {
         if (error) throw error;
         await loadExistingHousehold(data.user.id);
       } else {
-        const { error, data } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        if (data.session) await supabase.auth.setSession(data.session);
-        if (data.user) setSignedUpUserId(data.user.id);
+        // Immediately sign in so session is guaranteed
+        const { error: loginError, data: loginData } = await supabase.auth.signInWithPassword({ email, password });
+        if (loginError) throw loginError;
+        if (loginData.user) setSignedUpUserId(loginData.user.id);
         setStep('name');
       }
     } catch (e: any) {
