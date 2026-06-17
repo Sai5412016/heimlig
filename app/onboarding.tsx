@@ -35,11 +35,13 @@ export default function OnboardingScreen() {
   const [isLogin, setIsLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [signedUpUserId, setSignedUpUserId] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // ─── AUTH ────────────────────────────────────────────────
   const handleAuth = async () => {
     if (!email || !password) return;
     setLoading(true);
+    setErrorMsg(null);
     try {
       if (isLogin) {
         const { error, data } = await supabase.auth.signInWithPassword({ email, password });
@@ -52,7 +54,7 @@ export default function OnboardingScreen() {
         setStep('name');
       }
     } catch (e: any) {
-      Alert.alert('Fehler', e.message || JSON.stringify(e));
+      setErrorMsg(e.message || JSON.stringify(e));
     } finally {
       setLoading(false);
     }
@@ -102,6 +104,7 @@ export default function OnboardingScreen() {
   const handleCreateHousehold = async () => {
     if (!displayName || !householdName) return;
     setLoading(true);
+    setErrorMsg(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id ?? signedUpUserId;
@@ -138,7 +141,7 @@ export default function OnboardingScreen() {
 
       router.replace('/(tabs)');
     } catch (e: any) {
-      Alert.alert('Fehler', e.message || JSON.stringify(e));
+      setErrorMsg(e.message || JSON.stringify(e));
     } finally {
       setLoading(false);
     }
@@ -214,6 +217,7 @@ export default function OnboardingScreen() {
               <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
             </TouchableOpacity>
           </View>
+          {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
           <TouchableOpacity
             style={[styles.primaryBtn, loading && styles.disabled]}
             onPress={handleAuth} disabled={loading}
@@ -246,6 +250,7 @@ export default function OnboardingScreen() {
               />
             ))}
           </View>
+          {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
           <TouchableOpacity
             style={[styles.primaryBtn, (!displayName || !householdName || loading) && styles.disabled]}
             onPress={handleCreateHousehold}
@@ -295,4 +300,5 @@ const styles = StyleSheet.create({
   colorRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xl },
   colorDot: { width: 36, height: 36, borderRadius: 18 },
   colorDotActive: { borderWidth: 3, borderColor: colors.text },
+  errorText: { color: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 14 },
 });
