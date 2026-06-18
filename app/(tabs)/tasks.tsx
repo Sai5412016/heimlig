@@ -266,7 +266,13 @@ function TaskCard({ task, onComplete, onDelete, members }: {
   return (
     <View style={[styles.taskCard, isCompleted && { opacity: 0.5 }]}>
       <View style={[styles.priorityBar, { backgroundColor: priorityColor }]} />
-      <TouchableOpacity style={styles.taskCheckbox} onPress={() => { hapticImpact(Haptics.ImpactFeedbackStyle.Medium); onComplete(task.id); }}>
+      <TouchableOpacity style={styles.taskCheckbox} onPress={() => {
+        if (isCompleted) { onComplete(task.id); return; }
+        Alert.alert('Aufgabe erledigen?', `"${task.title}" als erledigt markieren?`, [
+          { text: 'Abbrechen', style: 'cancel' },
+          { text: 'Erledigt ✓', onPress: () => { hapticImpact(Haptics.ImpactFeedbackStyle.Medium); onComplete(task.id); } },
+        ]);
+      }}>
         <View style={[styles.checkbox, isCompleted && { backgroundColor: colors.brand, borderColor: colors.brand }]}>
           {isCompleted && <Text style={styles.checkmark}>✓</Text>}
         </View>
@@ -533,10 +539,23 @@ export default function TasksScreen() {
               const labels: Record<MealType, string> = { fruehstueck: '🌅 Frühstück', mittag: '☀️ Mittagessen', abendessen: '🌙 Abendessen' };
               const sourceUrl = (meal as any).recipes?.source_url;
               return (
-                <TouchableOpacity key={type} style={styles.mealPlanRow} onPress={() => sourceUrl && Linking.openURL(sourceUrl)} activeOpacity={sourceUrl ? 0.6 : 1}>
+                <View key={type} style={styles.mealPlanRow}>
                   <Text style={styles.mealPlanLabel}>{labels[type]}</Text>
-                  <Text style={styles.mealPlanName}>{meal.recipe_name}{sourceUrl ? ' 🔗' : ''}</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity style={{ flex: 1 }} onPress={() => sourceUrl && Linking.openURL(sourceUrl)} activeOpacity={sourceUrl ? 0.6 : 1}>
+                    <Text style={styles.mealPlanName}>{meal.recipe_name}{sourceUrl ? ' 🔗' : ''}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.mealDeleteBtn} onPress={() => {
+                    Alert.alert('Mahlzeit entfernen?', `"${meal.recipe_name}" aus dem Kalender löschen?`, [
+                      { text: 'Abbrechen', style: 'cancel' },
+                      { text: 'Löschen', style: 'destructive', onPress: async () => {
+                        await supabase.from('meal_plans').delete().eq('id', meal.id);
+                        setMealPlans(prev => prev.filter(m => m.id !== meal.id));
+                      }},
+                    ]);
+                  }}>
+                    <Text style={styles.mealDeleteText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
               );
             })}
           </View>
@@ -618,6 +637,8 @@ const styles = StyleSheet.create({
   mealPlanRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 2 },
   mealPlanLabel: { ...typography.sm, color: colors.textSecondary, width: 110 },
   mealPlanName: { ...typography.sm, color: colors.text, fontWeight: '600', flex: 1 },
+  mealDeleteBtn: { paddingHorizontal: 8, paddingVertical: 4 },
+  mealDeleteText: { color: colors.textMuted, fontSize: 14, fontWeight: '600' },
   taskList: { paddingHorizontal: spacing.md },
   taskCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, marginBottom: spacing.sm, ...shadow.sm, overflow: 'hidden' },
   priorityBar: { width: 4, alignSelf: 'stretch' },
