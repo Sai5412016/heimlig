@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  Modal, ScrollView, Pressable, KeyboardAvoidingView, Platform, Alert, Animated
+  Modal, ScrollView, Pressable, KeyboardAvoidingView, Platform, Alert, Animated, Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -411,8 +411,11 @@ export default function TasksScreen() {
 
   const loadMealPlans = useCallback(async () => {
     if (!household) return;
-    const { data } = await supabase.from('meal_plans').select('*').eq('household_id', household.id);
-    if (data) setMealPlans(data);
+    const { data } = await supabase
+      .from('meal_plans')
+      .select('*, recipes(source_url)')
+      .eq('household_id', household.id);
+    if (data) setMealPlans(data as any);
   }, [household]);
 
   useEffect(() => {
@@ -528,11 +531,12 @@ export default function TasksScreen() {
               const meal = mealPlans.find(m => m.planned_date === format(selectedDate, 'yyyy-MM-dd') && m.meal_type === type);
               if (!meal) return null;
               const labels: Record<MealType, string> = { fruehstueck: '🌅 Frühstück', mittag: '☀️ Mittagessen', abendessen: '🌙 Abendessen' };
+              const sourceUrl = (meal as any).recipes?.source_url;
               return (
-                <View key={type} style={styles.mealPlanRow}>
+                <TouchableOpacity key={type} style={styles.mealPlanRow} onPress={() => sourceUrl && Linking.openURL(sourceUrl)} activeOpacity={sourceUrl ? 0.6 : 1}>
                   <Text style={styles.mealPlanLabel}>{labels[type]}</Text>
-                  <Text style={styles.mealPlanName}>{meal.recipe_name}</Text>
-                </View>
+                  <Text style={styles.mealPlanName}>{meal.recipe_name}{sourceUrl ? ' 🔗' : ''}</Text>
+                </TouchableOpacity>
               );
             })}
           </View>
