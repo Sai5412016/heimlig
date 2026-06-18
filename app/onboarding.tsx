@@ -36,6 +36,8 @@ export default function OnboardingScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [signedUpUserId, setSignedUpUserId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [joinMode, setJoinMode] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
 
   // ─── AUTH ────────────────────────────────────────────────
   const handleAuth = async () => {
@@ -101,6 +103,46 @@ export default function OnboardingScreen() {
     }
 
     router.replace('/(tabs)');
+  };
+
+  // ─── JOIN HOUSEHOLD ──────────────────────────────────────
+  const handleJoinHousehold = async () => {
+    if (!displayName || !inviteCode) return;
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const userId = currentUser?.id ?? signedUpUserId;
+      if (!userId) throw new Error('Keine Session. Bitte neu einloggen.');
+
+      const { data: household, error: hError } = await supabase
+        .from('households').select('*').eq('invite_code', inviteCode.toUpperCase().trim()).single();
+      if (hError || !household) throw new Error('Kein Haushalt mit diesem Code gefunden.');
+
+      const { data: member, error: mError } = await supabase
+        .from('members')
+        .insert({ user_id: userId, household_id: household.id, display_name: displayName, avatar_color: avatarColor, role: 'member' })
+        .select().single();
+      if (mError) throw mError;
+
+      const { data: lists } = await supabase.from('shopping_lists').select('*').eq('household_id', household.id);
+      const { data: allMembers } = await supabase.from('members').select('*').eq('household_id', household.id);
+
+      setHousehold(household);
+      setCurrentMember(member);
+      if (allMembers) setMembers(allMembers);
+      if (lists && lists.length > 0) {
+        setShoppingLists(lists);
+        setActiveListId(lists[0].id);
+        const { data: items } = await supabase.from('shopping_items').select('*').eq('list_id', lists[0].id);
+        if (items) setItems(items);
+      }
+      router.replace('/(tabs)');
+    } catch (e: any) {
+      setErrorMsg(e.message || JSON.stringify(e));
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ─── CREATE HOUSEHOLD ────────────────────────────────────
@@ -225,11 +267,9 @@ export default function OnboardingScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.stepContent}>
           <Text style={styles.stepTitle}>Fast geschafft! 🎉</Text>
-          <Text style={styles.stepSub}>Wie heißt du und euer Haushalt?</Text>
+          <Text style={styles.stepSub}>Wie heißt du?</Text>
           <Text style={styles.inputLabel}>Dein Name</Text>
-          <TextInput style={styles.textInput} placeholder="z.B. Andi" value={displayName} onChangeText={setDisplayName} placeholderTextColor={colors.textMuted} />
-          <Text style={styles.inputLabel}>Haushaltsname</Text>
-          <TextInput style={styles.textInput} placeholder="z.B. Unser Zuhause" value={householdName} onChangeText={setHouseholdName} placeholderTextColor={colors.textMuted} />
+          <TextInput style={styles.textInput} placeholder="Dein Name" value={displayName} onChangeText={setDisplayName} placeholderTextColor={colors.textMuted} />
           <Text style={styles.inputLabel}>Deine Farbe</Text>
           <View style={styles.colorRow}>
             {AVATAR_COLORS.map(c => (
@@ -240,14 +280,41 @@ export default function OnboardingScreen() {
               />
             ))}
           </View>
-          {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
-          <TouchableOpacity
-            style={[styles.primaryBtn, (!displayName || !householdName || loading) && styles.disabled]}
-            onPress={handleCreateHousehold}
-            disabled={!displayName || !householdName || loading}
-          >
-            <Text style={styles.primaryBtnText}>{loading ? 'Erstelle Haushalt...' : 'Haushalt erstellen 🏡'}</Text>
-          </TouchableOpacity>
+          <View style={styles.joinTabRow}>
+            <TouchableOpacity style={[styles.joinTab, !joinMode && styles.joinTabActive]} onPress={() => { setJoinMode(false); setErrorMsg(null); }}>
+              <Text style={[styles.joinTabText, !joinMode && styles.joinTabTextActive]}>🏡 Neu erstellen</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.joinTab, joinMode && styles.joinTabActive]} onPress={() => { setJoinMode(true); setErrorMsg(null); }}>
+              <Text style={[styles.joinTabText, joinMode && styles.joinTabTextActive]}>🔑 Code eingeben</Text>
+            </TouchableOpacity>
+          </View>
+          {!joinMode ? (
+            <>
+              <Text style={styles.inputLabel}>Haushaltsname</Text>
+              <TextInput style={styles.textInput} placeholder="z.B. Unser Zuhause" value={householdName} onChangeText={setHouseholdName} placeholderTextColor={colors.textMuted} />
+              {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+              <TouchableOpacity
+                style={[styles.primaryBtn, (!displayName || !householdName || loading) && styles.disabled]}
+                onPress={handleCreateHousehold}
+                disabled={!displayName || !householdName || loading}
+              >
+                <Text style={styles.primaryBtnText}>{loading ? 'Erstelle Haushalt...' : 'Haushalt erstellen 🏡'}</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.inputLabel}>Einladungscode</Text>
+              <TextInput style={styles.textInput} placeholder="z.B. ABC12345" value={inviteCode} onChangeText={setInviteCode} autoCapitalize="characters" placeholderTextColor={colors.textMuted} />
+              {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+              <TouchableOpacity
+                style={[styles.primaryBtn, (!displayName || !inviteCode || loading) && styles.disabled]}
+                onPress={handleJoinHousehold}
+                disabled={!displayName || !inviteCode || loading}
+              >
+                <Text style={styles.primaryBtnText}>{loading ? 'Trete bei...' : 'Haushalt beitreten 🔑'}</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -291,4 +358,9 @@ const styles = StyleSheet.create({
   colorDot: { width: 36, height: 36, borderRadius: 18 },
   colorDotActive: { borderWidth: 3, borderColor: colors.text },
   errorText: { color: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 14 },
+  joinTabRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg, marginTop: spacing.sm },
+  joinTab: { flex: 1, padding: spacing.sm + 2, borderRadius: radius.md, alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  joinTabActive: { backgroundColor: colors.brandPale, borderColor: colors.brand },
+  joinTabText: { ...typography.body, color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
+  joinTabTextActive: { color: colors.brand },
 });
