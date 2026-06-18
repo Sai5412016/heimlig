@@ -176,11 +176,11 @@ const RecipeImportModal = ({ visible, onClose, onAdd }: {
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [recipeName, setRecipeName] = useState('');
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
-  const [planDate, setPlanDate] = useState('');
+  const [planDate, setPlanDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [mealType, setMealType] = useState<MealType>('abendessen');
   const [planEnabled, setPlanEnabled] = useState(false);
 
-  const reset = () => { setStep('input'); setInput(''); setIngredients([]); setRecipeName(''); setPlanDate(''); setPlanEnabled(false); };
+  const reset = () => { setStep('input'); setInput(''); setIngredients([]); setRecipeName(''); setPlanDate(format(new Date(), 'yyyy-MM-dd')); setPlanEnabled(false); };
 
   useEffect(() => { if (!visible) reset(); }, [visible]);
 

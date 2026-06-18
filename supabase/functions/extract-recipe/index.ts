@@ -19,10 +19,36 @@ serve(async (req) => {
 
     if (url && !text) {
       try {
-        const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'de,en;q=0.5',
+          }
+        });
         const html = await res.text();
-        // Strip HTML tags
-        recipeContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').substring(0, 8000);
+
+        // Try JSON-LD structured data first (Schema.org Recipe - used by Chefkoch etc.)
+        const jsonLdMatches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+        let jsonLdContent = '';
+        for (const match of jsonLdMatches) {
+          try {
+            const parsed = JSON.parse(match[1]);
+            const items = Array.isArray(parsed) ? parsed : [parsed];
+            for (const item of items) {
+              const recipe = item['@type'] === 'Recipe' ? item :
+                (item['@graph'] || []).find((g: any) => g['@type'] === 'Recipe');
+              if (recipe) {
+                const ingredients = (recipe.recipeIngredient || []).join('\n');
+                jsonLdContent = `Rezeptname: ${recipe.name || 'Rezept'}\nZutaten:\n${ingredients}`;
+                break;
+              }
+            }
+          } catch { /* continue */ }
+          if (jsonLdContent) break;
+        }
+
+        recipeContent = jsonLdContent || html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').substring(0, 8000);
       } catch {
         recipeContent = `Rezept von: ${url}`;
       }
