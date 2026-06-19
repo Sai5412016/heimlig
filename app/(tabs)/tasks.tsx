@@ -399,7 +399,7 @@ function PointsToast({ points, visible }: { points: number; visible: boolean }) 
 
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function TasksScreen() {
-  const { household, currentMember, members, tasks, setTasks, completeTask, weekScores, loadWeekScores } = useStore();
+  const { household, currentMember, members, tasks, setTasks, completeTask, weekScores, loadWeekScores, items, setItems } = useStore();
   const [viewMode, setViewMode] = useState<ViewMode>('calendar');
   const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -545,11 +545,13 @@ export default function TasksScreen() {
                     <Text style={styles.mealPlanName}>{meal.recipe_name}{sourceUrl ? ' 🔗' : ''}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.mealDeleteBtn} onPress={() => {
-                    Alert.alert('Mahlzeit entfernen?', `"${meal.recipe_name}" aus dem Kalender löschen?`, [
+                    Alert.alert('Mahlzeit entfernen?', `"${meal.recipe_name}" aus dem Kalender löschen? Die zugehörigen Zutaten werden auch aus dem Einkaufskorb entfernt.`, [
                       { text: 'Abbrechen', style: 'cancel' },
                       { text: 'Löschen', style: 'destructive', onPress: async () => {
+                        // Deleting the meal plan cascades to its linked shopping_items in the DB
                         await supabase.from('meal_plans').delete().eq('id', meal.id);
                         setMealPlans(prev => prev.filter(m => m.id !== meal.id));
+                        setItems(items.filter(i => i.meal_plan_id !== meal.id));
                       }},
                     ]);
                   }}>

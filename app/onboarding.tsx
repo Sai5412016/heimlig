@@ -111,25 +111,23 @@ export default function OnboardingScreen() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      const userId = currentUser?.id ?? signedUpUserId;
-      if (!userId) throw new Error('Keine Session. Bitte neu einloggen.');
+      const { data: result, error: rpcError } = await supabase.rpc('join_household_by_code', {
+        p_invite_code: inviteCode.toUpperCase().trim(),
+        p_display_name: displayName,
+        p_avatar_color: avatarColor,
+      });
+      if (rpcError) throw rpcError;
+      if (result?.error) throw new Error(result.error);
 
-      const { data: household, error: hError } = await supabase
-        .from('households').select('*').eq('invite_code', inviteCode.toUpperCase().trim()).single();
-      if (hError || !household) throw new Error('Kein Haushalt mit diesem Code gefunden.');
+      const household_id = result.household_id;
+      const { data: household } = await supabase.from('households').select('*').eq('id', household_id).single();
+      const { data: member } = await supabase.from('members').select('*').eq('id', result.member_id).single();
 
-      const { data: member, error: mError } = await supabase
-        .from('members')
-        .insert({ user_id: userId, household_id: household.id, display_name: displayName, avatar_color: avatarColor, role: 'member' })
-        .select().single();
-      if (mError) throw mError;
+      const { data: lists } = await supabase.from('shopping_lists').select('*').eq('household_id', household_id);
+      const { data: allMembers } = await supabase.from('members').select('*').eq('household_id', household_id);
 
-      const { data: lists } = await supabase.from('shopping_lists').select('*').eq('household_id', household.id);
-      const { data: allMembers } = await supabase.from('members').select('*').eq('household_id', household.id);
-
-      setHousehold(household);
-      setCurrentMember(member);
+      if (household) setHousehold(household);
+      if (member) setCurrentMember(member);
       if (allMembers) setMembers(allMembers);
       if (lists && lists.length > 0) {
         setShoppingLists(lists);

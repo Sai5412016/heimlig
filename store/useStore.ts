@@ -23,7 +23,7 @@ interface AppState {
   setActiveListId: (id: string | null) => void;
   setItems: (items: ShoppingItem[]) => void;
   toggleItem: (itemId: string) => Promise<void>;
-  addItem: (listId: string, name: string, quantity?: string, category?: string) => Promise<void>;
+  addItem: (listId: string, name: string, quantity?: string, category?: string, mealPlanId?: string) => Promise<void>;
   deleteItem: (itemId: string) => Promise<void>;
 
   tasks: Task[];
@@ -71,11 +71,11 @@ export const useStore = create<AppState>((set, get) => ({
       .eq('id', itemId);
   },
 
-  addItem: async (listId, name, quantity, category = 'Sonstiges') => {
+  addItem: async (listId, name, quantity, category = 'Sonstiges', mealPlanId) => {
     const { currentMember } = get();
     const { data } = await supabase
       .from('shopping_items')
-      .insert({ list_id: listId, name, quantity, category, added_by: currentMember?.id })
+      .insert({ list_id: listId, name, quantity, category, added_by: currentMember?.id, meal_plan_id: mealPlanId })
       .select().single();
     if (data) set(s => ({ items: [...s.items, data] }));
   },

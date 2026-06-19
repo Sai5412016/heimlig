@@ -1,9 +1,17 @@
 // app/_layout.tsx
 import { useEffect, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+
+// Pull a join code out of an incoming deep link, e.g. heimlig://join/AB12CD34
+function extractJoinCode(url: string | null): string | null {
+  if (!url) return null;
+  const m = url.match(/join\/([A-Za-z0-9]+)/);
+  return m ? m[1] : null;
+}
 
 export default function RootLayout() {
   const router = useRouter();
@@ -12,11 +20,21 @@ export default function RootLayout() {
 
   useEffect(() => {
     // Small delay to let router initialize
-    const timer = setTimeout(() => checkSession(), 500);
-    return () => clearTimeout(timer);
+    const timer = setTimeout(async () => {
+      const initialUrl = await Linking.getInitialURL();
+      checkSession(extractJoinCode(initialUrl));
+    }, 500);
+
+    // Handle deep links while the app is already running
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      const code = extractJoinCode(url);
+      if (code) router.push(`/join/${code}`);
+    });
+
+    return () => { clearTimeout(timer); sub.remove(); };
   }, []);
 
-  const checkSession = async () => {
+  const checkSession = async (pendingJoinCode?: string | null) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -37,7 +55,8 @@ export default function RootLayout() {
 
       if (!memberRows || memberRows.length === 0) {
         setReady(true);
-        router.replace('/onboarding');
+        if (pendingJoinCode) router.replace(`/join/${pendingJoinCode}`);
+        else router.replace('/onboarding');
         return;
       }
 
@@ -70,7 +89,8 @@ export default function RootLayout() {
       }
 
       setReady(true);
-      router.replace('/(tabs)');
+      if (pendingJoinCode) router.replace(`/join/${pendingJoinCode}`);
+      else router.replace('/(tabs)');
     } catch (e) {
       console.error(e);
       setReady(true);
@@ -83,6 +103,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="join/[code]" />
       </Stack>
     </GestureHandlerRootView>
   );

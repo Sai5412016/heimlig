@@ -30,7 +30,7 @@ function InviteModal({ visible, onClose, inviteCode, householdName }: {
   householdName: string;
 }) {
   const handleShare = async () => {
-    const message = `🏡 Ich lade dich zu unserem Haushalt "${householdName}" in Heimlig ein!\n\nLade die App herunter und gib diesen Code ein:\n\n🔑 ${inviteCode}`;
+    const message = `🏡 Ich lade dich zu unserem Haushalt "${householdName}" in Heimlig ein!\n\n👉 Einfach hier tippen, um beizutreten:\nhttps://heimlig.vercel.app/join/${inviteCode}\n\nFalls der Link nicht klappt, gib in der App diesen Code ein:\n🔑 ${inviteCode}`;
     if (Platform.OS === 'web') {
       try { await navigator.clipboard.writeText(message); Alert.alert('Kopiert! ✓', 'Einladungstext in die Zwischenablage kopiert.'); }
       catch { Alert.alert('Einladungscode', message); }

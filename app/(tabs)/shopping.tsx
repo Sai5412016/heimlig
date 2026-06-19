@@ -384,9 +384,6 @@ export default function ShoppingScreen() {
   const handleRecipeAdd = async (ingredients: RecipeIngredient[], recipeName: string, date?: string, mealType?: MealType) => {
     if (!activeListId || !household || !currentMember) return;
     const toAdd = ingredients.filter(i => i.include);
-    for (const ing of toAdd) {
-      await addItem(activeListId, ing.name, ing.quantity, ing.category);
-    }
     // Save recipe
     const { data: recipe } = await supabase.from('recipes').insert({
       household_id: household.id,
@@ -394,16 +391,22 @@ export default function ShoppingScreen() {
       ingredients,
       created_by: currentMember.id,
     }).select().single();
-    // Save meal plan if date selected
+    // Save meal plan if date selected — create it first so we can link ingredients to it
+    let mealPlanId: string | undefined;
     if (date && mealType && recipe) {
-      await supabase.from('meal_plans').insert({
+      const { data: mealPlan } = await supabase.from('meal_plans').insert({
         household_id: household.id,
         recipe_id: recipe.id,
         recipe_name: recipeName,
         planned_date: date,
         meal_type: mealType,
         created_by: currentMember.id,
-      });
+      }).select().single();
+      mealPlanId = mealPlan?.id;
+    }
+    // Add ingredients, linked to the meal plan so they disappear if the meal is deleted
+    for (const ing of toAdd) {
+      await addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlanId);
     }
     hapticNotification(Haptics.NotificationFeedbackType.Success);
     Alert.alert('✓ Fertig', `${toAdd.length} Zutaten aus "${recipeName}" wurden hinzugefügt.`);
