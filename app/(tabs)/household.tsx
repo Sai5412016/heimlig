@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, Share, Modal, Pressable, TextInput, Platform
+  Alert, Share, Modal, Pressable, TextInput, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -30,7 +30,7 @@ function InviteModal({ visible, onClose, inviteCode, householdName }: {
   householdName: string;
 }) {
   const handleShare = async () => {
-    const message = `🏡 Ich lade dich zu unserem Haushalt "${householdName}" in Heimlig ein!\n\nLade die App herunter und gib diesen Code ein:\n\n🔑 ${inviteCode}\n\nOder öffne diesen Link: heimlig://join/${inviteCode}`;
+    const message = `🏡 Ich lade dich zu unserem Haushalt "${householdName}" in Heimlig ein!\n\nLade die App herunter und gib diesen Code ein:\n\n🔑 ${inviteCode}`;
     if (Platform.OS === 'web') {
       try { await navigator.clipboard.writeText(message); Alert.alert('Kopiert! ✓', 'Einladungstext in die Zwischenablage kopiert.'); }
       catch { Alert.alert('Einladungscode', message); }
@@ -92,32 +92,34 @@ function JoinModal({ visible, onClose, onJoin }: {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={styles.modalSheet}>
-          <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>Haushalt beitreten</Text>
-          <Text style={styles.modalSub}>Gib den Einladungscode ein den du erhalten hast.</Text>
-          <TextInput
-            style={styles.codeInput}
-            placeholder="z.B. AB12CD34"
-            placeholderTextColor={colors.textMuted}
-            value={code}
-            onChangeText={t => setCode(t.toUpperCase())}
-            autoCapitalize="characters"
-            autoFocus
-          />
-          <TouchableOpacity
-            style={[styles.shareBtn, (!code || loading) && { opacity: 0.4 }]}
-            onPress={handleJoin}
-            disabled={!code || loading}
-          >
-            <Text style={styles.shareBtnText}>{loading ? 'Suche...' : '🏡 Beitreten'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>Abbrechen</Text>
-          </TouchableOpacity>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <Pressable style={styles.modalOverlay} onPress={onClose}>
+          <Pressable style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Haushalt beitreten</Text>
+            <Text style={styles.modalSub}>Gib den Einladungscode ein den du erhalten hast.</Text>
+            <TextInput
+              style={styles.codeInput}
+              placeholder="z.B. AB12CD34"
+              placeholderTextColor={colors.textMuted}
+              value={code}
+              onChangeText={t => setCode(t.toUpperCase())}
+              autoCapitalize="characters"
+              autoFocus
+            />
+            <TouchableOpacity
+              style={[styles.shareBtn, (!code || loading) && { opacity: 0.4 }]}
+              onPress={handleJoin}
+              disabled={!code || loading}
+            >
+              <Text style={styles.shareBtnText}>{loading ? 'Suche...' : '🏡 Beitreten'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+              <Text style={styles.closeBtnText}>Abbrechen</Text>
+            </TouchableOpacity>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -149,48 +151,23 @@ export default function HouseholdScreen() {
   const handleJoinHousehold = async (code: string) => {
     if (!currentMember) return;
 
-    const { data: household, error } = await supabase
-      .from('households')
-      .select('*')
-      .eq('invite_code', code)
-      .single();
+    const { data: result, error } = await supabase.rpc('join_household_by_code', {
+      p_invite_code: code,
+      p_display_name: currentMember.display_name,
+      p_avatar_color: currentMember.avatar_color,
+    });
 
-    if (error || !household) {
-      Alert.alert('Nicht gefunden', 'Kein Haushalt mit diesem Code gefunden. Bitte prüfe den Code.');
+    if (error) {
+      Alert.alert('Fehler', error.message || 'Beitreten fehlgeschlagen.');
       return;
     }
 
-    // Check if already member
-    const { data: existing } = await supabase
-      .from('members')
-      .select('id')
-      .eq('user_id', currentMember.user_id)
-      .eq('household_id', household.id)
-      .single();
-
-    if (existing) {
-      Alert.alert('Bereits Mitglied', 'Du bist bereits in diesem Haushalt.');
+    if (result?.error) {
+      Alert.alert('Nicht gefunden', result.error);
       return;
     }
 
-    const { data: newMember, error: mError } = await supabase
-      .from('members')
-      .insert({
-        user_id: currentMember.user_id,
-        household_id: household.id,
-        display_name: currentMember.display_name,
-        avatar_color: currentMember.avatar_color,
-        role: 'member',
-      })
-      .select()
-      .single();
-
-    if (mError) {
-      Alert.alert('Fehler', 'Beitreten fehlgeschlagen.');
-      return;
-    }
-
-    Alert.alert('Willkommen! 🎉', `Du bist jetzt Mitglied von "${household.name}".`);
+    Alert.alert('Willkommen! 🎉', `Du bist jetzt Mitglied von "${result.household_name}".`);
     setShowJoin(false);
   };
 
