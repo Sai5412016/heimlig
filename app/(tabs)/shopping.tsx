@@ -14,6 +14,7 @@ import { supabase, ShoppingItem, RecipeIngredient, MealType } from '../../lib/su
 import { format, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useStore } from '../../store/useStore';
+import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
 
 // ─── ITEM CARD ────────────────────────────────────────────────
 const ItemCard = React.memo(({ item, onToggle, onDelete, memberName }: {
@@ -162,193 +163,10 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
   );
 };
 
-// ─── RECIPE IMPORT MODAL ──────────────────────────────────────
-const MEAL_LABELS: Record<MealType, string> = { fruehstueck: '🌅 Frühstück', mittag: '☀️ Mittagessen', abendessen: '🌙 Abendessen' };
-
-const RecipeImportModal = ({ visible, onClose, onAdd }: {
-  visible: boolean;
-  onClose: () => void;
-  onAdd: (ingredients: RecipeIngredient[], recipeName: string, opts: { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }) => void;
-}) => {
-  const [inputMode, setInputMode] = useState<'url' | 'text'>('url');
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<'input' | 'review'>('input');
-  const [recipeName, setRecipeName] = useState('');
-  const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
-  const [planDate, setPlanDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [mealType, setMealType] = useState<MealType>('abendessen');
-  const [planEnabled, setPlanEnabled] = useState(false);
-  const [addToCart, setAddToCart] = useState(true);
-
-  const reset = () => { setStep('input'); setInput(''); setIngredients([]); setRecipeName(''); setPlanDate(format(new Date(), 'yyyy-MM-dd')); setPlanEnabled(false); setAddToCart(true); };
-
-  useEffect(() => { if (!visible) reset(); }, [visible]);
-
-  const handleExtract = async () => {
-    if (!input.trim()) return;
-    setLoading(true);
-    try {
-      const body = inputMode === 'url' ? { url: input.trim() } : { text: input.trim() };
-      const { data, error } = await supabase.functions.invoke('extract-recipe', { body });
-      if (error) throw error;
-      setRecipeName(data.name || 'Rezept');
-      // Pre-select ALL ingredients (incl. basics like salt/pepper) — user can deselect
-      setIngredients((data.ingredients || []).map((i: RecipeIngredient) => ({ ...i, include: true })));
-      setStep('review');
-    } catch (e) {
-      Alert.alert('Fehler', 'Zutaten konnten nicht extrahiert werden. Bitte prüfe den Link oder den Text.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleIngredient = (idx: number) => {
-    setIngredients(prev => prev.map((ing, i) => i === idx ? { ...ing, include: !ing.include } : ing));
-  };
-
-  const toggleAll = () => {
-    const allOn = ingredients.every(i => i.include);
-    setIngredients(prev => prev.map(i => ({ ...i, include: !allOn })));
-  };
-
-  const handleAdd = () => {
-    onAdd(ingredients, recipeName, {
-      sourceUrl: inputMode === 'url' && input.trim() ? input.trim() : undefined,
-      date: planEnabled && planDate ? planDate : undefined,
-      mealType: planEnabled ? mealType : undefined,
-      addToCart,
-    });
-    onClose();
-  };
-
-  const quickDates = [
-    { label: 'Heute', value: format(new Date(), 'yyyy-MM-dd') },
-    { label: 'Morgen', value: format(addDays(new Date(), 1), 'yyyy-MM-dd') },
-    { label: format(addDays(new Date(), 2), 'EEE', { locale: de }), value: format(addDays(new Date(), 2), 'yyyy-MM-dd') },
-    { label: format(addDays(new Date(), 3), 'EEE', { locale: de }), value: format(addDays(new Date(), 3), 'yyyy-MM-dd') },
-  ];
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <Pressable style={styles.modalOverlay} onPress={onClose}>
-          <Pressable style={[styles.modalSheet, { maxHeight: '90%' }]}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>🍳 Rezept importieren</Text>
-
-            {step === 'input' ? (
-              <>
-                {/* Mode Tabs */}
-                <View style={styles.recipeTabRow}>
-                  {(['url', 'text'] as const).map(mode => (
-                    <TouchableOpacity key={mode} style={[styles.recipeTab, inputMode === mode && styles.recipeTabActive]} onPress={() => setInputMode(mode)}>
-                      <Text style={[styles.recipeTabText, inputMode === mode && styles.recipeTabTextActive]}>
-                        {mode === 'url' ? '🔗 Link' : '📝 Text'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <TextInput
-                  style={[styles.input, inputMode === 'text' && { height: 120, textAlignVertical: 'top' }]}
-                  placeholder={inputMode === 'url' ? 'https://www.chefkoch.de/rezepte/...' : 'Rezepttext hier einfügen...'}
-                  placeholderTextColor={colors.textMuted}
-                  value={input}
-                  onChangeText={setInput}
-                  multiline={inputMode === 'text'}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-
-                <TouchableOpacity style={[styles.addBtn, (!input.trim() || loading) && styles.addBtnDisabled]} onPress={handleExtract} disabled={!input.trim() || loading}>
-                  <Text style={styles.addBtnText}>{loading ? '⏳ Zutaten werden erkannt...' : 'Zutaten extrahieren →'}</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Recipe Name */}
-                <TextInput style={[styles.input, { marginBottom: spacing.md, fontWeight: '700' }]} value={recipeName} onChangeText={setRecipeName} placeholderTextColor={colors.textMuted} />
-
-                {/* Ingredient List */}
-                <View style={styles.ingredientHeader}>
-                  <Text style={styles.sectionLabel}>ZUTATEN ({ingredients.filter(i => i.include).length} ausgewählt)</Text>
-                  <TouchableOpacity onPress={toggleAll}>
-                    <Text style={styles.toggleAllText}>{ingredients.every(i => i.include) ? 'Alle abwählen' : 'Alle auswählen'}</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {ingredients.map((ing, idx) => (
-                  <TouchableOpacity key={idx} style={styles.ingredientRow} onPress={() => toggleIngredient(idx)}>
-                    <View style={[styles.checkbox, ing.include && styles.checkboxChecked]}>
-                      {ing.include && <Text style={styles.checkmark}>✓</Text>}
-                    </View>
-                    <Text style={[styles.ingredientName, !ing.include && { color: colors.textMuted, textDecorationLine: 'line-through' }]}>{ing.name}</Text>
-                    {ing.quantity && <Text style={styles.ingredientQty}>{ing.quantity}</Text>}
-                  </TouchableOpacity>
-                ))}
-
-                {/* Add to shopping cart? */}
-                <TouchableOpacity style={styles.planToggleRow} onPress={() => setAddToCart(v => !v)}>
-                  <View style={[styles.checkbox, addToCart && styles.checkboxChecked]}>
-                    {addToCart && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                  <Text style={styles.planToggleText}>Zutaten zum Einkaufskorb hinzufügen</Text>
-                </TouchableOpacity>
-
-                {/* Meal Planning */}
-                <TouchableOpacity style={styles.planToggleRow} onPress={() => setPlanEnabled(v => !v)}>
-                  <View style={[styles.checkbox, planEnabled && styles.checkboxChecked]}>
-                    {planEnabled && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                  <Text style={styles.planToggleText}>Als Mahlzeit im Kalender eintragen</Text>
-                </TouchableOpacity>
-
-                {planEnabled && (
-                  <View style={styles.planSection}>
-                    {/* Quick Date Chips */}
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
-                      {quickDates.map(d => (
-                        <TouchableOpacity key={d.value} style={[styles.categoryChip, planDate === d.value && styles.categoryChipActive]} onPress={() => setPlanDate(d.value)}>
-                          <Text style={[styles.categoryChipText, planDate === d.value && styles.categoryChipTextActive]}>{d.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-
-                    {/* Meal Type */}
-                    <View style={styles.mealTypeRow}>
-                      {(Object.entries(MEAL_LABELS) as [MealType, string][]).map(([type, label]) => (
-                        <TouchableOpacity key={type} style={[styles.mealTypeChip, mealType === type && styles.mealTypeChipActive]} onPress={() => setMealType(type)}>
-                          <Text style={[styles.mealTypeText, mealType === type && styles.mealTypeTextActive]}>{label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                <TouchableOpacity
-                  style={[styles.addBtn, { marginTop: spacing.lg }, (!addToCart && !planEnabled) && styles.addBtnDisabled]}
-                  onPress={handleAdd}
-                  disabled={!addToCart && !planEnabled}
-                >
-                  <Text style={styles.addBtnText}>
-                    {addToCart
-                      ? `${ingredients.filter(i => i.include).length} Zutaten hinzufügen${planEnabled ? ' + Kalender' : ''} ✓`
-                      : planEnabled ? 'Nur in Kalender eintragen ✓' : 'Bitte Option wählen'}
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-            )}
-          </Pressable>
-        </Pressable>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-};
 
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function ShoppingScreen() {
-  const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists } = useStore();
+  const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe } = useStore();
   const [showModal, setShowModal] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -402,45 +220,12 @@ export default function ShoppingScreen() {
     hapticNotification(Haptics.NotificationFeedbackType.Success);
   };
 
-  const handleRecipeAdd = async (
-    ingredients: RecipeIngredient[],
-    recipeName: string,
-    opts: { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }
-  ) => {
-    if (!activeListId || !household || !currentMember) return;
-    const { sourceUrl, date, mealType, addToCart } = opts;
-    const toAdd = ingredients.filter(i => i.include);
-    // Save recipe (with source URL so the calendar can link back to it)
-    const { data: recipe } = await supabase.from('recipes').insert({
-      household_id: household.id,
-      name: recipeName,
-      source_url: sourceUrl,
-      ingredients,
-      created_by: currentMember.id,
-    }).select().single();
-    // Save meal plan if date selected — create it first so we can link ingredients to it
-    let mealPlanId: string | undefined;
-    if (date && mealType && recipe) {
-      const { data: mealPlan } = await supabase.from('meal_plans').insert({
-        household_id: household.id,
-        recipe_id: recipe.id,
-        recipe_name: recipeName,
-        planned_date: date,
-        meal_type: mealType,
-        created_by: currentMember.id,
-      }).select().single();
-      mealPlanId = mealPlan?.id;
-    }
-    // Add ingredients to the cart only if the user wants — linked to the meal so they vanish when it's deleted
-    if (addToCart) {
-      for (const ing of toAdd) {
-        await addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlanId);
-      }
-    }
+  const handleRecipeAdd = async (ingredients: RecipeIngredient[], recipeName: string, opts: RecipeAddOpts) => {
+    const { added, planned } = await saveRecipe(ingredients, recipeName, opts);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
     const parts = [];
-    if (addToCart) parts.push(`${toAdd.length} Zutaten im Einkauf`);
-    if (date && mealType) parts.push('im Kalender eingetragen');
+    if (added > 0) parts.push(`${added} Zutaten im Einkauf`);
+    if (planned) parts.push('im Kalender eingetragen');
     Alert.alert('✓ Fertig', `"${recipeName}" – ${parts.join(' & ') || 'gespeichert'}.`);
   };
 

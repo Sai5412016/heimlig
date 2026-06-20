@@ -1,7 +1,10 @@
 // store/useStore.ts
 import { create } from 'zustand';
-import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction } from '../lib/supabase';
+import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType } from '../lib/supabase';
 import { format, startOfWeek } from 'date-fns';
+
+export interface SaveRecipeOpts { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }
+export interface PlanRecipeOpts { date: string; mealType: MealType; addToCart: boolean }
 
 const HOUSEHOLD_CATEGORIES = ['Haushalt', 'Einkauf', 'Wartung', 'Garten'];
 
@@ -37,6 +40,15 @@ interface AppState {
 
   transactions: Transaction[];
   setTransactions: (tx: Transaction[]) => void;
+
+  // 🍳 Recipes
+  recipes: Recipe[];
+  setRecipes: (r: Recipe[]) => void;
+  loadRecipes: () => Promise<void>;
+  toggleRecipeFavorite: (id: string) => Promise<void>;
+  deleteRecipe: (id: string) => Promise<void>;
+  saveRecipe: (ingredients: RecipeIngredient[], name: string, opts: SaveRecipeOpts) => Promise<{ added: number; planned: boolean }>;
+  planRecipe: (recipe: Recipe, opts: PlanRecipeOpts) => Promise<{ added: number }>;
 
   isLoading: boolean;
   setIsLoading: (v: boolean) => void;
@@ -185,6 +197,92 @@ export const useStore = create<AppState>((set, get) => ({
 
   transactions: [],
   setTransactions: (tx) => set({ transactions: tx }),
+
+  // 🍳 Recipes
+  recipes: [],
+  setRecipes: (r) => set({ recipes: r }),
+
+  loadRecipes: async () => {
+    const { household } = get();
+    if (!household) return;
+    const { data } = await supabase
+      .from('recipes')
+      .select('*')
+      .eq('household_id', household.id)
+      .order('is_favorite', { ascending: false })
+      .order('created_at', { ascending: false });
+    if (data) set({ recipes: data });
+  },
+
+  toggleRecipeFavorite: async (id) => {
+    const recipe = get().recipes.find(r => r.id === id);
+    if (!recipe) return;
+    const is_favorite = !recipe.is_favorite;
+    set(s => ({ recipes: s.recipes.map(r => r.id === id ? { ...r, is_favorite } : r) }));
+    await supabase.from('recipes').update({ is_favorite }).eq('id', id);
+  },
+
+  deleteRecipe: async (id) => {
+    set(s => ({ recipes: s.recipes.filter(r => r.id !== id) }));
+    await supabase.from('recipes').delete().eq('id', id);
+  },
+
+  // Create a brand-new recipe (from import) + optional meal plan + optional cart items
+  saveRecipe: async (ingredients, name, opts) => {
+    const { household, currentMember, activeListId, addItem } = get();
+    if (!household || !currentMember) return { added: 0, planned: false };
+    const { sourceUrl, date, mealType, addToCart } = opts;
+    const toAdd = ingredients.filter(i => i.include);
+
+    const { data: recipe } = await supabase.from('recipes').insert({
+      household_id: household.id,
+      name,
+      source_url: sourceUrl,
+      ingredients,
+      created_by: currentMember.id,
+    }).select().single();
+    if (recipe) set(s => ({ recipes: [recipe, ...s.recipes] }));
+
+    let mealPlanId: string | undefined;
+    if (date && mealType && recipe) {
+      const { data: mealPlan } = await supabase.from('meal_plans').insert({
+        household_id: household.id,
+        recipe_id: recipe.id,
+        recipe_name: name,
+        planned_date: date,
+        meal_type: mealType,
+        created_by: currentMember.id,
+      }).select().single();
+      mealPlanId = mealPlan?.id;
+    }
+
+    if (addToCart && activeListId) {
+      for (const ing of toAdd) await addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlanId);
+    }
+    return { added: addToCart ? toAdd.length : 0, planned: !!(date && mealType) };
+  },
+
+  // Plan an EXISTING recipe into the calendar + optionally add its ingredients to the cart
+  planRecipe: async (recipe, opts) => {
+    const { household, currentMember, activeListId, addItem } = get();
+    if (!household || !currentMember) return { added: 0 };
+    const { date, mealType, addToCart } = opts;
+
+    const { data: mealPlan } = await supabase.from('meal_plans').insert({
+      household_id: household.id,
+      recipe_id: recipe.id,
+      recipe_name: recipe.name,
+      planned_date: date,
+      meal_type: mealType,
+      created_by: currentMember.id,
+    }).select().single();
+
+    const toAdd = (recipe.ingredients || []).filter(i => i.include);
+    if (addToCart && activeListId) {
+      for (const ing of toAdd) await addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlan?.id);
+    }
+    return { added: addToCart ? toAdd.length : 0 };
+  },
 
   isLoading: false,
   setIsLoading: (v) => set({ isLoading: v }),

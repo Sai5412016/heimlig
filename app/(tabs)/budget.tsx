@@ -12,6 +12,9 @@ import { de } from 'date-fns/locale';
 import { colors, spacing, radius, typography, shadow } from '../../constants/theme';
 import { supabase, Transaction } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
+import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
+import { buildTransactionsCsv, exportCsv, parseTransactionsCsv, memberIdByName } from '../../lib/dataIO';
 
 const CAT_EMOJIS: Record<string, string> = {
   'Lebensmittel': '🛒', 'Miete': '🏠', 'Transport': '🚗',
@@ -278,13 +281,67 @@ export default function BudgetScreen() {
 
   const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: de });
 
+  // ─── EXPORT ───────────────────────────────────────────────
+  const handleExport = async () => {
+    if (transactions.length === 0) { Alert.alert('Keine Daten', 'Es gibt noch keine Einträge zum Exportieren.'); return; }
+    try {
+      const nameById: Record<string, string> = {};
+      members.forEach(m => { nameById[m.id] = m.display_name; });
+      const csv = buildTransactionsCsv(transactions, nameById);
+      await exportCsv(`heimlig-budget-${format(new Date(), 'yyyy-MM-dd')}.csv`, csv);
+    } catch (e: any) {
+      Alert.alert('Fehler', e?.message ?? 'Export fehlgeschlagen.');
+    }
+  };
+
+  // ─── IMPORT ───────────────────────────────────────────────
+  const handleImport = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+      if (res.canceled || !res.assets?.[0]) return;
+      const content = await new File(res.assets[0].uri).text();
+      const rows = parseTransactionsCsv(content);
+      if (rows.length === 0) { Alert.alert('Keine Einträge', 'In der Datei wurden keine gültigen Einträge gefunden. Erwartet werden Spalten wie Datum, Typ, Kategorie, Betrag.'); return; }
+      Alert.alert('Import bestätigen', `${rows.length} Einträge aus der Datei importieren?`, [
+        { text: 'Abbrechen', style: 'cancel' },
+        { text: 'Importieren', onPress: async () => {
+            if (!household) return;
+            const payload = rows.map(r => ({
+              household_id: household.id,
+              transaction_date: r.transaction_date,
+              type: r.type,
+              category: r.category,
+              amount: r.amount,
+              description: r.description,
+              member_id: memberIdByName(members, r.memberName),
+            }));
+            const { data, error } = await supabase.from('transactions').insert(payload).select();
+            if (error) { Alert.alert('Fehler', error.message); return; }
+            if (data) setTransactions([...data, ...transactions]);
+            hapticNotification(Haptics.NotificationFeedbackType.Success);
+            Alert.alert('✓ Importiert', `${data?.length ?? rows.length} Einträge wurden hinzugefügt.`);
+          } },
+      ]);
+    } catch (e: any) {
+      Alert.alert('Fehler', e?.message ?? 'Import fehlgeschlagen.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>💶 Budget</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
-          <Text style={styles.addBtnText}>+ Eintrag</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+          <TouchableOpacity style={styles.ioBtn} onPress={handleExport}>
+            <Text style={styles.ioBtnText}>📤</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.ioBtn} onPress={handleImport}>
+            <Text style={styles.ioBtnText}>📥</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
+            <Text style={styles.addBtnText}>+ Eintrag</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -438,6 +495,8 @@ const styles = StyleSheet.create({
   headerTitle: { ...typography.h2, color: colors.text },
   addBtn: { backgroundColor: colors.brandPale, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   addBtnText: { ...typography.sm, color: colors.brand, fontWeight: '700' },
+  ioBtn: { backgroundColor: colors.background, borderRadius: radius.full, width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
+  ioBtnText: { fontSize: 17 },
   monthNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg },
   monthNavBtn: { padding: spacing.sm },
   monthNavIcon: { fontSize: 28, color: colors.brand, fontWeight: '600' },

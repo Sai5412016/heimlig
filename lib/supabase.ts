@@ -121,6 +121,7 @@ export interface Recipe {
   source_url?: string;
   source_text?: string;
   ingredients: RecipeIngredient[];
+  is_favorite?: boolean;
   created_by?: string;
   created_at: string;
 }
