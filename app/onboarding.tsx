@@ -65,6 +65,24 @@ export default function OnboardingScreen() {
     }
   };
 
+  // ─── FORGOT PASSWORD ─────────────────────────────────────
+  const handleForgotPassword = async () => {
+    if (!email) { setErrorMsg('Bitte gib zuerst deine E-Mail-Adresse ein.'); return; }
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: 'https://heimlig.vercel.app',
+      });
+      if (error) throw error;
+      Alert.alert('E-Mail gesendet 📧', `Wir haben dir an ${email} einen Link zum Zurücksetzen deines Passworts geschickt. Schau auch im Spam-Ordner.`);
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Konnte E-Mail nicht senden.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ─── LOAD EXISTING HOUSEHOLD (for login) ─────────────────
   const loadExistingHousehold = async (userId: string) => {
     const { data: memberRows } = await supabase
@@ -254,6 +272,11 @@ export default function OnboardingScreen() {
           >
             <Text style={styles.primaryBtnText}>{loading ? 'Lädt...' : isLogin ? 'Einloggen' : 'Weiter →'}</Text>
           </TouchableOpacity>
+          {isLogin && (
+            <TouchableOpacity style={styles.forgotBtn} onPress={handleForgotPassword} disabled={loading}>
+              <Text style={styles.forgotBtnText}>Passwort vergessen?</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -356,6 +379,8 @@ const styles = StyleSheet.create({
   colorDot: { width: 36, height: 36, borderRadius: 18 },
   colorDotActive: { borderWidth: 3, borderColor: colors.text },
   errorText: { color: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 14 },
+  forgotBtn: { alignItems: 'center', paddingVertical: spacing.md },
+  forgotBtnText: { ...typography.body, color: colors.brand, fontWeight: '600' },
   joinTabRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg, marginTop: spacing.sm },
   joinTab: { flex: 1, padding: spacing.sm + 2, borderRadius: radius.md, alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   joinTabActive: { backgroundColor: colors.brandPale, borderColor: colors.brand },

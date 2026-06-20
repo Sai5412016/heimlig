@@ -124,12 +124,84 @@ function JoinModal({ visible, onClose, onJoin }: {
   );
 }
 
+// ─── EDIT FIELD MODAL ─────────────────────────────────────────
+function EditModal({ visible, title, label, initialValue, secure, placeholder, saveLabel, onClose, onSave }: {
+  visible: boolean;
+  title: string;
+  label: string;
+  initialValue?: string;
+  secure?: boolean;
+  placeholder?: string;
+  saveLabel?: string;
+  onClose: () => void;
+  onSave: (value: string) => Promise<void>;
+}) {
+  const [value, setValue] = useState(initialValue ?? '');
+  const [loading, setLoading] = useState(false);
+  useEffect(() => { if (visible) setValue(initialValue ?? ''); }, [visible]);
+
+  const handleSave = async () => {
+    if (!value.trim()) return;
+    setLoading(true);
+    await onSave(value.trim());
+    setLoading(false);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <Pressable style={styles.modalOverlay} onPress={onClose}>
+          <Pressable style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>{title}</Text>
+            <Text style={styles.modalSub}>{label}</Text>
+            <TextInput
+              style={styles.codeInput}
+              placeholder={placeholder}
+              placeholderTextColor={colors.textMuted}
+              value={value}
+              onChangeText={setValue}
+              secureTextEntry={secure}
+              autoCapitalize="none"
+              autoFocus
+            />
+            <TouchableOpacity style={[styles.shareBtn, (!value.trim() || loading) && { opacity: 0.4 }]} onPress={handleSave} disabled={!value.trim() || loading}>
+              <Text style={styles.shareBtnText}>{loading ? 'Speichert...' : (saveLabel ?? 'Speichern')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+              <Text style={styles.closeBtnText}>Abbrechen</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function HouseholdScreen() {
-  const { household, currentMember, members, setMembers, tasks, transactions } = useStore();
+  const { household, currentMember, members, setMembers, setHousehold, tasks, transactions } = useStore();
   const [showInvite, setShowInvite] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
+  const [showEditName, setShowEditName] = useState(false);
+  const [showChangePw, setShowChangePw] = useState(false);
   const [weekScores, setWeekScores] = useState<Record<string, number>>({});
+
+  const handleRenameHousehold = async (name: string) => {
+    if (!household) return;
+    const { error } = await supabase.from('households').update({ name }).eq('id', household.id);
+    if (error) { Alert.alert('Fehler', error.message); return; }
+    setHousehold({ ...household, name });
+    setShowEditName(false);
+  };
+
+  const handleChangePassword = async (password: string) => {
+    if (password.length < 6) { Alert.alert('Zu kurz', 'Das Passwort muss mindestens 6 Zeichen haben.'); return; }
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) { Alert.alert('Fehler', error.message); return; }
+    setShowChangePw(false);
+    Alert.alert('✓ Geändert', 'Dein Passwort wurde aktualisiert.');
+  };
 
   // Calculate this week's scores from completed tasks
   useEffect(() => {
@@ -299,10 +371,14 @@ export default function HouseholdScreen() {
         {/* Household Info */}
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>Haushalt-Info</Text>
-          <View style={styles.infoRow}>
+          <TouchableOpacity
+            style={styles.infoRow}
+            onPress={() => currentMember?.role === 'admin' ? setShowEditName(true) : Alert.alert('Keine Berechtigung', 'Nur Admins können den Haushaltsnamen ändern.')}
+            activeOpacity={0.6}
+          >
             <Text style={styles.infoLabel}>Name</Text>
-            <Text style={styles.infoValue}>{household?.name}</Text>
-          </View>
+            <Text style={styles.infoValue}>{household?.name}{currentMember?.role === 'admin' ? '  ✏️' : ''}</Text>
+          </TouchableOpacity>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Plan</Text>
             <Text style={styles.infoValue}>{household?.plan_tier === 'free' ? 'Kostenlos' : 'Premium'}</Text>
@@ -316,6 +392,11 @@ export default function HouseholdScreen() {
             <Text style={[styles.infoValue, { fontFamily: 'monospace', color: colors.brand }]}>{household?.invite_code}</Text>
           </View>
         </View>
+
+        {/* Change password */}
+        <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowChangePw(true)}>
+          <Text style={styles.settingsBtnText}>🔑 Passwort ändern</Text>
+        </TouchableOpacity>
 
         {/* Sign out */}
         <TouchableOpacity
@@ -341,6 +422,25 @@ export default function HouseholdScreen() {
         visible={showJoin}
         onClose={() => setShowJoin(false)}
         onJoin={handleJoinHousehold}
+      />
+      <EditModal
+        visible={showEditName}
+        title="Haushalt umbenennen"
+        label="Neuer Name für euren Haushalt"
+        placeholder="z.B. Unser Zuhause"
+        initialValue={household?.name}
+        onClose={() => setShowEditName(false)}
+        onSave={handleRenameHousehold}
+      />
+      <EditModal
+        visible={showChangePw}
+        title="Passwort ändern"
+        label="Gib dein neues Passwort ein (mind. 6 Zeichen)"
+        placeholder="Neues Passwort"
+        secure
+        saveLabel="Passwort speichern"
+        onClose={() => setShowChangePw(false)}
+        onSave={handleChangePassword}
       />
     </SafeAreaView>
   );
@@ -420,6 +520,8 @@ const styles = StyleSheet.create({
   infoLabel: { ...typography.sm, color: colors.textSecondary },
   infoValue: { ...typography.sm, color: colors.text, fontWeight: '600' },
 
+  settingsBtn: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center', marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
+  settingsBtnText: { ...typography.body, color: colors.text, fontWeight: '600' },
   signOutBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },
   signOutBtnText: { ...typography.body, color: colors.error, fontWeight: '600' },
 

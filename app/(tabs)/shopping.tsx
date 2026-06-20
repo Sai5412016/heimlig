@@ -168,7 +168,7 @@ const MEAL_LABELS: Record<MealType, string> = { fruehstueck: '🌅 Frühstück',
 const RecipeImportModal = ({ visible, onClose, onAdd }: {
   visible: boolean;
   onClose: () => void;
-  onAdd: (ingredients: RecipeIngredient[], recipeName: string, date?: string, mealType?: MealType) => void;
+  onAdd: (ingredients: RecipeIngredient[], recipeName: string, opts: { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }) => void;
 }) => {
   const [inputMode, setInputMode] = useState<'url' | 'text'>('url');
   const [input, setInput] = useState('');
@@ -179,8 +179,9 @@ const RecipeImportModal = ({ visible, onClose, onAdd }: {
   const [planDate, setPlanDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [mealType, setMealType] = useState<MealType>('abendessen');
   const [planEnabled, setPlanEnabled] = useState(false);
+  const [addToCart, setAddToCart] = useState(true);
 
-  const reset = () => { setStep('input'); setInput(''); setIngredients([]); setRecipeName(''); setPlanDate(format(new Date(), 'yyyy-MM-dd')); setPlanEnabled(false); };
+  const reset = () => { setStep('input'); setInput(''); setIngredients([]); setRecipeName(''); setPlanDate(format(new Date(), 'yyyy-MM-dd')); setPlanEnabled(false); setAddToCart(true); };
 
   useEffect(() => { if (!visible) reset(); }, [visible]);
 
@@ -192,7 +193,8 @@ const RecipeImportModal = ({ visible, onClose, onAdd }: {
       const { data, error } = await supabase.functions.invoke('extract-recipe', { body });
       if (error) throw error;
       setRecipeName(data.name || 'Rezept');
-      setIngredients(data.ingredients || []);
+      // Pre-select ALL ingredients (incl. basics like salt/pepper) — user can deselect
+      setIngredients((data.ingredients || []).map((i: RecipeIngredient) => ({ ...i, include: true })));
       setStep('review');
     } catch (e) {
       Alert.alert('Fehler', 'Zutaten konnten nicht extrahiert werden. Bitte prüfe den Link oder den Text.');
@@ -211,7 +213,12 @@ const RecipeImportModal = ({ visible, onClose, onAdd }: {
   };
 
   const handleAdd = () => {
-    onAdd(ingredients, recipeName, planEnabled && planDate ? planDate : undefined, planEnabled ? mealType : undefined);
+    onAdd(ingredients, recipeName, {
+      sourceUrl: inputMode === 'url' && input.trim() ? input.trim() : undefined,
+      date: planEnabled && planDate ? planDate : undefined,
+      mealType: planEnabled ? mealType : undefined,
+      addToCart,
+    });
     onClose();
   };
 
@@ -281,6 +288,14 @@ const RecipeImportModal = ({ visible, onClose, onAdd }: {
                   </TouchableOpacity>
                 ))}
 
+                {/* Add to shopping cart? */}
+                <TouchableOpacity style={styles.planToggleRow} onPress={() => setAddToCart(v => !v)}>
+                  <View style={[styles.checkbox, addToCart && styles.checkboxChecked]}>
+                    {addToCart && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.planToggleText}>Zutaten zum Einkaufskorb hinzufügen</Text>
+                </TouchableOpacity>
+
                 {/* Meal Planning */}
                 <TouchableOpacity style={styles.planToggleRow} onPress={() => setPlanEnabled(v => !v)}>
                   <View style={[styles.checkbox, planEnabled && styles.checkboxChecked]}>
@@ -311,9 +326,15 @@ const RecipeImportModal = ({ visible, onClose, onAdd }: {
                   </View>
                 )}
 
-                <TouchableOpacity style={[styles.addBtn, { marginTop: spacing.lg }]} onPress={handleAdd} disabled={ingredients.filter(i => i.include).length === 0}>
+                <TouchableOpacity
+                  style={[styles.addBtn, { marginTop: spacing.lg }, (!addToCart && !planEnabled) && styles.addBtnDisabled]}
+                  onPress={handleAdd}
+                  disabled={!addToCart && !planEnabled}
+                >
                   <Text style={styles.addBtnText}>
-                    {ingredients.filter(i => i.include).length} Zutaten zur Liste hinzufügen ✓
+                    {addToCart
+                      ? `${ingredients.filter(i => i.include).length} Zutaten hinzufügen${planEnabled ? ' + Kalender' : ''} ✓`
+                      : planEnabled ? 'Nur in Kalender eintragen ✓' : 'Bitte Option wählen'}
                   </Text>
                 </TouchableOpacity>
               </ScrollView>
@@ -381,13 +402,19 @@ export default function ShoppingScreen() {
     hapticNotification(Haptics.NotificationFeedbackType.Success);
   };
 
-  const handleRecipeAdd = async (ingredients: RecipeIngredient[], recipeName: string, date?: string, mealType?: MealType) => {
+  const handleRecipeAdd = async (
+    ingredients: RecipeIngredient[],
+    recipeName: string,
+    opts: { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }
+  ) => {
     if (!activeListId || !household || !currentMember) return;
+    const { sourceUrl, date, mealType, addToCart } = opts;
     const toAdd = ingredients.filter(i => i.include);
-    // Save recipe
+    // Save recipe (with source URL so the calendar can link back to it)
     const { data: recipe } = await supabase.from('recipes').insert({
       household_id: household.id,
       name: recipeName,
+      source_url: sourceUrl,
       ingredients,
       created_by: currentMember.id,
     }).select().single();
@@ -404,12 +431,17 @@ export default function ShoppingScreen() {
       }).select().single();
       mealPlanId = mealPlan?.id;
     }
-    // Add ingredients, linked to the meal plan so they disappear if the meal is deleted
-    for (const ing of toAdd) {
-      await addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlanId);
+    // Add ingredients to the cart only if the user wants — linked to the meal so they vanish when it's deleted
+    if (addToCart) {
+      for (const ing of toAdd) {
+        await addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlanId);
+      }
     }
     hapticNotification(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('✓ Fertig', `${toAdd.length} Zutaten aus "${recipeName}" wurden hinzugefügt.`);
+    const parts = [];
+    if (addToCart) parts.push(`${toAdd.length} Zutaten im Einkauf`);
+    if (date && mealType) parts.push('im Kalender eingetragen');
+    Alert.alert('✓ Fertig', `"${recipeName}" – ${parts.join(' & ') || 'gespeichert'}.`);
   };
 
   const handleClearChecked = () => {
