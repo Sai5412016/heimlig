@@ -4,6 +4,22 @@ const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 
 const BASICS = ['salz', 'pfeffer', 'wasser', 'öl', 'olivenöl', 'zucker', 'mehl', 'butter', 'backpulver', 'natron', 'hefe', 'essig', 'senf'];
 
+// Decode common HTML entities (fractions, nbsp, etc.) so quantities arrive cleanly
+function decodeEntities(s: string): string {
+  if (!s) return s;
+  const map: Record<string, string> = {
+    '&frac12;': '½', '&frac14;': '¼', '&frac34;': '¾',
+    '&frac13;': '⅓', '&frac23;': '⅔',
+    '&nbsp;': ' ', '&amp;': '&', '&deg;': '°',
+    '&Auml;': 'Ä', '&Ouml;': 'Ö', '&Uuml;': 'Ü',
+    '&auml;': 'ä', '&ouml;': 'ö', '&uuml;': 'ü', '&szlig;': 'ß',
+  };
+  return s
+    .replace(/&frac12;|&frac14;|&frac34;|&frac13;|&frac23;|&nbsp;|&amp;|&deg;|&Auml;|&Ouml;|&Uuml;|&auml;|&ouml;|&uuml;|&szlig;/g, m => map[m] || m)
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)));
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -21,7 +37,9 @@ serve(async (req) => {
       try {
         const res = await fetch(url, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+            // Use a real desktop browser UA — some sites (e.g. Cookidoo) serve an empty
+            // JS shell to bots like Googlebot but full HTML (incl. JSON-LD) to browsers.
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'de,en;q=0.5',
           }
@@ -39,8 +57,8 @@ serve(async (req) => {
               const recipe = item['@type'] === 'Recipe' ? item :
                 (item['@graph'] || []).find((g: any) => g['@type'] === 'Recipe');
               if (recipe) {
-                const ingredients = (recipe.recipeIngredient || []).join('\n');
-                jsonLdContent = `Rezeptname: ${recipe.name || 'Rezept'}\nZutaten:\n${ingredients}`;
+                const ingredients = (recipe.recipeIngredient || []).map(decodeEntities).join('\n');
+                jsonLdContent = `Rezeptname: ${decodeEntities(recipe.name || 'Rezept')}\nZutaten:\n${ingredients}`;
                 break;
               }
             }
