@@ -35,7 +35,11 @@ serve(async (req) => {
 
     if (url && !text) {
       try {
-        const res = await fetch(url, {
+        // Be forgiving: users often paste a whole share text ("Schau dir … https://…").
+        // Extract the first http(s) URL from whatever was pasted.
+        const urlMatch = String(url).match(/https?:\/\/[^\s]+/);
+        const cleanUrl = urlMatch ? urlMatch[0] : url;
+        const res = await fetch(cleanUrl, {
           headers: {
             // Use a real desktop browser UA — some sites (e.g. Cookidoo) serve an empty
             // JS shell to bots like Googlebot but full HTML (incl. JSON-LD) to browsers.
