@@ -7,7 +7,21 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
-import { format, subMonths, addMonths, parseISO, isSameMonth } from 'date-fns';
+import { format, subMonths, addMonths, addWeeks, addYears, parseISO, isSameMonth } from 'date-fns';
+
+const TX_RECURRENCE_OPTIONS = [
+  { key: null, label: 'Einmalig' },
+  { key: 'weekly', label: 'Wöchentlich' },
+  { key: 'monthly', label: 'Monatlich' },
+  { key: 'yearly', label: 'Jährlich' },
+];
+
+// Advance a yyyy-MM-dd date string by N units
+function advanceDate(dateStr: string, unit: string, n: number): string {
+  const d = parseISO(dateStr);
+  const next = unit === 'weekly' ? addWeeks(d, n) : unit === 'yearly' ? addYears(d, n) : addMonths(d, n);
+  return format(next, 'yyyy-MM-dd');
+}
 import { de } from 'date-fns/locale';
 import { colors, spacing, radius, typography, shadow } from '../../constants/theme';
 import { supabase, Transaction } from '../../lib/supabase';
@@ -57,19 +71,27 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [paidBy, setPaidBy] = useState<string>(currentMemberId);
+  const [recurrence, setRecurrence] = useState<string | null>(null);
+  const [recurrenceInterval, setRecurrenceInterval] = useState(1);
 
   useEffect(() => {
     if (!visible) {
       setAmount(''); setDescription(''); setCategory('Lebensmittel');
       setType('expense'); setDate(format(new Date(), 'yyyy-MM-dd'));
-      setPaidBy(currentMemberId);
+      setPaidBy(currentMemberId); setRecurrence(null); setRecurrenceInterval(1);
     }
   }, [visible, currentMemberId]);
 
   const handleSave = () => {
     const num = parseFloat(amount.replace(',', '.'));
     if (!num || isNaN(num)) return;
-    onSave({ amount: num, description: description.trim() || undefined, category, type, transaction_date: date, member_id: paidBy || undefined });
+    onSave({
+      amount: num, description: description.trim() || undefined, category, type,
+      transaction_date: date, member_id: paidBy || undefined,
+      recurrence: recurrence || undefined,
+      recurrence_interval: recurrence ? recurrenceInterval : undefined,
+      recurrence_next: recurrence ? advanceDate(date, recurrence, recurrenceInterval) : undefined,
+    });
     onClose();
   };
 
@@ -126,8 +148,35 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
                   </TouchableOpacity>
                 ))}
               </ScrollView>
+              <Text style={styles.fieldLabel}>WIEDERKEHREND</Text>
+              <View style={styles.recurrenceWrap}>
+                {TX_RECURRENCE_OPTIONS.map(r => (
+                  <TouchableOpacity key={String(r.key)} style={[styles.catChip, recurrence === r.key && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setRecurrence(r.key)}>
+                    <Text style={[styles.catChipText, recurrence === r.key && { color: '#fff' }]}>{r.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {recurrence && (
+                <View style={styles.intervalRow}>
+                  <Text style={styles.intervalLabel}>Alle</Text>
+                  <TouchableOpacity style={styles.intervalBtn} onPress={() => setRecurrenceInterval(n => Math.max(1, n - 1))}>
+                    <Text style={styles.intervalBtnText}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.intervalValue}>{recurrenceInterval}</Text>
+                  <TouchableOpacity style={styles.intervalBtn} onPress={() => setRecurrenceInterval(n => Math.min(99, n + 1))}>
+                    <Text style={styles.intervalBtnText}>+</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.intervalLabel}>
+                    {recurrence === 'weekly' ? (recurrenceInterval === 1 ? 'Woche' : 'Wochen')
+                      : recurrence === 'yearly' ? (recurrenceInterval === 1 ? 'Jahr' : 'Jahre')
+                      : (recurrenceInterval === 1 ? 'Monat' : 'Monate')}
+                  </Text>
+                </View>
+              )}
+
               <TouchableOpacity style={[styles.saveBtn, !amount && { opacity: 0.4 }]} onPress={handleSave} disabled={!amount}>
-                <Text style={styles.saveBtnText}>Eintragen ✓</Text>
+                <Text style={styles.saveBtnText}>{recurrence ? 'Wiederkehrend eintragen ✓' : 'Eintragen ✓'}</Text>
               </TouchableOpacity>
               <View style={{ height: 20 }} />
             </ScrollView>
@@ -203,7 +252,7 @@ function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: 
         <Text style={styles.txCatEmoji}>{CAT_EMOJIS[tx.category] || '📦'}</Text>
       </View>
       <View style={styles.txInfo}>
-        <Text style={styles.txTitle}>{tx.description || tx.category}</Text>
+        <Text style={styles.txTitle}>{tx.description || tx.category}{tx.recurrence ? ' 🔄' : ''}</Text>
         <View style={styles.txMetaRow}>
           <Text style={styles.txDate}>{format(parseISO(tx.transaction_date), 'dd. MMM', { locale: de })}</Text>
           {payer && (
@@ -235,11 +284,41 @@ export default function BudgetScreen() {
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions'>('overview');
   const [filterCat, setFilterCat] = useState<string | null>(null);
 
+  // Auto-create due occurrences of recurring transactions (rent, insurance, ...)
+  const generateRecurring = useCallback(async () => {
+    if (!household) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const { data: templates } = await supabase
+      .from('transactions').select('*')
+      .eq('household_id', household.id)
+      .not('recurrence', 'is', null)
+      .lte('recurrence_next', today);
+    if (!templates || templates.length === 0) return;
+
+    for (const t of templates) {
+      let next = t.recurrence_next as string;
+      const inserts: any[] = [];
+      let guard = 0;
+      while (next && next <= today && guard < 120) {
+        inserts.push({
+          household_id: household.id, amount: t.amount, type: t.type,
+          category: t.category, description: t.description, member_id: t.member_id,
+          transaction_date: next,
+        });
+        next = advanceDate(next, t.recurrence, t.recurrence_interval || 1);
+        guard++;
+      }
+      if (inserts.length) await supabase.from('transactions').insert(inserts);
+      await supabase.from('transactions').update({ recurrence_next: next }).eq('id', t.id);
+    }
+  }, [household]);
+
   const loadTransactions = useCallback(async () => {
     if (!household) return;
+    await generateRecurring();
     const { data } = await supabase.from('transactions').select('*').eq('household_id', household.id).order('transaction_date', { ascending: false });
     if (data) setTransactions(data);
-  }, [household]);
+  }, [household, generateRecurring]);
 
   useEffect(() => { loadTransactions(); }, [loadTransactions]);
 
@@ -593,6 +672,12 @@ const styles = StyleSheet.create({
   memberChipAvatar: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   memberChipAvatarText: { color: '#fff', fontSize: 11, fontWeight: '800' },
   memberChipText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
+  recurrenceWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  intervalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  intervalLabel: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
+  intervalBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  intervalBtnText: { fontSize: 20, color: colors.brand, fontWeight: '800' },
+  intervalValue: { ...typography.body, color: colors.text, fontWeight: '800', minWidth: 28, textAlign: 'center' },
   saveBtn: { backgroundColor: colors.brand, borderRadius: radius.md, padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },
   saveBtnText: { ...typography.body, color: '#fff', fontWeight: '700' },
 });

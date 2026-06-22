@@ -99,6 +99,9 @@ export interface Transaction {
   description?: string;
   receipt_url?: string;
   transaction_date: string;
+  recurrence?: string;
+  recurrence_interval?: number;
+  recurrence_next?: string;
   created_at: string;
 }
 
