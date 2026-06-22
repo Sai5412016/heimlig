@@ -1,7 +1,7 @@
 // store/useStore.ts
 import { create } from 'zustand';
 import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType } from '../lib/supabase';
-import { format, startOfWeek } from 'date-fns';
+import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
 
 export interface SaveRecipeOpts { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }
 export interface PlanRecipeOpts { date: string; mealType: MealType; addToCart: boolean }
@@ -196,6 +196,33 @@ export const useStore = create<AppState>((set, get) => ({
         completed_by: isAlreadyCompleted ? null : currentMember?.id
       })
       .eq('id', taskId);
+
+    // 🔄 Recurring tasks: when completing one, spawn the next occurrence
+    if (!isAlreadyCompleted && task.recurrence && task.due_date) {
+      const n = (task as any).recurrence_interval || 1;
+      const base = parseISO(task.due_date);
+      let next: Date | null = null;
+      if (task.recurrence === 'daily') next = addDays(base, n);
+      else if (task.recurrence === 'weekly') next = addWeeks(base, n);
+      else if (task.recurrence === 'monthly') next = addMonths(base, n);
+      else if (task.recurrence === 'yearly') next = addYears(base, n);
+      if (next) {
+        const { data: newTask } = await supabase.from('tasks').insert({
+          household_id: task.household_id,
+          title: task.title,
+          description: task.description,
+          category: task.category,
+          priority: task.priority,
+          points: task.points,
+          assigned_to: task.assigned_to,
+          due_date: format(next, 'yyyy-MM-dd'),
+          recurrence: task.recurrence,
+          recurrence_interval: n,
+          created_by: task.created_by,
+        }).select().single();
+        if (newTask) set(s => ({ tasks: [...s.tasks, newTask] }));
+      }
+    }
 
     // ✅ Award points for household categories
     const isHousehold = HOUSEHOLD_CATEGORIES.includes(task.category);

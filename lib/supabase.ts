@@ -84,6 +84,7 @@ export interface Task {
   priority: TaskPriority;
   recurrence?: Recurrence;
   recurrence_day?: number;
+  recurrence_interval?: number;
   points: number;
   created_at: string;
 }

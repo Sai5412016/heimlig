@@ -110,6 +110,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate }: {
   const [dueTime, setDueTime] = useState(getCurrentTimeSlot());
   const [useTime, setUseTime] = useState(false);
   const [recurrence, setRecurrence] = useState<string | null>(null);
+  const [recurrenceInterval, setRecurrenceInterval] = useState(1);
   const [notify, setNotify] = useState(true);
 
   useEffect(() => {
@@ -118,7 +119,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate }: {
       setTitle(''); setDescription(''); setCategory('Haushalt');
       setPriority('normal'); setAssignedTo(null); setDueDate('');
       setDueTime(getCurrentTimeSlot()); setUseTime(false);
-      setRecurrence(null); setNotify(true);
+      setRecurrence(null); setRecurrenceInterval(1); setNotify(true);
     }
   }, [visible, preselectedDate]);
 
@@ -130,6 +131,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate }: {
       due_date: dueDate || undefined,
       due_time: useTime ? dueTime : undefined,
       recurrence: recurrence || undefined,
+      recurrence_interval: recurrence ? recurrenceInterval : undefined,
       points: priority === 'high' ? 20 : priority === 'normal' ? 10 : 5,
       notify,
     } as any);
@@ -213,28 +215,47 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate }: {
               {members.length > 1 && (
                 <>
                   <Text style={styles.fieldLabel}>ZUWEISEN AN</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
+                  <View style={styles.chipWrap}>
                     <TouchableOpacity style={[styles.chip, !assignedTo && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setAssignedTo(null)}>
-                      <Text style={[styles.chipText, !assignedTo && { color: '#fff' }]}>Alle</Text>
+                      <Text style={[styles.chipText, !assignedTo && { color: '#fff' }]}>👥 Alle</Text>
                     </TouchableOpacity>
                     {members.map(m => (
                       <TouchableOpacity key={m.id} style={[styles.chip, assignedTo === m.id && { backgroundColor: m.avatar_color, borderColor: m.avatar_color }]} onPress={() => setAssignedTo(m.id)}>
                         <Text style={[styles.chipText, assignedTo === m.id && { color: '#fff' }]}>{m.display_name}</Text>
                       </TouchableOpacity>
                     ))}
-                  </ScrollView>
+                  </View>
                 </>
               )}
 
               {/* Wiederkehrend */}
               <Text style={styles.fieldLabel}>WIEDERKEHREND</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.lg }}>
+              <View style={styles.chipWrap}>
                 {RECURRENCE_OPTIONS.map(r => (
                   <TouchableOpacity key={String(r.key)} style={[styles.chip, recurrence === r.key && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setRecurrence(r.key)}>
                     <Text style={[styles.chipText, recurrence === r.key && { color: '#fff' }]}>{r.label}</Text>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
+
+              {recurrence && (
+                <View style={styles.intervalRow}>
+                  <Text style={styles.intervalLabel}>Alle</Text>
+                  <TouchableOpacity style={styles.intervalBtn} onPress={() => setRecurrenceInterval(n => Math.max(1, n - 1))}>
+                    <Text style={styles.intervalBtnText}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.intervalValue}>{recurrenceInterval}</Text>
+                  <TouchableOpacity style={styles.intervalBtn} onPress={() => setRecurrenceInterval(n => Math.min(99, n + 1))}>
+                    <Text style={styles.intervalBtnText}>+</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.intervalLabel}>
+                    {recurrence === 'daily' ? (recurrenceInterval === 1 ? 'Tag' : 'Tage')
+                      : recurrence === 'weekly' ? (recurrenceInterval === 1 ? 'Woche' : 'Wochen')
+                      : recurrence === 'monthly' ? (recurrenceInterval === 1 ? 'Monat' : 'Monate')
+                      : (recurrenceInterval === 1 ? 'Jahr' : 'Jahre')}
+                  </Text>
+                </View>
+              )}
 
               <TouchableOpacity style={[styles.saveBtn, !title.trim() && { opacity: 0.4 }]} onPress={handleSave} disabled={!title.trim()}>
                 <Text style={styles.saveBtnText}>Aufgabe erstellen ✓</Text>
@@ -301,7 +322,9 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints }: {
           )}
           {task.recurrence && (
             <View style={styles.recurrenceBadge}>
-              <Text style={styles.recurrenceBadgeText}>🔄 {RECURRENCE_OPTIONS.find(r => r.key === task.recurrence)?.label}</Text>
+              <Text style={styles.recurrenceBadgeText}>🔄 {(task.recurrence_interval && task.recurrence_interval > 1)
+                ? `Alle ${task.recurrence_interval} ${task.recurrence === 'daily' ? 'Tage' : task.recurrence === 'weekly' ? 'Wochen' : task.recurrence === 'monthly' ? 'Monate' : 'Jahre'}`
+                : RECURRENCE_OPTIONS.find(r => r.key === task.recurrence)?.label}</Text>
             </View>
           )}
           {assignedMember && (
@@ -747,6 +770,12 @@ const styles = StyleSheet.create({
   notifyToggleSub: { ...typography.xs, color: colors.textMuted, marginTop: 2 },
   fieldLabel: { ...typography.label, color: colors.textMuted, marginBottom: spacing.sm },
   chipRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  intervalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
+  intervalLabel: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
+  intervalBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  intervalBtnText: { fontSize: 20, color: colors.brand, fontWeight: '800' },
+  intervalValue: { ...typography.body, color: colors.text, fontWeight: '800', minWidth: 28, textAlign: 'center' },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, marginRight: spacing.sm, backgroundColor: colors.surface },
   chipEmoji: { fontSize: 14 },
   chipText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
