@@ -84,8 +84,8 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <Pressable style={s.overlay} onPress={onClose}>
-          <Pressable style={[s.sheet, { maxHeight: '90%' }]}>
+        <Pressable style={[s.overlay, Platform.OS === 'web' && { justifyContent: 'flex-start' }]} onPress={onClose}>
+          <Pressable style={[s.sheet, { maxHeight: Platform.OS === 'web' ? '100%' : '90%' }]}>
             <View style={s.handle} />
             <Text style={s.title}>🍳 Rezept importieren</Text>
 

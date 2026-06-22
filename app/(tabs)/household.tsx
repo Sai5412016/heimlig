@@ -599,10 +599,11 @@ const styles = StyleSheet.create({
   avatarText: { color: '#fff', fontWeight: '800' },
 
   // Modal
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalOverlay: { flex: 1, justifyContent: Platform.OS === 'web' ? 'flex-start' : 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
     backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: spacing.lg, paddingBottom: spacing.xxl,
+    maxHeight: Platform.OS === 'web' ? '100%' : undefined,
   },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   modalTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
