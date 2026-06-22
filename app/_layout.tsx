@@ -7,6 +7,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import { checkForUpdate } from '../lib/appUpdate';
 
 // Pull a join code out of an incoming deep link, e.g. heimlig://join/AB12CD34
 function extractJoinCode(url: string | null): string | null {
@@ -45,7 +46,10 @@ export default function RootLayout() {
       if (code) router.push(`/join/${code}`);
     });
 
-    return () => { clearTimeout(timer); sub.remove(); };
+    // Notify about a newer version a moment after launch (non-blocking)
+    const updTimer = setTimeout(() => { checkForUpdate(); }, 2500);
+
+    return () => { clearTimeout(timer); clearTimeout(updTimer); sub.remove(); };
   }, []);
 
   const checkSession = async (pendingJoinCode?: string | null) => {
