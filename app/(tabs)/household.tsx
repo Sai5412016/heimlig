@@ -180,12 +180,38 @@ function EditModal({ visible, title, label, initialValue, secure, placeholder, s
 
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function HouseholdScreen() {
-  const { household, currentMember, members, setMembers, setHousehold, tasks, transactions } = useStore();
+  const { household, currentMember, members, setMembers, setHousehold, tasks, transactions,
+    myHouseholds, loadMyHouseholds, switchHousehold, leaveHousehold } = useStore();
   const [showInvite, setShowInvite] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [showEditName, setShowEditName] = useState(false);
   const [showChangePw, setShowChangePw] = useState(false);
+  const [showSwitcher, setShowSwitcher] = useState(false);
   const [weekScores, setWeekScores] = useState<Record<string, number>>({});
+
+  useEffect(() => { loadMyHouseholds(); }, [household?.id]);
+
+  const handleSwitch = async (id: string) => {
+    setShowSwitcher(false);
+    if (id === household?.id) return;
+    await switchHousehold(id);
+  };
+
+  const handleLeave = () => {
+    if (!household) return;
+    Alert.alert('Haushalt verlassen?', `Möchtest du „${household.name}" wirklich verlassen?`, [
+      { text: 'Abbrechen', style: 'cancel' },
+      { text: 'Verlassen', style: 'destructive', onPress: async () => {
+          const remaining = await leaveHousehold(household.id);
+          if (remaining.length > 0) {
+            await switchHousehold(remaining[0].id);
+          } else {
+            setHousehold(null);
+            await supabase.auth.signOut();
+          }
+      }},
+    ]);
+  };
 
   const handleRenameHousehold = async (name: string) => {
     if (!household) return;
@@ -295,10 +321,12 @@ export default function HouseholdScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <TouchableOpacity disabled={myHouseholds.length <= 1} onPress={() => setShowSwitcher(true)} activeOpacity={0.7}>
           <Text style={styles.headerTitle}>👥 Haushalt</Text>
-          <Text style={styles.headerSub}>{household?.name ?? 'Mein Haushalt'}</Text>
-        </View>
+          <Text style={styles.headerSub}>
+            {household?.name ?? 'Mein Haushalt'}{myHouseholds.length > 1 ? '  ▾' : ''}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.inviteBtn} onPress={() => setShowInvite(true)}>
           <Text style={styles.inviteBtnText}>+ Einladen</Text>
         </TouchableOpacity>
@@ -414,6 +442,11 @@ export default function HouseholdScreen() {
           <Text style={styles.settingsBtnText}>🔑 Passwort ändern</Text>
         </TouchableOpacity>
 
+        {/* Leave household */}
+        <TouchableOpacity style={styles.settingsBtn} onPress={handleLeave}>
+          <Text style={[styles.settingsBtnText, { color: colors.error }]}>🚪 Haushalt verlassen</Text>
+        </TouchableOpacity>
+
         {/* Sign out */}
         <TouchableOpacity
           style={styles.signOutBtn}
@@ -448,6 +481,24 @@ export default function HouseholdScreen() {
         onClose={() => setShowEditName(false)}
         onSave={handleRenameHousehold}
       />
+      <Modal visible={showSwitcher} transparent animationType="slide" onRequestClose={() => setShowSwitcher(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowSwitcher(false)}>
+          <Pressable style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Haushalt wechseln</Text>
+            {myHouseholds.map(h => (
+              <TouchableOpacity key={h.id} style={styles.switchRow} onPress={() => handleSwitch(h.id)}>
+                <Text style={styles.switchName}>{h.name}</Text>
+                {h.id === household?.id && <Text style={styles.switchActive}>✓ Aktiv</Text>}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.closeBtn} onPress={() => setShowSwitcher(false)}>
+              <Text style={styles.closeBtnText}>Schließen</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <EditModal
         visible={showChangePw}
         title="Passwort ändern"
@@ -538,6 +589,9 @@ const styles = StyleSheet.create({
 
   settingsBtn: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center', marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   settingsBtnText: { ...typography.body, color: colors.text, fontWeight: '600' },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm },
+  switchName: { ...typography.body, color: colors.text, fontWeight: '600' },
+  switchActive: { ...typography.sm, color: colors.brand, fontWeight: '700' },
   signOutBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },
   signOutBtnText: { ...typography.body, color: colors.error, fontWeight: '600' },
 

@@ -18,7 +18,7 @@ function extractJoinCode(url: string | null): string | null {
 export default function RootLayout() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
-  const { setUserId, setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems } = useStore();
+  const { setUserId, loadMyHouseholds, activateHousehold } = useStore();
 
   // Lock phones to portrait, but let large screens (tablets/foldables) rotate freely.
   // The static manifest restriction is removed (orientation: default) so Play stops
@@ -61,46 +61,26 @@ export default function RootLayout() {
       const userId = session.user.id;
       setUserId(userId);
 
-      const { data: memberRows } = await supabase
-        .from('members')
-        .select('*, households(*)')
-        .eq('user_id', userId)
-        .limit(1);
+      const memberships = await loadMyHouseholds();
 
-      if (!memberRows || memberRows.length === 0) {
+      if (!memberships || memberships.length === 0) {
         setReady(true);
         if (pendingJoinCode) router.replace(`/join/${pendingJoinCode}`);
         else router.replace('/onboarding');
         return;
       }
 
-      const myMember = memberRows[0];
-      const household = myMember.households;
-      setHousehold(household);
-      setCurrentMember(myMember);
+      // Prefer the household with the most members (the shared one) over an
+      // accidental solo household, so users always land in the "real" home.
+      const householdIds = memberships.map((m: any) => m.household_id);
+      const { data: allMems } = await supabase.from('members').select('household_id').in('household_id', householdIds);
+      const counts: Record<string, number> = {};
+      (allMems || []).forEach((r: any) => { counts[r.household_id] = (counts[r.household_id] || 0) + 1; });
+      memberships.sort((a: any, b: any) => (counts[b.household_id] || 0) - (counts[a.household_id] || 0));
 
-      const { data: allMembers } = await supabase
-        .from('members').select('*').eq('household_id', household.id);
-      if (allMembers) setMembers(allMembers);
-
-      let { data: lists } = await supabase
-        .from('shopping_lists').select('*').eq('household_id', household.id);
-
-      if (!lists || lists.length === 0) {
-        const { data: newList } = await supabase
-          .from('shopping_lists')
-          .insert({ household_id: household.id, name: 'Einkaufsliste', emoji: '🛒', created_by: myMember.id })
-          .select().single();
-        if (newList) lists = [newList];
-      }
-
-      if (lists && lists.length > 0) {
-        setShoppingLists(lists);
-        setActiveListId(lists[0].id);
-        const { data: items } = await supabase
-          .from('shopping_items').select('*').eq('list_id', lists[0].id);
-        if (items) setItems(items);
-      }
+      const chosen: any = memberships[0];
+      const member = { ...chosen }; delete member.households;
+      await activateHousehold(chosen.households, member);
 
       setReady(true);
       if (pendingJoinCode) router.replace(`/join/${pendingJoinCode}`);

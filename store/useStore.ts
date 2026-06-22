@@ -19,6 +19,14 @@ interface AppState {
   setCurrentMember: (m: Member | null) => void;
   setMembers: (m: Member[]) => void;
 
+  // 🏘️ Multi-household
+  myHouseholds: Household[];
+  setMyHouseholds: (h: Household[]) => void;
+  loadMyHouseholds: () => Promise<any[]>;
+  activateHousehold: (household: Household, member: Member) => Promise<void>;
+  switchHousehold: (householdId: string) => Promise<void>;
+  leaveHousehold: (householdId: string) => Promise<Household[]>;
+
   shoppingLists: ShoppingList[];
   activeListId: string | null;
   items: ShoppingItem[];
@@ -64,6 +72,71 @@ export const useStore = create<AppState>((set, get) => ({
   setHousehold: (h) => set({ household: h }),
   setCurrentMember: (m) => set({ currentMember: m }),
   setMembers: (m) => set({ members: m }),
+
+  // 🏘️ Multi-household
+  myHouseholds: [],
+  setMyHouseholds: (h) => set({ myHouseholds: h }),
+
+  loadMyHouseholds: async () => {
+    const { userId } = get();
+    if (!userId) return [];
+    const { data } = await supabase.from('members').select('*, households(*)').eq('user_id', userId);
+    const memberships = data || [];
+    set({ myHouseholds: memberships.map((m: any) => m.households).filter(Boolean) });
+    return memberships;
+  },
+
+  // Load all data for a household and make it the active one
+  activateHousehold: async (household, member) => {
+    set({ household, currentMember: member });
+
+    const { data: allMembers } = await supabase.from('members').select('*').eq('household_id', household.id);
+    if (allMembers) set({ members: allMembers });
+
+    let { data: lists } = await supabase.from('shopping_lists').select('*').eq('household_id', household.id);
+    if (!lists || lists.length === 0) {
+      const { data: newList } = await supabase
+        .from('shopping_lists')
+        .insert({ household_id: household.id, name: 'Einkaufsliste', emoji: '🛒', created_by: member.id })
+        .select().single();
+      if (newList) lists = [newList];
+    }
+    if (lists && lists.length > 0) {
+      set({ shoppingLists: lists, activeListId: lists[0].id });
+      const { data: items } = await supabase.from('shopping_items').select('*').eq('list_id', lists[0].id);
+      set({ items: items || [] });
+    } else {
+      set({ shoppingLists: [], activeListId: null, items: [] });
+    }
+    // Reset per-household caches so each screen reloads fresh for the new household
+    set({ tasks: [], transactions: [], recipes: [] });
+  },
+
+  switchHousehold: async (householdId) => {
+    const { userId } = get();
+    if (!userId) return;
+    const { data: rows } = await supabase
+      .from('members').select('*, households(*)')
+      .eq('user_id', userId).eq('household_id', householdId).limit(1);
+    const row: any = rows?.[0];
+    if (!row) return;
+    const household = row.households;
+    const member = { ...row }; delete (member as any).households;
+    await get().activateHousehold(household, member);
+  },
+
+  leaveHousehold: async (householdId) => {
+    const { userId } = get();
+    if (!userId) return [];
+    await supabase.from('members').delete().eq('user_id', userId).eq('household_id', householdId);
+    // If nobody is left in that household, remove it entirely
+    const { data: remaining } = await supabase.from('members').select('id').eq('household_id', householdId);
+    if (!remaining || remaining.length === 0) {
+      await supabase.from('households').delete().eq('id', householdId);
+    }
+    const memberships = await get().loadMyHouseholds();
+    return memberships.map((m: any) => m.households).filter(Boolean);
+  },
 
   shoppingLists: [],
   activeListId: null,
