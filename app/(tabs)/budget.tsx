@@ -98,7 +98,7 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[{ width: '100%' }, Platform.OS === 'web' && { flex: 1 }]}>
           <Pressable style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">

@@ -141,7 +141,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate }: {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={[styles.modalOverlay, Platform.OS === 'web' && { justifyContent: 'flex-start' }]} onPress={onClose}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={Platform.OS === 'web' ? { width: '100%' } : undefined}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={Platform.OS === 'web' ? { width: '100%', flex: 1 } : undefined}>
           <Pressable style={[styles.modalSheet, Platform.OS === 'web' && { maxHeight: '100%' }]}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Neue Aufgabe</Text>
