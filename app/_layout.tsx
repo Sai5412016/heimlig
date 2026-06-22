@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
+import { Platform, Dimensions } from 'react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
@@ -17,6 +19,18 @@ export default function RootLayout() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const { setUserId, setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems } = useStore();
+
+  // Lock phones to portrait, but let large screens (tablets/foldables) rotate freely.
+  // The static manifest restriction is removed (orientation: default) so Play stops
+  // warning about large-screen support; we enforce portrait only on small devices here.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const { width, height } = Dimensions.get('window');
+    const smallestSide = Math.min(width, height);
+    if (smallestSide < 600) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     // Small delay to let router initialize

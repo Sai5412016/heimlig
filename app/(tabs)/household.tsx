@@ -195,6 +195,15 @@ export default function HouseholdScreen() {
     setShowEditName(false);
   };
 
+  const handleToggleGamification = async () => {
+    if (!household) return;
+    if (currentMember?.role !== 'admin') { Alert.alert('Keine Berechtigung', 'Nur Admins können das ändern.'); return; }
+    const next = household.gamification_enabled === false; // currently off → turn on
+    const { error } = await supabase.from('households').update({ gamification_enabled: next }).eq('id', household.id);
+    if (error) { Alert.alert('Fehler', error.message); return; }
+    setHousehold({ ...household, gamification_enabled: next });
+  };
+
   const handleChangePassword = async (password: string) => {
     if (password.length < 6) { Alert.alert('Zu kurz', 'Das Passwort muss mindestens 6 Zeichen haben.'); return; }
     const { error } = await supabase.auth.updateUser({ password });
@@ -310,7 +319,7 @@ export default function HouseholdScreen() {
         </TouchableOpacity>
 
         {/* Weekly Score */}
-        {totalWeekPoints > 0 && (
+        {household?.gamification_enabled !== false && members.length > 1 && totalWeekPoints > 0 && (
           <View style={styles.scoreCard}>
             <Text style={styles.scoreTitle}>🏆 Diese Woche</Text>
             <Text style={styles.scoreWeek}>{format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'dd. MMM', { locale: de })} – {format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'dd. MMM', { locale: de })}</Text>
@@ -392,6 +401,13 @@ export default function HouseholdScreen() {
             <Text style={[styles.infoValue, { fontFamily: 'monospace', color: colors.brand }]}>{household?.invite_code}</Text>
           </View>
         </View>
+
+        {/* Gamification toggle */}
+        <TouchableOpacity style={styles.settingsBtn} onPress={handleToggleGamification}>
+          <Text style={styles.settingsBtnText}>
+            🏆 Punkte & Scoreboard: {household?.gamification_enabled === false ? 'Aus' : 'An'}
+          </Text>
+        </TouchableOpacity>
 
         {/* Change password */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowChangePw(true)}>

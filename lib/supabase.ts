@@ -31,6 +31,7 @@ export interface Household {
   name: string;
   invite_code: string;
   plan_tier: PlanTier;
+  gamification_enabled?: boolean;
   created_at: string;
 }
 

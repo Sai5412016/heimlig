@@ -18,6 +18,8 @@ import { colors, spacing, radius, typography, shadow } from '../../constants/the
 import { supabase, Task, MealPlan, MealType } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { scheduleTaskNotification, requestNotificationPermission } from '../../lib/notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Scoreboard, { monthlyScores } from '../../components/Scoreboard';
 
 type ViewMode = 'calendar' | 'list';
 type Priority = 'low' | 'normal' | 'high';
@@ -26,7 +28,7 @@ const PRIORITY_COLORS: Record<Priority, string> = {
   low: '#10B981', normal: colors.brand, high: '#EF4444',
 };
 const PRIORITY_LABELS: Record<Priority, string> = {
-  low: 'Niedrig', normal: 'Normal', high: 'Hoch',
+  low: 'Leicht · 5', normal: 'Mittel · 10', high: 'Schwer · 20',
 };
 const RECURRENCE_OPTIONS = [
   { key: null, label: 'Einmalig' },
@@ -247,9 +249,9 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate }: {
 }
 
 // ─── TASK CARD ────────────────────────────────────────────────
-function TaskCard({ task, onComplete, onDelete, members }: {
+function TaskCard({ task, onComplete, onDelete, members, showPoints }: {
   task: Task & { due_time?: string }; onComplete: (id: string) => void;
-  onDelete: (id: string) => void; members: any[];
+  onDelete: (id: string) => void; members: any[]; showPoints?: boolean;
 }) {
   const isCompleted = !!task.completed_at;
   const isOverdue = task.due_date && !isCompleted && isBefore(parseISO(task.due_date), new Date()) && !isToday(parseISO(task.due_date));
@@ -280,7 +282,7 @@ function TaskCard({ task, onComplete, onDelete, members }: {
       <View style={styles.taskInfo}>
         <View style={styles.taskTitleRow}>
           <Text style={[styles.taskTitle, isCompleted && { textDecorationLine: 'line-through', color: colors.textMuted }]}>{task.title}</Text>
-          {isHouseholdCat && !isCompleted && (
+          {showPoints && isHouseholdCat && !isCompleted && (
             <View style={styles.pointsBadge}>
               <Text style={styles.pointsBadgeText}>+{task.points || 10}🏆</Text>
             </View>
@@ -408,6 +410,19 @@ export default function TasksScreen() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [toastPoints, setToastPoints] = useState(0);
   const [showToast, setShowToast] = useState(false);
+  const [showScoreboard, setShowScoreboard] = useState(false);
+  const [monthScores, setMonthScores] = useState<Record<string, number>>({});
+
+  // Gamification only runs in households with more than one member and when not disabled
+  const gamificationOn = household?.gamification_enabled !== false && members.length > 1;
+
+  const loadMonthScores = useCallback(async () => {
+    if (!household) return;
+    const rows = await monthlyScores(household.id, members, new Date());
+    const map: Record<string, number> = {};
+    rows.forEach(r => { map[r.member.id] = r.points; });
+    setMonthScores(map);
+  }, [household?.id, members.length]);
 
   const loadTasks = useCallback(async () => {
     if (!household) return;
@@ -428,8 +443,30 @@ export default function TasksScreen() {
     loadTasks();
     loadWeekScores();
     loadMealPlans();
+    loadMonthScores();
     requestNotificationPermission();
-  }, [loadTasks, loadMealPlans]);
+  }, [loadTasks, loadMealPlans, loadMonthScores]);
+
+  // Once per month: celebrate last month's top household member
+  useEffect(() => {
+    if (!gamificationOn || !household) return;
+    (async () => {
+      const prevMonth = subMonths(new Date(), 1);
+      const key = format(prevMonth, 'yyyy-MM');
+      const storeKey = `heimlig_celebrated_${household.id}`;
+      const last = await AsyncStorage.getItem(storeKey);
+      if (last === key) return;
+      const rows = await monthlyScores(household.id, members, prevMonth);
+      const winner = rows[0];
+      await AsyncStorage.setItem(storeKey, key);
+      if (winner && winner.points > 0) {
+        Alert.alert(
+          '🏆 Heimlig-Haushälter:in des Monats!',
+          `Im ${format(prevMonth, 'MMMM', { locale: de })} war es ${winner.member.display_name} mit ${winner.points} Punkten! 🎉\n\nNeuer Monat, neue Chance – auf geht's!`
+        );
+      }
+    })();
+  }, [gamificationOn, household?.id, members.length]);
 
   const handleAddTask = async (taskData: Partial<Task> & { due_time?: string; notify?: boolean }) => {
     if (!household || !currentMember) return;
@@ -445,7 +482,8 @@ export default function TasksScreen() {
   const handleComplete = async (id: string) => {
     const result = await completeTask(id);
     hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
-    if (result.isHousehold && result.points > 0) {
+    loadMonthScores();
+    if (gamificationOn && result.isHousehold && result.points > 0) {
       hapticNotification(Haptics.NotificationFeedbackType.Success);
       setToastPoints(result.points);
       setShowToast(false);
@@ -471,8 +509,8 @@ export default function TasksScreen() {
   const openTasks = filteredTasks.filter(t => !t.completed_at);
   const completedTasks = filteredTasks.filter(t => !!t.completed_at);
   const overdueTasks = tasks.filter(t => t.due_date && !t.completed_at && isBefore(parseISO(t.due_date), new Date()) && !isToday(parseISO(t.due_date)));
-  const myScore = weekScores[currentMember?.id ?? ''] || 0;
-  const topScore = Math.max(0, ...members.map(m => weekScores[m.id] || 0));
+  const myScore = monthScores[currentMember?.id ?? ''] || 0;
+  const topScore = Math.max(0, ...members.map(m => monthScores[m.id] || 0));
   const isLeading = myScore > 0 && myScore >= topScore;
 
   return (
@@ -483,10 +521,10 @@ export default function TasksScreen() {
           <Text style={styles.headerSub}>{openTasks.length} offen{overdueTasks.length > 0 ? ` · ${overdueTasks.length} überfällig` : ''}</Text>
         </View>
         <View style={styles.headerRight}>
-          {myScore > 0 && (
-            <View style={[styles.scoreBadge, isLeading && styles.scoreBadgeLeading]}>
-              <Text style={styles.scoreBadgeText}>{isLeading ? '👑' : '🏆'} {myScore} Pkt</Text>
-            </View>
+          {gamificationOn && (
+            <TouchableOpacity style={[styles.scoreBadge, isLeading && styles.scoreBadgeLeading]} onPress={() => setShowScoreboard(true)}>
+              <Text style={styles.scoreBadgeText}>{isLeading ? '👑' : '🏆'} {myScore}</Text>
+            </TouchableOpacity>
           )}
           <View style={styles.viewToggle}>
             <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'calendar' && styles.viewToggleBtnActive]} onPress={() => { setViewMode('calendar'); setSelectedDate(null); }}>
@@ -571,14 +609,14 @@ export default function TasksScreen() {
               <Text style={styles.emptyBody}>{selectedDate ? 'Tippe auf + Aufgabe.' : 'Genieß den freien Tag. 🌿'}</Text>
             </View>
           )}
-          {openTasks.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} />)}
+          {openTasks.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} />)}
           {completedTasks.length > 0 && (
             <>
               <TouchableOpacity style={styles.completedHeader} onPress={() => setShowCompleted(v => !v)}>
                 <Text style={styles.completedHeaderText}>✓ Erledigt ({completedTasks.length})</Text>
                 <Text style={styles.completedToggle}>{showCompleted ? '▲' : '▼'}</Text>
               </TouchableOpacity>
-              {showCompleted && completedTasks.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} />)}
+              {showCompleted && completedTasks.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} />)}
             </>
           )}
         </View>
@@ -590,6 +628,16 @@ export default function TasksScreen() {
       </TouchableOpacity>
 
       <PointsToast points={toastPoints} visible={showToast} />
+
+      {gamificationOn && household && (
+        <Scoreboard
+          visible={showScoreboard}
+          onClose={() => setShowScoreboard(false)}
+          householdId={household.id}
+          members={members}
+          currentMemberId={currentMember?.id}
+        />
+      )}
 
       <AddTaskModal visible={showModal} onClose={() => setShowModal(false)} onSave={handleAddTask} members={members} preselectedDate={selectedDate} />
     </SafeAreaView>
