@@ -316,7 +316,7 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
           {dueDateText && (
             <View style={[styles.dueBadge, isOverdue && { backgroundColor: '#FEE2E2' }]}>
               <Text style={[styles.dueBadgeText, isOverdue && { color: colors.error }]}>
-                {isOverdue ? '⚠️ ' : '📅 '}{dueDateText}{(task as any).due_time ? ` · ${(task as any).due_time}` : ''}
+                {isOverdue ? '⚠️ ' : '📅 '}{dueDateText}{(task as any).due_time ? ` · 🕐 ${(task as any).due_time}` : ''}
               </Text>
             </View>
           )}
