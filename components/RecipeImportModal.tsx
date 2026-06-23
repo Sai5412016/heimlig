@@ -8,6 +8,7 @@ import { colors, spacing, radius, typography } from '../constants/theme';
 import { supabase, RecipeIngredient, MealType } from '../lib/supabase';
 import { format, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
+import * as ImagePicker from 'expo-image-picker';
 
 const MEAL_LABELS: Record<MealType, string> = { fruehstueck: '🌅 Frühstück', mittag: '☀️ Mittagessen', abendessen: '🌙 Abendessen' };
 
@@ -18,8 +19,10 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
   onClose: () => void;
   onAdd: (ingredients: RecipeIngredient[], recipeName: string, opts: RecipeAddOpts) => void;
 }) {
-  const [inputMode, setInputMode] = useState<'url' | 'text'>('url');
+  const [inputMode, setInputMode] = useState<'url' | 'text' | 'image'>('url');
   const [input, setInput] = useState('');
+  const [imageB64, setImageB64] = useState<string | null>(null);
+  const [imageMime, setImageMime] = useState('image/jpeg');
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [recipeName, setRecipeName] = useState('');
@@ -32,15 +35,32 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
   const reset = () => {
     setStep('input'); setInput(''); setIngredients([]); setRecipeName('');
     setPlanDate(format(new Date(), 'yyyy-MM-dd')); setPlanEnabled(false); setAddToCart(true);
+    setImageB64(null); setImageMime('image/jpeg');
   };
 
   useEffect(() => { if (!visible) reset(); }, [visible]);
 
+  const pickImage = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      base64: true,
+      quality: 0.6,
+    });
+    if (!res.canceled && res.assets?.[0]?.base64) {
+      setImageB64(res.assets[0].base64);
+      setImageMime(res.assets[0].mimeType || 'image/jpeg');
+    }
+  };
+
+  const canExtract = inputMode === 'image' ? !!imageB64 : !!input.trim();
+
   const handleExtract = async () => {
-    if (!input.trim()) return;
+    if (!canExtract) return;
     setLoading(true);
     try {
-      const body = inputMode === 'url' ? { url: input.trim() } : { text: input.trim() };
+      const body = inputMode === 'url' ? { url: input.trim() }
+        : inputMode === 'text' ? { text: input.trim() }
+        : { imageBase64: imageB64, imageMediaType: imageMime };
       const { data, error } = await supabase.functions.invoke('extract-recipe', { body });
       if (error) throw error;
       setRecipeName(data.name || 'Rezept');
@@ -92,20 +112,31 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
             {step === 'input' ? (
               <>
                 <View style={s.tabRow}>
-                  {(['url', 'text'] as const).map(mode => (
+                  {(['url', 'text', 'image'] as const).map(mode => (
                     <TouchableOpacity key={mode} style={[s.tab, inputMode === mode && s.tabActive]} onPress={() => setInputMode(mode)}>
-                      <Text style={[s.tabText, inputMode === mode && s.tabTextActive]}>{mode === 'url' ? '🔗 Link' : '📝 Text'}</Text>
+                      <Text style={[s.tabText, inputMode === mode && s.tabTextActive]}>{mode === 'url' ? '🔗 Link' : mode === 'text' ? '📝 Text' : '📷 Foto'}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-                <TextInput
-                  style={[s.input, inputMode === 'text' && { height: 120, textAlignVertical: 'top' }]}
-                  placeholder={inputMode === 'url' ? 'https://www.chefkoch.de/rezepte/...' : 'Rezepttext hier einfügen...'}
-                  placeholderTextColor={colors.textMuted}
-                  value={input} onChangeText={setInput}
-                  multiline={inputMode === 'text'} autoCapitalize="none" autoCorrect={false}
-                />
-                <TouchableOpacity style={[s.addBtn, (!input.trim() || loading) && s.addBtnDisabled]} onPress={handleExtract} disabled={!input.trim() || loading}>
+
+                {inputMode === 'image' ? (
+                  <>
+                    <TouchableOpacity style={s.imagePick} onPress={pickImage}>
+                      <Text style={s.imagePickText}>{imageB64 ? '✓ Bild ausgewählt – tippen zum Ändern' : '📷 Screenshot / Foto auswählen'}</Text>
+                    </TouchableOpacity>
+                    <Text style={s.hint}>Tipp: Screenshot vom Rezept (Instagram, TikTok, WhatsApp …) machen und hier auswählen – die Zutaten werden aus dem Bild erkannt.</Text>
+                  </>
+                ) : (
+                  <TextInput
+                    style={[s.input, inputMode === 'text' && { height: 120, textAlignVertical: 'top' }]}
+                    placeholder={inputMode === 'url' ? 'https://www.chefkoch.de/rezepte/...' : 'Rezepttext hier einfügen...'}
+                    placeholderTextColor={colors.textMuted}
+                    value={input} onChangeText={setInput}
+                    multiline={inputMode === 'text'} autoCapitalize="none" autoCorrect={false}
+                  />
+                )}
+
+                <TouchableOpacity style={[s.addBtn, (!canExtract || loading) && s.addBtnDisabled]} onPress={handleExtract} disabled={!canExtract || loading}>
                   <Text style={s.addBtnText}>{loading ? '⏳ Zutaten werden erkannt...' : 'Zutaten extrahieren →'}</Text>
                 </TouchableOpacity>
               </>
@@ -186,6 +217,9 @@ const s = StyleSheet.create({
   tabText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
   tabTextActive: { color: colors.brand },
   input: { backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md, ...typography.body, color: colors.text, borderWidth: 1, borderColor: colors.border },
+  imagePick: { borderWidth: 1.5, borderColor: colors.brand, borderStyle: 'dashed', borderRadius: radius.md, padding: spacing.lg, alignItems: 'center', backgroundColor: colors.brandPale, marginBottom: spacing.sm },
+  imagePickText: { ...typography.body, color: colors.brand, fontWeight: '700' },
+  hint: { ...typography.xs, color: colors.textMuted, marginBottom: spacing.sm },
   addBtn: { backgroundColor: colors.brand, borderRadius: radius.md, padding: spacing.md, alignItems: 'center' },
   addBtnDisabled: { opacity: 0.4 },
   addBtnText: { ...typography.body, color: colors.textInverse, fontWeight: '700' },

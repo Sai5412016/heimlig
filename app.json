@@ -24,7 +24,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.fledderman.heimlig",
-       "versionCode": 18,
+       "versionCode": 19,
       "permissions": ["NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED", "VIBRATE"]
     },
     "web": {
@@ -35,6 +35,9 @@
       ["expo-notifications", {
         "icon": "./assets/icon.png",
         "color": "#2D6A4F"
+      }],
+      ["expo-image-picker", {
+        "photosPermission": "Heimlig braucht Zugriff auf deine Fotos, um Zutaten aus Rezept-Screenshots zu erkennen."
       }]
     ],
     "extra": {

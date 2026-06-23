@@ -25,15 +25,32 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const INSTRUCTION = `Extrahiere die Zutaten aus diesem Rezept und gib sie als JSON zurück.
+
+Regeln:
+- Gib NUR valides JSON zurück, kein Text darum herum
+- Trenne bei jeder Zutat die Menge (Zahl + Einheit, z.B. "200 g", "2 Stück", "1 EL") in das Feld quantity und den reinen Zutatennamen in name. Wenn keine Menge angegeben ist, lasse quantity leer.
+- Behalte ALLE Zutaten, auch Basics wie Salz und Pfeffer, aber setze bei diesen isBasic auf true
+- Mappe jede Zutat auf eine dieser Kategorien: Lebensmittel, Obst & Gemüse, Tiefkühl, Fleisch & Fisch, Drogerie, Backwaren, Getränke, Sonstiges
+- quantity auf Deutsch
+
+Format:
+{
+  "name": "Rezeptname",
+  "ingredients": [
+    {"name": "Zutat", "quantity": "200 g", "category": "Lebensmittel", "isBasic": false}
+  ]
+}`;
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { url, text } = await req.json();
+    const { url, text, imageBase64, imageMediaType } = await req.json();
 
     let recipeContent = text || '';
 
-    if (url && !text) {
+    if (url && !text && !imageBase64) {
       try {
         // Be forgiving: users often paste a whole share text ("Schau dir … https://…").
         // Extract the first http(s) URL from whatever was pasted.
@@ -50,7 +67,7 @@ serve(async (req) => {
         });
         const html = await res.text();
 
-        // Try JSON-LD structured data first (Schema.org Recipe - used by Chefkoch etc.)
+        // Try JSON-LD structured data first (Schema.org Recipe - used by Chefkoch, Cookidoo etc.)
         const jsonLdMatches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
         let jsonLdContent = '';
         for (const match of jsonLdMatches) {
@@ -76,6 +93,14 @@ serve(async (req) => {
       }
     }
 
+    // Build the user message: an image (screenshot/photo) or plain recipe text
+    const userContent = imageBase64
+      ? [
+          { type: 'image', source: { type: 'base64', media_type: imageMediaType || 'image/jpeg', data: imageBase64 } },
+          { type: 'text', text: `Dies ist ein Screenshot oder Foto eines Rezepts. Lies den Text und ${INSTRUCTION[0].toLowerCase()}${INSTRUCTION.slice(1)}` },
+        ]
+      : `${INSTRUCTION}\n\nRezept:\n${recipeContent}`;
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -86,27 +111,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
-        messages: [{
-          role: 'user',
-          content: `Extrahiere die Zutaten aus diesem Rezept und gib sie als JSON zurück.
-
-Rezept:
-${recipeContent}
-
-Regeln:
-- Gib NUR valides JSON zurück, kein Text darum herum
-- Filtere Standard-Basics heraus (Salz, Pfeffer, Wasser, Öl, Zucker, Mehl in kleinen Mengen, Backpulver, Hefe, Essig, Senf, Natron)
-- Mappe jede Zutat auf eine dieser Kategorien: Lebensmittel, Obst & Gemüse, Tiefkühl, Fleisch & Fisch, Drogerie, Backwaren, Getränke, Sonstiges
-- Quantity auf Deutsch
-
-Format:
-{
-  "name": "Rezeptname",
-  "ingredients": [
-    {"name": "Zutat", "quantity": "200g", "category": "Lebensmittel", "isBasic": false}
-  ]
-}`
-        }],
+        messages: [{ role: 'user', content: userContent }],
       }),
     });
 
@@ -121,7 +126,7 @@ Format:
       parsed = match ? JSON.parse(match[0]) : { name: 'Rezept', ingredients: [] };
     }
 
-    // Mark basics as include: false
+    // Mark basics as include: false (the app pre-selects all anyway, but keep the hint)
     const ingredients = (parsed.ingredients || []).map((ing: any) => ({
       name: ing.name,
       quantity: ing.quantity,
