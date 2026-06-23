@@ -85,6 +85,7 @@ export interface Task {
   recurrence?: Recurrence;
   recurrence_day?: number;
   recurrence_interval?: number;
+  due_time?: string;
   points: number;
   created_at: string;
 }

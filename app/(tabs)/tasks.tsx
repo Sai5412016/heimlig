@@ -270,9 +270,9 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate }: {
 }
 
 // ─── TASK CARD ────────────────────────────────────────────────
-function TaskCard({ task, onComplete, onDelete, members, showPoints }: {
+function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
   task: Task & { due_time?: string }; onComplete: (id: string) => void;
-  onDelete: (id: string) => void; members: any[]; showPoints?: boolean;
+  onDelete: (id: string) => void; members: any[]; showPoints?: boolean; onOpen?: (task: Task) => void;
 }) {
   const isCompleted = !!task.completed_at;
   const isOverdue = task.due_date && !isCompleted && isBefore(parseISO(task.due_date), new Date()) && !isToday(parseISO(task.due_date));
@@ -300,7 +300,7 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints }: {
           {isCompleted && <Text style={styles.checkmark}>✓</Text>}
         </View>
       </TouchableOpacity>
-      <View style={styles.taskInfo}>
+      <TouchableOpacity style={styles.taskInfo} activeOpacity={0.6} onPress={() => onOpen?.(task)}>
         <View style={styles.taskTitleRow}>
           <Text style={[styles.taskTitle, isCompleted && { textDecorationLine: 'line-through', color: colors.textMuted }]}>{task.title}</Text>
           {showPoints && isHouseholdCat && !isCompleted && (
@@ -333,11 +333,58 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints }: {
             </View>
           )}
         </View>
-      </View>
+      </TouchableOpacity>
       <TouchableOpacity style={styles.deleteTaskBtn} onPress={() => onDelete(task.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <Text style={styles.deleteTaskBtnText}>×</Text>
       </TouchableOpacity>
     </View>
+  );
+}
+
+// ─── TASK DETAIL MODAL ────────────────────────────────────────
+function TaskDetailModal({ task, members, onClose, onComplete, onDelete }: {
+  task: (Task & { due_time?: string }) | null;
+  members: any[];
+  onClose: () => void;
+  onComplete: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  if (!task) return null;
+  const isCompleted = !!task.completed_at;
+  const assignedMember = members.find(m => m.id === task.assigned_to);
+  const dateText = task.due_date ? format(parseISO(task.due_date), 'EEEE, d. MMMM yyyy', { locale: de }) : '—';
+  const recurrenceText = task.recurrence
+    ? (task.recurrence_interval && task.recurrence_interval > 1
+        ? `Alle ${task.recurrence_interval} ${task.recurrence === 'daily' ? 'Tage' : task.recurrence === 'weekly' ? 'Wochen' : task.recurrence === 'monthly' ? 'Monate' : 'Jahre'}`
+        : RECURRENCE_OPTIONS.find(r => r.key === task.recurrence)?.label)
+    : null;
+
+  return (
+    <Modal visible={!!task} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
+        <Pressable style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Text style={styles.detailTitle}>{task.title}</Text>
+            {task.description ? <Text style={styles.detailDesc}>{task.description}</Text> : null}
+
+            <View style={styles.detailRow}><Text style={styles.detailLabel}>📂 Kategorie</Text><Text style={styles.detailValue}>{CATEGORY_EMOJIS[task.category] || '📋'} {task.category}</Text></View>
+            <View style={styles.detailRow}><Text style={styles.detailLabel}>📅 Datum</Text><Text style={styles.detailValue}>{dateText}</Text></View>
+            <View style={styles.detailRow}><Text style={styles.detailLabel}>🕐 Uhrzeit</Text><Text style={styles.detailValue}>{task.due_time ? `${task.due_time} Uhr` : 'Keine'}</Text></View>
+            <View style={styles.detailRow}><Text style={styles.detailLabel}>⭐ Aufwand</Text><Text style={styles.detailValue}>{PRIORITY_LABELS[task.priority as Priority]} Pkt</Text></View>
+            {recurrenceText && <View style={styles.detailRow}><Text style={styles.detailLabel}>🔄 Wiederholung</Text><Text style={styles.detailValue}>{recurrenceText}</Text></View>}
+            <View style={styles.detailRow}><Text style={styles.detailLabel}>👤 Zugewiesen</Text><Text style={styles.detailValue}>{assignedMember ? assignedMember.display_name : 'Alle'}</Text></View>
+
+            <TouchableOpacity style={styles.saveBtn} onPress={() => { onComplete(task.id); onClose(); }}>
+              <Text style={styles.saveBtnText}>{isCompleted ? 'Als offen markieren' : 'Erledigt ✓'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.detailDeleteBtn} onPress={() => { onClose(); onDelete(task.id); }}>
+              <Text style={styles.detailDeleteText}>Löschen</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -434,6 +481,7 @@ export default function TasksScreen() {
   const [toastPoints, setToastPoints] = useState(0);
   const [showToast, setShowToast] = useState(false);
   const [showScoreboard, setShowScoreboard] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [monthScores, setMonthScores] = useState<Record<string, number>>({});
 
   // Gamification only runs in households with more than one member and when not disabled
@@ -494,7 +542,7 @@ export default function TasksScreen() {
   const handleAddTask = async (taskData: Partial<Task> & { due_time?: string; notify?: boolean }) => {
     if (!household || !currentMember) return;
     const { notify, due_time, ...rest } = taskData as any;
-    const { data } = await supabase.from('tasks').insert({ ...rest, household_id: household.id, created_by: currentMember.id }).select().single();
+    const { data } = await supabase.from('tasks').insert({ ...rest, due_time: due_time || null, household_id: household.id, created_by: currentMember.id }).select().single();
     if (data) {
       setTasks([...tasks, data]);
       hapticNotification(Haptics.NotificationFeedbackType.Success);
@@ -632,14 +680,14 @@ export default function TasksScreen() {
               <Text style={styles.emptyBody}>{selectedDate ? 'Tippe auf + Aufgabe.' : 'Genieß den freien Tag. 🌿'}</Text>
             </View>
           )}
-          {openTasks.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} />)}
+          {openTasks.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} onOpen={setSelectedTask} />)}
           {completedTasks.length > 0 && (
             <>
               <TouchableOpacity style={styles.completedHeader} onPress={() => setShowCompleted(v => !v)}>
                 <Text style={styles.completedHeaderText}>✓ Erledigt ({completedTasks.length})</Text>
                 <Text style={styles.completedToggle}>{showCompleted ? '▲' : '▼'}</Text>
               </TouchableOpacity>
-              {showCompleted && completedTasks.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} />)}
+              {showCompleted && completedTasks.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} onOpen={setSelectedTask} />)}
             </>
           )}
         </View>
@@ -651,6 +699,14 @@ export default function TasksScreen() {
       </TouchableOpacity>
 
       <PointsToast points={toastPoints} visible={showToast} />
+
+      <TaskDetailModal
+        task={selectedTask as any}
+        members={members}
+        onClose={() => setSelectedTask(null)}
+        onComplete={handleComplete}
+        onDelete={handleDelete}
+      />
 
       {gamificationOn && household && (
         <Scoreboard
@@ -769,6 +825,13 @@ const styles = StyleSheet.create({
   notifyToggleText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
   notifyToggleSub: { ...typography.xs, color: colors.textMuted, marginTop: 2 },
   fieldLabel: { ...typography.label, color: colors.textMuted, marginBottom: spacing.sm },
+  detailTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
+  detailDesc: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.lg },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  detailLabel: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
+  detailValue: { ...typography.body, color: colors.text, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: spacing.md },
+  detailDeleteBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.xs },
+  detailDeleteText: { ...typography.body, color: colors.error, fontWeight: '600' },
   chipRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   intervalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },

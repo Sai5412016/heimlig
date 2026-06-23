@@ -216,6 +216,7 @@ export const useStore = create<AppState>((set, get) => ({
           points: task.points,
           assigned_to: task.assigned_to,
           due_date: format(next, 'yyyy-MM-dd'),
+          due_time: (task as any).due_time || null,
           recurrence: task.recurrence,
           recurrence_interval: n,
           created_by: task.created_by,
