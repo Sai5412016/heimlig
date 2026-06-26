@@ -37,6 +37,10 @@ interface AppState {
   addItem: (listId: string, name: string, quantity?: string, category?: string, mealPlanId?: string) => Promise<void>;
   deleteItem: (itemId: string) => Promise<void>;
 
+  // 🛒 Learned item catalog (personalized autocomplete / frequent items)
+  itemCatalog: { name: string; name_key: string; category: string; count: number }[];
+  loadItemCatalog: () => Promise<void>;
+
   tasks: Task[];
   setTasks: (tasks: Task[]) => void;
   completeTask: (taskId: string) => Promise<{ points: number; isHousehold: boolean }>;
@@ -157,17 +161,41 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addItem: async (listId, name, quantity, category = 'Sonstiges', mealPlanId) => {
-    const { currentMember } = get();
+    const { currentMember, household } = get();
     const { data } = await supabase
       .from('shopping_items')
       .insert({ list_id: listId, name, quantity, category, added_by: currentMember?.id, meal_plan_id: mealPlanId })
       .select().single();
     if (data) set(s => ({ items: [...s.items, data] }));
+
+    // Learn this item for the household (powers autocomplete & frequent suggestions)
+    if (household && name.trim()) {
+      supabase.rpc('bump_item_catalog', { p_household: household.id, p_name: name.trim(), p_category: category })
+        .then(() => {}, () => {});
+      const key = name.toLowerCase().trim();
+      set(s => {
+        const existing = s.itemCatalog.find(c => c.name_key === key);
+        if (existing) return { itemCatalog: s.itemCatalog.map(c => c.name_key === key ? { ...c, count: c.count + 1, category } : c) };
+        return { itemCatalog: [...s.itemCatalog, { name: name.trim(), name_key: key, category, count: 1 }] };
+      });
+    }
   },
 
   deleteItem: async (itemId) => {
     set(s => ({ items: s.items.filter(i => i.id !== itemId) }));
     await supabase.from('shopping_items').delete().eq('id', itemId);
+  },
+
+  itemCatalog: [],
+  loadItemCatalog: async () => {
+    const { household } = get();
+    if (!household) return;
+    const { data } = await supabase
+      .from('item_catalog').select('name, name_key, category, count')
+      .eq('household_id', household.id)
+      .order('count', { ascending: false })
+      .limit(500);
+    if (data) set({ itemCatalog: data as any });
   },
 
   tasks: [],

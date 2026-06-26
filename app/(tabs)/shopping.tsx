@@ -1,5 +1,5 @@
 // app/(tabs)/shopping.tsx
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput,
   Animated, Platform, KeyboardAvoidingView, Alert, RefreshControl,
@@ -15,6 +15,7 @@ import { format, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useStore } from '../../store/useStore';
 import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
+import { searchGroceries, categoryForItem, normalizeKey } from '../../lib/groceries';
 
 // ─── ITEM CARD ────────────────────────────────────────────────
 const ItemCard = React.memo(({ item, onToggle, onDelete, memberName }: {
@@ -89,6 +90,7 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
   const [quantity, setQuantity] = useState('');
   const [category, setCategory] = useState('Lebensmittel');
   const inputRef = useRef<TextInput>(null);
+  const itemCatalog = useStore(s => s.itemCatalog);
 
   useEffect(() => {
     if (visible) {
@@ -98,10 +100,53 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
     }
   }, [visible]);
 
+  // Merge the household's learned items (ranked by frequency) with the curated catalog
+  const suggestions = useMemo(() => {
+    const q = normalizeKey(name);
+    if (!q) return [];
+    const seen = new Set<string>();
+    const out: { name: string; category: string }[] = [];
+    // Personalized first
+    for (const c of itemCatalog) {
+      if (c.name_key.includes(q) && !seen.has(c.name_key)) {
+        seen.add(c.name_key); out.push({ name: c.name, category: c.category });
+      }
+      if (out.length >= 6) break;
+    }
+    // Then the curated dictionary
+    for (const g of searchGroceries(name, 8)) {
+      const k = normalizeKey(g.name);
+      if (!seen.has(k)) { seen.add(k); out.push(g); }
+      if (out.length >= 6) break;
+    }
+    // Hide a single exact match (nothing to suggest)
+    return out.filter(o => normalizeKey(o.name) !== q).slice(0, 6);
+  }, [name, itemCatalog]);
+
+  // Most frequently bought items, shown as quick-add chips when the field is empty
+  const frequent = useMemo(() => itemCatalog.slice(0, 8), [itemCatalog]);
+
+  // Auto-assign category when the typed name matches a known item
+  const applyName = (text: string) => {
+    setName(text);
+    const known = categoryForItem(text) || itemCatalog.find(c => c.name_key === normalizeKey(text))?.category;
+    if (known) setCategory(known);
+  };
+
+  const pickSuggestion = (s: { name: string; category: string }) => {
+    setName(s.name);
+    setCategory(s.category);
+  };
+
   const handleAdd = () => {
     if (!name.trim()) return;
     onAdd(name.trim(), quantity.trim(), category);
     setName(''); setQuantity('');
+  };
+
+  const quickAdd = (s: { name: string; category: string }) => {
+    onAdd(s.name, '', s.category);
+    hapticImpact(Haptics.ImpactFeedbackStyle.Light);
   };
 
   return (
@@ -119,7 +164,7 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
                 placeholder="Was brauchst du?"
                 placeholderTextColor={colors.textMuted}
                 value={name}
-                onChangeText={setName}
+                onChangeText={applyName}
                 returnKeyType="done"
                 onSubmitEditing={handleAdd}
               />
@@ -131,6 +176,32 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
                 onChangeText={setQuantity}
               />
             </View>
+
+            {/* Type-ahead suggestions */}
+            {suggestions.length > 0 && (
+              <View style={styles.suggestBox}>
+                {suggestions.map(s => (
+                  <TouchableOpacity key={s.name} style={styles.suggestRow} onPress={() => pickSuggestion(s)}>
+                    <Text style={styles.suggestName}>{s.name}</Text>
+                    <Text style={styles.suggestCat}>{s.category}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Frequently bought — quick add */}
+            {!name.trim() && frequent.length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>HÄUFIG GEKAUFT</Text>
+                <View style={styles.freqWrap}>
+                  {frequent.map(f => (
+                    <TouchableOpacity key={f.name_key} style={styles.freqChip} onPress={() => quickAdd({ name: f.name, category: f.category })}>
+                      <Text style={styles.freqChipText}>+ {f.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
 
             <Text style={styles.sectionLabel}>KATEGORIE</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
@@ -166,12 +237,14 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
 
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function ShoppingScreen() {
-  const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe } = useStore();
+  const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe, loadItemCatalog } = useStore();
   const [showModal, setShowModal] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showChecked, setShowChecked] = useState(true);
   const isPremium = household?.plan_tier !== 'free';
+
+  useEffect(() => { loadItemCatalog(); }, [household?.id]);
 
   const activeList = shoppingLists.find(l => l.id === activeListId);
   const unchecked = items.filter(i => !i.checked);
@@ -461,6 +534,13 @@ const styles = StyleSheet.create({
   },
   modalTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
   inputRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  suggestBox: { backgroundColor: colors.background, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md, overflow: 'hidden' },
+  suggestRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  suggestName: { ...typography.body, color: colors.text, fontWeight: '600' },
+  suggestCat: { ...typography.xs, color: colors.textMuted },
+  freqWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  freqChip: { backgroundColor: colors.brandPale, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderWidth: 1, borderColor: colors.brand },
+  freqChipText: { ...typography.sm, color: colors.brand, fontWeight: '700' },
   input: {
     backgroundColor: colors.background, borderRadius: radius.md,
     padding: spacing.md, ...typography.body, color: colors.text,
