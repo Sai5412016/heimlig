@@ -2,50 +2,83 @@
 
 export interface GroceryEntry { name: string; category: string }
 
-// Common German grocery items mapped to Heimlig's shopping categories.
-// Used for type-ahead suggestions and automatic category assignment.
+// Large curated list of common German grocery items mapped to Heimlig's shopping categories.
+// Powers offline type-ahead suggestions and automatic category assignment (no network needed).
 const CATALOG: Record<string, string[]> = {
   'Obst & Gemüse': [
-    'Äpfel', 'Bananen', 'Birnen', 'Orangen', 'Mandarinen', 'Zitronen', 'Limetten', 'Trauben', 'Erdbeeren',
-    'Heidelbeeren', 'Himbeeren', 'Kiwi', 'Ananas', 'Mango', 'Pfirsiche', 'Nektarinen', 'Pflaumen', 'Melone',
-    'Avocado', 'Tomaten', 'Cherrytomaten', 'Gurke', 'Paprika', 'Zucchini', 'Aubergine', 'Karotten', 'Möhren',
-    'Kartoffeln', 'Süßkartoffeln', 'Zwiebeln', 'Knoblauch', 'Lauch', 'Sellerie', 'Brokkoli', 'Blumenkohl',
-    'Spinat', 'Salat', 'Eisbergsalat', 'Feldsalat', 'Rucola', 'Champignons', 'Pilze', 'Kürbis', 'Ingwer',
-    'Radieschen', 'Rote Bete', 'Mais', 'Erbsen', 'Bohnen', 'Spargel', 'Kohlrabi', 'Weißkohl', 'Rotkohl', 'Petersilie', 'Basilikum', 'Schnittlauch',
+    'Äpfel', 'Bananen', 'Birnen', 'Orangen', 'Mandarinen', 'Clementinen', 'Zitronen', 'Limetten', 'Grapefruit',
+    'Weintrauben', 'Erdbeeren', 'Heidelbeeren', 'Himbeeren', 'Brombeeren', 'Johannisbeeren', 'Kirschen', 'Kiwi',
+    'Ananas', 'Mango', 'Papaya', 'Pfirsiche', 'Nektarinen', 'Aprikosen', 'Pflaumen', 'Zwetschgen', 'Wassermelone',
+    'Honigmelone', 'Granatapfel', 'Feigen', 'Datteln', 'Avocado', 'Kokosnuss', 'Sharon', 'Physalis', 'Rhabarber',
+    'Tomaten', 'Cherrytomaten', 'Rispentomaten', 'Gurke', 'Salatgurke', 'Paprika', 'Spitzpaprika', 'Chili', 'Peperoni',
+    'Zucchini', 'Aubergine', 'Karotten', 'Möhren', 'Pastinaken', 'Kartoffeln', 'Süßkartoffeln', 'Festkochende Kartoffeln',
+    'Zwiebeln', 'Rote Zwiebeln', 'Frühlingszwiebeln', 'Schalotten', 'Knoblauch', 'Lauch', 'Porree', 'Sellerie',
+    'Staudensellerie', 'Knollensellerie', 'Brokkoli', 'Blumenkohl', 'Romanesco', 'Spinat', 'Mangold', 'Grünkohl',
+    'Kopfsalat', 'Eisbergsalat', 'Feldsalat', 'Rucola', 'Endiviensalat', 'Radicchio', 'Chicorée', 'Champignons',
+    'Pilze', 'Kräuterseitlinge', 'Pfifferlinge', 'Kürbis', 'Hokkaido', 'Butternut', 'Ingwer', 'Kurkuma', 'Radieschen',
+    'Rettich', 'Rote Bete', 'Kohlrabi', 'Weißkohl', 'Rotkohl', 'Wirsing', 'Spitzkohl', 'Chinakohl', 'Rosenkohl',
+    'Fenchel', 'Spargel', 'grüner Spargel', 'Mais', 'Zuckerschoten', 'Erbsen', 'grüne Bohnen', 'Dicke Bohnen',
+    'Petersilie', 'Basilikum', 'Schnittlauch', 'Koriander', 'Dill', 'Minze', 'Rosmarin', 'Thymian', 'Oregano', 'Salbei',
   ],
   'Fleisch & Fisch': [
-    'Hähnchenbrust', 'Hähnchenschenkel', 'Hackfleisch', 'Rinderhack', 'Gemischtes Hack', 'Rindersteak', 'Schweineschnitzel',
-    'Schweinefilet', 'Putenbrust', 'Speck', 'Bacon', 'Salami', 'Schinken', 'Kochschinken', 'Würstchen', 'Bratwurst',
-    'Wiener', 'Leberkäse', 'Lachs', 'Thunfisch', 'Forelle', 'Garnelen', 'Fischstäbchen', 'Hähnchen', 'Gulasch',
+    'Hähnchenbrust', 'Hähnchenschenkel', 'Hähnchenflügel', 'Ganzes Hähnchen', 'Hähnchen', 'Putenbrust', 'Putenschnitzel',
+    'Hackfleisch', 'Rinderhack', 'Schweinehack', 'Gemischtes Hack', 'Rindersteak', 'Rinderfilet', 'Rinderbraten',
+    'Gulasch', 'Schweineschnitzel', 'Schweinefilet', 'Schweinebraten', 'Kotelett', 'Nackensteak', 'Spareribs',
+    'Lammkoteletts', 'Lammfilet', 'Speck', 'Bacon', 'Schinkenspeck', 'Salami', 'Schinken', 'Kochschinken',
+    'Rohschinken', 'Serrano', 'Bratwurst', 'Würstchen', 'Wiener', 'Currywurst', 'Leberkäse', 'Frikadellen',
+    'Mettwurst', 'Aufschnitt', 'Lachs', 'Räucherlachs', 'Thunfisch', 'Forelle', 'Kabeljau', 'Seelachs', 'Pangasius',
+    'Garnelen', 'Shrimps', 'Scampi', 'Tintenfisch', 'Muscheln', 'Fischstäbchen', 'Backfisch', 'Matjes', 'Hering',
   ],
   'Backwaren': [
-    'Brot', 'Vollkornbrot', 'Toastbrot', 'Brötchen', 'Baguette', 'Croissant', 'Laugenbrezel', 'Brezel', 'Kuchen',
-    'Kekse', 'Knäckebrot', 'Zwieback', 'Hörnchen', 'Muffins', 'Donuts',
+    'Brot', 'Vollkornbrot', 'Mischbrot', 'Roggenbrot', 'Dinkelbrot', 'Toastbrot', 'Vollkorntoast', 'Sandwichbrot',
+    'Brötchen', 'Vollkornbrötchen', 'Laugenbrötchen', 'Baguette', 'Ciabatta', 'Croissant', 'Laugenbrezel', 'Brezel',
+    'Kuchen', 'Käsekuchen', 'Donuts', 'Muffins', 'Kekse', 'Plätzchen', 'Knäckebrot', 'Zwieback', 'Hörnchen',
+    'Franzbrötchen', 'Berliner', 'Waffeln', 'Pfannkuchen', 'Stollen', 'Brötchen zum Aufbacken',
   ],
   'Getränke': [
-    'Wasser', 'Mineralwasser', 'Sprudel', 'Apfelsaft', 'Orangensaft', 'Multivitaminsaft', 'Cola', 'Limonade', 'Eistee',
-    'Kaffee', 'Espresso', 'Tee', 'Bier', 'Wein', 'Rotwein', 'Weißwein', 'Sekt', 'Energydrink', 'Saftschorle', 'Milchshake',
+    'Wasser', 'Mineralwasser', 'Stilles Wasser', 'Sprudelwasser', 'Leitungswasser', 'Apfelsaft', 'Orangensaft',
+    'Multivitaminsaft', 'Traubensaft', 'Tomatensaft', 'Apfelschorle', 'Saftschorle', 'Cola', 'Cola Zero', 'Fanta',
+    'Sprite', 'Limonade', 'Eistee', 'Energydrink', 'Red Bull', 'Tonic Water', 'Spezi', 'Kaffee', 'Filterkaffee',
+    'Kaffeebohnen', 'Espresso', 'Kaffeepads', 'Kaffeekapseln', 'Tee', 'Schwarztee', 'Grüntee', 'Früchtetee',
+    'Kräutertee', 'Kakao', 'Trinkschokolade', 'Bier', 'Pils', 'Weizenbier', 'Radler', 'Alkoholfreies Bier',
+    'Wein', 'Rotwein', 'Weißwein', 'Roséwein', 'Sekt', 'Prosecco', 'Aperol', 'Gin', 'Wodka', 'Rum', 'Whisky', 'Saft',
   ],
   'Tiefkühl': [
-    'Pizza', 'Tiefkühlpizza', 'Pommes', 'Eis', 'Speiseeis', 'Tiefkühlgemüse', 'Tiefkühlbeeren', 'Spinat (TK)',
-    'Fischstäbchen', 'Blätterteig', 'Backfisch', 'Tiefkühlkräuter',
+    'Tiefkühlpizza', 'Pizza', 'Pommes', 'Kroketten', 'Rösti', 'Eis', 'Speiseeis', 'Eiscreme', 'Magnum',
+    'Tiefkühlgemüse', 'Erbsen (TK)', 'Spinat (TK)', 'Rahmspinat', 'Tiefkühlbeeren', 'Tiefkühl-Himbeeren',
+    'Fischstäbchen', 'Backfisch', 'Tiefkühlkräuter', 'Blätterteig', 'Pizzateig (TK)', 'Frühlingsrollen', 'Wedges',
+    'Tiefkühl-Lasagne', 'Tiefkühl-Brötchen', 'Eiswürfel',
   ],
   'Drogerie': [
-    'Zahnpasta', 'Zahnbürste', 'Shampoo', 'Duschgel', 'Seife', 'Handseife', 'Deo', 'Rasierer', 'Rasierschaum',
-    'Toilettenpapier', 'Küchenrolle', 'Taschentücher', 'Windeln', 'Feuchttücher', 'Waschmittel', 'Weichspüler',
-    'Spülmittel', 'Spülmaschinentabs', 'Allzweckreiniger', 'Müllbeutel', 'Wattepads', 'Sonnencreme', 'Pflaster',
-    'Haargel', 'Bodylotion', 'Damenhygiene', 'Klarspüler', 'Backofenreiniger', 'Glasreiniger',
+    'Zahnpasta', 'Zahnbürste', 'Zahnseide', 'Mundwasser', 'Shampoo', 'Spülung', 'Conditioner', 'Duschgel', 'Seife',
+    'Handseife', 'Flüssigseife', 'Deo', 'Deospray', 'Rasierer', 'Rasierklingen', 'Rasierschaum', 'Rasiergel',
+    'Toilettenpapier', 'Küchenrolle', 'Taschentücher', 'Kosmetiktücher', 'Windeln', 'Feuchttücher', 'Waschmittel',
+    'Colorwaschmittel', 'Vollwaschmittel', 'Weichspüler', 'Spülmittel', 'Spülmaschinentabs', 'Klarspüler', 'Salz (Spülm.)',
+    'Allzweckreiniger', 'Glasreiniger', 'Badreiniger', 'WC-Reiniger', 'Backofenreiniger', 'Entkalker', 'Müllbeutel',
+    'Gefrierbeutel', 'Frischhaltefolie', 'Alufolie', 'Backpapier', 'Wattepads', 'Wattestäbchen', 'Sonnencreme',
+    'Bodylotion', 'Handcreme', 'Gesichtscreme', 'Lippenbalsam', 'Haargel', 'Haarspray', 'Pflaster', 'Desinfektionsmittel',
+    'Damenbinden', 'Tampons', 'Schwämme', 'Spüllappen', 'Putztücher', 'Gummihandschuhe', 'Batterien', 'Taschentücher (Box)',
   ],
   'Lebensmittel': [
-    'Milch', 'Hafermilch', 'Butter', 'Margarine', 'Eier', 'Joghurt', 'Naturjoghurt', 'Quark', 'Sahne', 'Schmand',
-    'Frischkäse', 'Käse', 'Gouda', 'Mozzarella', 'Parmesan', 'Feta', 'Reibekäse', 'Mehl', 'Zucker', 'Salz', 'Pfeffer',
-    'Öl', 'Olivenöl', 'Sonnenblumenöl', 'Essig', 'Balsamico', 'Senf', 'Ketchup', 'Mayonnaise', 'Nudeln', 'Spaghetti',
-    'Reis', 'Kartoffelpüree', 'Haferflocken', 'Müsli', 'Cornflakes', 'Marmelade', 'Honig', 'Nutella', 'Erdnussbutter',
-    'Tomatensoße', 'Passierte Tomaten', 'Tomatenmark', 'Pesto', 'Brühe', 'Gemüsebrühe', 'Kokosmilch', 'Linsen',
-    'Kichererbsen', 'Bohnen (Dose)', 'Mais (Dose)', 'Thunfisch (Dose)', 'Backpulver', 'Hefe', 'Vanillezucker',
-    'Schokolade', 'Chips', 'Salzstangen', 'Gummibärchen', 'Riegel', 'Nüsse', 'Mandeln', 'Rosinen', 'Couscous',
-    'Gnocchi', 'Tortellini', 'Pizzateig', 'Wraps', 'Tortillas', 'Streukäse', 'Sojasauce', 'Currypaste', 'Gewürze',
-    'Paprikapulver', 'Curry', 'Zimt', 'Vanille', 'Puderzucker', 'Speisestärke', 'Tahin', 'Kaffeesahne', 'Kondensmilch',
+    'Milch', 'Vollmilch', 'Fettarme Milch', 'Laktosefreie Milch', 'Hafermilch', 'Mandelmilch', 'Sojamilch', 'Butter',
+    'Halbfettbutter', 'Margarine', 'Eier', 'Bio-Eier', 'Joghurt', 'Naturjoghurt', 'Griechischer Joghurt', 'Fruchtjoghurt',
+    'Skyr', 'Quark', 'Magerquark', 'Sahne', 'Schlagsahne', 'Saure Sahne', 'Schmand', 'Crème fraîche', 'Frischkäse',
+    'Käse', 'Gouda', 'Emmentaler', 'Edamer', 'Mozzarella', 'Parmesan', 'Feta', 'Hirtenkäse', 'Camembert', 'Brie',
+    'Reibekäse', 'Streukäse', 'Harzer', 'Hüttenkäse', 'Pudding', 'Mehl', 'Vollkornmehl', 'Dinkelmehl', 'Zucker',
+    'Brauner Zucker', 'Puderzucker', 'Vanillezucker', 'Salz', 'Meersalz', 'Pfeffer', 'Öl', 'Olivenöl', 'Sonnenblumenöl',
+    'Rapsöl', 'Kokosöl', 'Essig', 'Balsamico', 'Apfelessig', 'Senf', 'Ketchup', 'Mayonnaise', 'Remoulade', 'Sojasauce',
+    'Sweet Chili Sauce', 'BBQ-Sauce', 'Nudeln', 'Spaghetti', 'Penne', 'Fusilli', 'Lasagneplatten', 'Tortellini',
+    'Gnocchi', 'Reis', 'Basmatireis', 'Risottoreis', 'Milchreis', 'Couscous', 'Bulgur', 'Quinoa', 'Haferflocken',
+    'Müsli', 'Granola', 'Cornflakes', 'Knuspermüsli', 'Marmelade', 'Honig', 'Nutella', 'Nuss-Nougat-Creme', 'Erdnussbutter',
+    'Tomatensoße', 'Passierte Tomaten', 'Gehackte Tomaten', 'Tomatenmark', 'Pesto', 'Pesto Rosso', 'Brühe', 'Gemüsebrühe',
+    'Hühnerbrühe', 'Fond', 'Kokosmilch', 'Linsen', 'Rote Linsen', 'Kichererbsen', 'Kidneybohnen', 'weiße Bohnen',
+    'Mais (Dose)', 'Erbsen (Dose)', 'Thunfisch (Dose)', 'Sauerkraut', 'Gewürzgurken', 'Oliven', 'Antipasti', 'Backpulver',
+    'Natron', 'Hefe', 'Trockenhefe', 'Speisestärke', 'Gelatine', 'Vanille', 'Zimt', 'Paprikapulver', 'Currypulver',
+    'Curry', 'Chiliflocken', 'Muskat', 'Kreuzkümmel', 'Italienische Kräuter', 'Brühwürfel', 'Schokolade', 'Zartbitterschokolade',
+    'Vollmilchschokolade', 'Kekse', 'Chips', 'Salzstangen', 'Cracker', 'Gummibärchen', 'Schokoriegel', 'Müsliriegel',
+    'Nüsse', 'Mandeln', 'Walnüsse', 'Cashews', 'Haselnüsse', 'Rosinen', 'Trockenfrüchte', 'Popcorn', 'Tahin',
+    'Kaffeesahne', 'Kondensmilch', 'Tofu', 'Räuchertofu', 'Hummus', 'Wraps', 'Tortillas', 'Tacoschalen', 'Pizzateig',
+    'Currypaste', 'Kokosraspeln', 'Tortilla-Chips', 'Sojasauce',
   ],
 };
 
@@ -76,7 +109,6 @@ export function searchGroceries(query: string, limit = 8): GroceryEntry[] {
     const n = e.name.toLowerCase();
     if (n.startsWith(q)) starts.push(e);
     else if (n.includes(q)) contains.push(e);
-    if (starts.length >= limit) break;
   }
   return [...starts, ...contains].slice(0, limit);
 }

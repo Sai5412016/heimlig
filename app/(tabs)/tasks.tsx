@@ -20,6 +20,9 @@ import { useStore } from '../../store/useStore';
 import { scheduleTaskNotification, requestNotificationPermission } from '../../lib/notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Scoreboard, { monthlyScores } from '../../components/Scoreboard';
+import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
+import { parseICS } from '../../lib/ics';
 
 type ViewMode = 'calendar' | 'list';
 type Priority = 'low' | 'normal' | 'high';
@@ -96,10 +99,11 @@ function TimePickerDropdown({ value, onChange }: { value: string; onChange: (t: 
 }
 
 // ─── ADD TASK MODAL ───────────────────────────────────────────
-function AddTaskModal({ visible, onClose, onSave, members, preselectedDate }: {
+function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, editTask }: {
   visible: boolean; onClose: () => void;
   onSave: (task: Partial<Task> & { due_time?: string; notify?: boolean }) => void;
   members: any[]; preselectedDate?: Date | null;
+  editTask?: (Task & { due_time?: string }) | null;
 }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -114,14 +118,30 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate }: {
   const [notify, setNotify] = useState(true);
 
   useEffect(() => {
-    if (visible && preselectedDate) setDueDate(format(preselectedDate, 'yyyy-MM-dd'));
     if (!visible) {
       setTitle(''); setDescription(''); setCategory('Haushalt');
       setPriority('normal'); setAssignedTo(null); setDueDate('');
       setDueTime(getCurrentTimeSlot()); setUseTime(false);
       setRecurrence(null); setRecurrenceInterval(1); setNotify(true);
+      return;
     }
-  }, [visible, preselectedDate]);
+    if (editTask) {
+      // Prefill for editing
+      setTitle(editTask.title || '');
+      setDescription(editTask.description || '');
+      setCategory(editTask.category || 'Haushalt');
+      setPriority((editTask.priority as Priority) || 'normal');
+      setAssignedTo(editTask.assigned_to || null);
+      setDueDate(editTask.due_date || '');
+      setUseTime(!!editTask.due_time);
+      setDueTime(editTask.due_time || getCurrentTimeSlot());
+      setRecurrence(editTask.recurrence || null);
+      setRecurrenceInterval(editTask.recurrence_interval || 1);
+      setNotify(true);
+    } else if (preselectedDate) {
+      setDueDate(format(preselectedDate, 'yyyy-MM-dd'));
+    }
+  }, [visible, preselectedDate, editTask]);
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -144,7 +164,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate }: {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={Platform.OS === 'web' ? { width: '100%', flex: 1 } : undefined}>
           <Pressable style={[styles.modalSheet, Platform.OS === 'web' && { maxHeight: '100%' }]}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Neue Aufgabe</Text>
+            <Text style={styles.modalTitle}>{editTask ? 'Aufgabe bearbeiten' : 'Neue Aufgabe'}</Text>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
               <TextInput style={styles.input} placeholder="Was ist zu tun?" placeholderTextColor={colors.textMuted} value={title} onChangeText={setTitle} autoFocus />
@@ -258,7 +278,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate }: {
               )}
 
               <TouchableOpacity style={[styles.saveBtn, !title.trim() && { opacity: 0.4 }]} onPress={handleSave} disabled={!title.trim()}>
-                <Text style={styles.saveBtnText}>Aufgabe erstellen ✓</Text>
+                <Text style={styles.saveBtnText}>{editTask ? 'Änderungen speichern ✓' : 'Aufgabe erstellen ✓'}</Text>
               </TouchableOpacity>
               <View style={{ height: 20 }} />
             </ScrollView>
@@ -342,12 +362,13 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
 }
 
 // ─── TASK DETAIL MODAL ────────────────────────────────────────
-function TaskDetailModal({ task, members, onClose, onComplete, onDelete }: {
+function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit }: {
   task: (Task & { due_time?: string }) | null;
   members: any[];
   onClose: () => void;
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (task: Task) => void;
 }) {
   if (!task) return null;
   const isCompleted = !!task.completed_at;
@@ -377,6 +398,9 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete }: {
 
             <TouchableOpacity style={styles.saveBtn} onPress={() => { onComplete(task.id); onClose(); }}>
               <Text style={styles.saveBtnText}>{isCompleted ? 'Als offen markieren' : 'Erledigt ✓'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.detailEditBtn} onPress={() => onEdit(task)}>
+              <Text style={styles.detailEditText}>✏️ Bearbeiten</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.detailDeleteBtn} onPress={() => { onClose(); onDelete(task.id); }}>
               <Text style={styles.detailDeleteText}>Löschen</Text>
@@ -482,6 +506,7 @@ export default function TasksScreen() {
   const [showToast, setShowToast] = useState(false);
   const [showScoreboard, setShowScoreboard] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [monthScores, setMonthScores] = useState<Record<string, number>>({});
 
   // Gamification only runs in households with more than one member and when not disabled
@@ -563,6 +588,58 @@ export default function TasksScreen() {
     }
   };
 
+  const handleSaveTask = async (taskData: Partial<Task> & { due_time?: string; notify?: boolean }) => {
+    if (!editingTask) { await handleAddTask(taskData); return; }
+    const { notify, due_time, ...rest } = taskData as any;
+    const { data } = await supabase.from('tasks')
+      .update({ ...rest, due_time: due_time || null })
+      .eq('id', editingTask.id).select().single();
+    if (data) setTasks(tasks.map(t => (t.id === editingTask.id ? data : t)));
+    setEditingTask(null);
+    hapticNotification(Haptics.NotificationFeedbackType.Success);
+    if (notify && data?.due_date) await scheduleTaskNotification(data.id, data.title, data.due_date, due_time);
+  };
+
+  const handleImportIcs = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+      if (res.canceled || !res.assets?.[0]) return;
+      const content = await new File(res.assets[0].uri).text();
+      const events = parseICS(content);
+      if (events.length === 0) { Alert.alert('Keine Termine', 'In der Datei wurden keine Termine gefunden. Erwartet wird eine .ics-Datei (z.B. Export aus Google Kalender).'); return; }
+      Alert.alert('Kalender importieren', `${events.length} Termine aus der Datei in den Heimlig-Kalender übernehmen?`, [
+        { text: 'Abbrechen', style: 'cancel' },
+        { text: 'Importieren', onPress: async () => {
+            if (!household || !currentMember) return;
+            const rows = events.map(e => {
+              const isBirthday = /geburtstag|glückwunsch/i.test(e.title);
+              const desc = [e.location, e.description].filter(Boolean).join(' · ').slice(0, 300) || undefined;
+              return {
+                household_id: household.id,
+                title: e.title,
+                description: desc,
+                category: isBirthday ? 'Familie' : 'Sonstiges',
+                priority: 'normal',
+                points: 10,
+                due_date: e.date,
+                due_time: e.time || null,
+                recurrence: e.recurrence || null,
+                recurrence_interval: e.recurrence ? 1 : null,
+                created_by: currentMember.id,
+              };
+            });
+            const { data, error } = await supabase.from('tasks').insert(rows).select();
+            if (error) { Alert.alert('Fehler', error.message); return; }
+            if (data) setTasks([...tasks, ...data]);
+            hapticNotification(Haptics.NotificationFeedbackType.Success);
+            Alert.alert('✓ Importiert', `${data?.length ?? events.length} Termine wurden in den Kalender übernommen.`);
+          } },
+      ]);
+    } catch (e: any) {
+      Alert.alert('Fehler', e?.message ?? 'Import fehlgeschlagen.');
+    }
+  };
+
   const handleDelete = (id: string) => {
     Alert.alert('Löschen', 'Aufgabe wirklich löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
@@ -597,6 +674,9 @@ export default function TasksScreen() {
               <Text style={styles.scoreBadgeText}>{isLeading ? '👑' : '🏆'} {myScore}</Text>
             </TouchableOpacity>
           )}
+          <TouchableOpacity style={styles.importBtn} onPress={handleImportIcs}>
+            <Text style={styles.viewToggleText}>📥</Text>
+          </TouchableOpacity>
           <View style={styles.viewToggle}>
             <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'calendar' && styles.viewToggleBtnActive]} onPress={() => { setViewMode('calendar'); setSelectedDate(null); }}>
               <Text style={styles.viewToggleText}>📅</Text>
@@ -706,6 +786,7 @@ export default function TasksScreen() {
         onClose={() => setSelectedTask(null)}
         onComplete={handleComplete}
         onDelete={handleDelete}
+        onEdit={(t) => { setSelectedTask(null); setEditingTask(t); }}
       />
 
       {gamificationOn && household && (
@@ -718,7 +799,14 @@ export default function TasksScreen() {
         />
       )}
 
-      <AddTaskModal visible={showModal} onClose={() => setShowModal(false)} onSave={handleAddTask} members={members} preselectedDate={selectedDate} />
+      <AddTaskModal
+        visible={showModal || !!editingTask}
+        onClose={() => { setShowModal(false); setEditingTask(null); }}
+        onSave={handleSaveTask}
+        members={members}
+        preselectedDate={selectedDate}
+        editTask={editingTask}
+      />
     </SafeAreaView>
   );
 }
@@ -732,6 +820,7 @@ const styles = StyleSheet.create({
   scoreBadge: { backgroundColor: colors.brandPale, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 4 },
   scoreBadgeLeading: { backgroundColor: '#FEF3C7' },
   scoreBadgeText: { ...typography.xs, color: colors.brand, fontWeight: '800' },
+  importBtn: { backgroundColor: colors.background, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, borderWidth: 1, borderColor: colors.border },
   viewToggle: { flexDirection: 'row', backgroundColor: colors.background, borderRadius: radius.md, padding: 3 },
   viewToggleBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.sm },
   viewToggleBtnActive: { backgroundColor: colors.surface, ...shadow.sm },
@@ -830,6 +919,8 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   detailLabel: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
   detailValue: { ...typography.body, color: colors.text, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: spacing.md },
+  detailEditBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
+  detailEditText: { ...typography.body, color: colors.text, fontWeight: '600' },
   detailDeleteBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.xs },
   detailDeleteText: { ...typography.body, color: colors.error, fontWeight: '600' },
   chipRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
