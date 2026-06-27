@@ -33,6 +33,9 @@ interface AppState {
   setShoppingLists: (lists: ShoppingList[]) => void;
   setActiveListId: (id: string | null) => void;
   setItems: (items: ShoppingItem[]) => void;
+  switchList: (id: string) => Promise<void>;
+  createShoppingList: (name: string, emoji: string) => Promise<void>;
+  deleteShoppingList: (id: string) => Promise<void>;
   toggleItem: (itemId: string) => Promise<void>;
   addItem: (listId: string, name: string, quantity?: string, category?: string, mealPlanId?: string) => Promise<void>;
   deleteItem: (itemId: string) => Promise<void>;
@@ -148,6 +151,45 @@ export const useStore = create<AppState>((set, get) => ({
   setShoppingLists: (lists) => set({ shoppingLists: lists }),
   setActiveListId: (id) => set({ activeListId: id }),
   setItems: (items) => set({ items }),
+
+  switchList: async (id) => {
+    if (get().activeListId === id) return;
+    set({ activeListId: id, items: [] });
+    const { data } = await supabase
+      .from('shopping_items').select('*').eq('list_id', id)
+      .order('checked', { ascending: true }).order('sort_order', { ascending: true });
+    set({ items: data || [] });
+  },
+
+  createShoppingList: async (name, emoji) => {
+    const { household, currentMember, shoppingLists } = get();
+    if (!household || !currentMember) return;
+    const { data } = await supabase
+      .from('shopping_lists')
+      .insert({ household_id: household.id, name, emoji, created_by: currentMember.id })
+      .select().single();
+    if (data) {
+      set({ shoppingLists: [...shoppingLists, data], activeListId: data.id, items: [] });
+    }
+  },
+
+  deleteShoppingList: async (id) => {
+    const { shoppingLists, activeListId } = get();
+    if (shoppingLists.length <= 1) return;
+    await supabase.from('shopping_items').delete().eq('list_id', id);
+    await supabase.from('shopping_lists').delete().eq('id', id);
+    const newLists = shoppingLists.filter(l => l.id !== id);
+    if (activeListId === id) {
+      const next = newLists[0];
+      set({ shoppingLists: newLists, activeListId: next.id, items: [] });
+      const { data } = await supabase
+        .from('shopping_items').select('*').eq('list_id', next.id)
+        .order('checked', { ascending: true }).order('sort_order', { ascending: true });
+      set({ items: data || [] });
+    } else {
+      set({ shoppingLists: newLists });
+    }
+  },
 
   toggleItem: async (itemId) => {
     const item = get().items.find(i => i.id === itemId);
