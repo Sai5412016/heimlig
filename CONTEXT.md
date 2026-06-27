@@ -46,8 +46,10 @@ Sie wird über `CLAUDE.md` automatisch in jede Session geladen.
 - Nach Code-Änderung: `npx tsc --noEmit` über die geänderten Dateien laufen lassen.
 
 ## Google-Group-Nachricht (festes Format für jeden Release)
-Plain Text, **kein** „Betreff", **kein** Fettdruck. Aufbau:
+Plain Text, **kein** Fettdruck, **mit** Betreff-Zeile. Aufbau:
 ```
+Betreff: <kurzer Titel mit Emoji>
+
 Hey zusammen,
 
 <ein Satz, was neu ist>
