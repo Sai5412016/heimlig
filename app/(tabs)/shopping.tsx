@@ -1,7 +1,8 @@
 // app/(tabs)/shopping.tsx
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { Dimensions } from 'react-native';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput,
+  View, Text, StyleSheet, TouchableOpacity, TextInput,
   Animated, Platform, KeyboardAvoidingView, Alert, RefreshControl,
   Pressable, Modal, ScrollView
 } from 'react-native';
@@ -237,6 +238,39 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
 
 const LIST_EMOJIS = ['🛒', '🛍️', '🏪', '💊', '🥦', '🥩', '🐾', '🏠', '📦', '👗'];
 
+const CATEGORY_EMOJIS: Record<string, string> = {
+  'Lebensmittel': '🥫', 'Obst & Gemüse': '🥦', 'Tiefkühl': '❄️',
+  'Fleisch & Fisch': '🥩', 'Drogerie': '💊', 'Backwaren': '🥖',
+  'Getränke': '🥤', 'Sonstiges': '🛒',
+};
+
+const TILE_SIZE = (Dimensions.get('window').width - spacing.lg * 2 - spacing.sm * 2) / 3;
+
+// ─── TILE ITEM ────────────────────────────────────────────────
+const TileItem = React.memo(({ item, onToggle, onDelete }: {
+  item: ShoppingItem; onToggle: (id: string) => void; onDelete: (id: string) => void;
+}) => {
+  const catColor = CATEGORY_COLORS[item.category] || colors.sonstiges;
+  const emoji = CATEGORY_EMOJIS[item.category] || '🛒';
+  return (
+    <TouchableOpacity
+      style={[styles.tile, { width: TILE_SIZE, backgroundColor: item.checked ? catColor + '40' : catColor + '18', borderColor: catColor + '60' }]}
+      onPress={() => onToggle(item.id)}
+      onLongPress={() => onDelete(item.id)}
+      activeOpacity={0.7}
+    >
+      {item.checked && (
+        <View style={[styles.tileCheckBadge, { backgroundColor: catColor }]}>
+          <Text style={styles.tileCheckMark}>✓</Text>
+        </View>
+      )}
+      <Text style={styles.tileEmoji}>{emoji}</Text>
+      <Text style={[styles.tileName, item.checked && styles.tileNameChecked]} numberOfLines={2}>{item.name}</Text>
+      {item.quantity ? <Text style={styles.tileQty}>{item.quantity}</Text> : null}
+    </TouchableOpacity>
+  );
+});
+
 // ─── LIST PICKER MODAL ────────────────────────────────────────
 const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
   const { shoppingLists, activeListId, switchList, createShoppingList, deleteShoppingList } = useStore();
@@ -373,6 +407,18 @@ export default function ShoppingScreen() {
   const checked = items.filter(i => i.checked);
   const progress = items.length > 0 ? checked.length / items.length : 0;
 
+  const groupedItems = useMemo(() => {
+    const groups: Record<string, ShoppingItem[]> = {};
+    unchecked.forEach(item => {
+      const cat = item.category || 'Sonstiges';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(item);
+    });
+    return SHOPPING_CATEGORIES
+      .filter(cat => groups[cat]?.length > 0)
+      .map(cat => ({ category: cat, items: groups[cat] }));
+  }, [unchecked]);
+
   const loadItems = useCallback(async () => {
     if (!activeListId) return;
     const { data } = await supabase
@@ -497,23 +543,71 @@ export default function ShoppingScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* List */}
-      <FlatList
-        data={listData}
-        keyExtractor={i => i.id}
-        renderItem={renderItem}
-        ListHeaderComponent={ListHeader}
-        ListFooterComponent={<CheckedHeader />}
+      {/* Tile Grid */}
+      <ScrollView
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
-        ListEmptyComponent={
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Progress */}
+        {items.length > 0 && (
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <Animated.View style={[styles.progressFill, {
+                width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] })
+              }]} />
+            </View>
+            <Text style={styles.progressText}>{checked.length} von {items.length} erledigt</Text>
+          </View>
+        )}
+
+        {/* Category groups */}
+        {groupedItems.map(({ category, items: catItems }) => (
+          <View key={category}>
+            <View style={styles.catHeader}>
+              <Text style={styles.catHeaderEmoji}>{CATEGORY_EMOJIS[category] || '🛒'}</Text>
+              <Text style={styles.catHeaderText}>{category.toUpperCase()}</Text>
+              <Text style={styles.catHeaderCount}>{catItems.length}</Text>
+            </View>
+            <View style={styles.tileGrid}>
+              {catItems.map(item => (
+                <TileItem key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+              ))}
+            </View>
+          </View>
+        ))}
+
+        {/* Empty state */}
+        {items.length === 0 && (
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>🛒</Text>
             <Text style={styles.emptyTitle}>Liste ist leer</Text>
             <Text style={styles.emptyBody}>Füge deinen ersten Artikel hinzu.</Text>
           </View>
-        }
-      />
+        )}
+
+        {/* Checked items */}
+        {checked.length > 0 && (
+          <View style={styles.checkedSection}>
+            <View style={styles.checkedHeader}>
+              <TouchableOpacity onPress={() => setShowChecked(v => !v)} style={styles.checkedToggle}>
+                <Text style={styles.checkedHeaderText}>✓ Erledigt ({checked.length})</Text>
+                <Text style={styles.checkedToggleIcon}>{showChecked ? '▲' : '▼'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleClearChecked}>
+                <Text style={styles.clearCheckedText}>Löschen</Text>
+              </TouchableOpacity>
+            </View>
+            {showChecked && (
+              <View style={styles.tileGrid}>
+                {checked.map(item => (
+                  <TileItem key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
 
       {/* FABs */}
       <View style={styles.fabGroup}>
@@ -684,6 +778,30 @@ const styles = StyleSheet.create({
   },
   addBtnDisabled: { opacity: 0.4 },
   addBtnText: { ...typography.body, color: colors.textInverse, fontWeight: '700' },
+
+  // Bring! tile grid
+  catHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    paddingHorizontal: spacing.sm, marginTop: spacing.md, marginBottom: spacing.sm,
+  },
+  catHeaderEmoji: { fontSize: 16 },
+  catHeaderText: { ...typography.label, color: colors.textMuted, flex: 1 },
+  catHeaderCount: { ...typography.xs, color: colors.textMuted, backgroundColor: colors.border, borderRadius: radius.full, paddingHorizontal: 7, paddingVertical: 2 },
+  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingHorizontal: spacing.sm },
+  tile: {
+    width: TILE_SIZE, height: 90, borderRadius: radius.md, borderWidth: 1.5,
+    padding: spacing.sm, alignItems: 'center', justifyContent: 'center', position: 'relative',
+  },
+  tileCheckBadge: {
+    position: 'absolute', top: 4, right: 4,
+    width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center',
+  },
+  tileCheckMark: { color: colors.textInverse, fontSize: 10, fontWeight: '700' },
+  tileEmoji: { fontSize: 22, marginBottom: 4 },
+  tileName: { ...typography.xs, color: colors.text, fontWeight: '600', textAlign: 'center' },
+  tileNameChecked: { textDecorationLine: 'line-through', color: colors.textMuted },
+  tileQty: { ...typography.xs, color: colors.textSecondary, marginTop: 2 },
+  checkedSection: { marginTop: spacing.md },
 
   // List picker
   listRow: {

@@ -1,5 +1,5 @@
 // app/(tabs)/tasks.tsx
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   Modal, ScrollView, Pressable, KeyboardAvoidingView, Platform, Alert, Animated, Linking
@@ -502,6 +502,7 @@ export default function TasksScreen() {
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [toastPoints, setToastPoints] = useState(0);
   const [showToast, setShowToast] = useState(false);
   const [showScoreboard, setShowScoreboard] = useState(false);
@@ -647,10 +648,17 @@ export default function TasksScreen() {
     ]);
   };
 
+  const availableYears = useMemo(() => {
+    const years = new Set<number>([new Date().getFullYear()]);
+    tasks.forEach(t => { if (t.due_date) years.add(parseISO(t.due_date).getFullYear()); });
+    return Array.from(years).sort();
+  }, [tasks]);
+
   const filteredTasks = tasks.filter(t => {
     if (!showCompleted && t.completed_at) return false;
     if (filterCategory && t.category !== filterCategory) return false;
     if (selectedDate && viewMode === 'calendar') return t.due_date && isSameDay(parseISO(t.due_date), selectedDate);
+    if (viewMode === 'list' && t.due_date && parseISO(t.due_date).getFullYear() !== selectedYear) return false;
     return true;
   });
 
@@ -697,6 +705,18 @@ export default function TasksScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {viewMode === 'calendar' && (
           <CalendarView tasks={tasks} selectedDate={selectedDate} mealPlans={mealPlans} onDayPress={(day) => setSelectedDate(isSameDay(day, selectedDate || new Date(-1)) ? null : day)} />
+        )}
+
+        {viewMode === 'list' && availableYears.length > 1 && (
+          <View style={styles.yearNav}>
+            <TouchableOpacity onPress={() => { const i = availableYears.indexOf(selectedYear); if (i > 0) setSelectedYear(availableYears[i - 1]); }} style={styles.yearNavBtn}>
+              <Text style={styles.yearNavArrow}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.yearNavText}>{selectedYear}</Text>
+            <TouchableOpacity onPress={() => { const i = availableYears.indexOf(selectedYear); if (i < availableYears.length - 1) setSelectedYear(availableYears[i + 1]); }} style={styles.yearNavBtn}>
+              <Text style={styles.yearNavArrow}>›</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
@@ -841,6 +861,10 @@ const styles = StyleSheet.create({
   dayNumber: { ...typography.sm, color: colors.text, fontWeight: '500' },
   dotRow: { flexDirection: 'row', gap: 2, marginTop: 2 },
   taskDotCal: { width: 5, height: 5, borderRadius: 3 },
+  yearNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.sm, gap: spacing.lg },
+  yearNavBtn: { padding: spacing.sm },
+  yearNavArrow: { fontSize: 22, color: colors.brand, fontWeight: '600', lineHeight: 24 },
+  yearNavText: { ...typography.h3, color: colors.text, minWidth: 52, textAlign: 'center' },
   filterScroll: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   filterChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, marginRight: spacing.sm, backgroundColor: colors.surface },
   filterChipActive: { backgroundColor: colors.brand, borderColor: colors.brand },
