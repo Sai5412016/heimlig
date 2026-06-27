@@ -235,11 +235,133 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
 };
 
 
+const LIST_EMOJIS = ['🛒', '🛍️', '🏪', '💊', '🥦', '🥩', '🐾', '🏠', '📦', '👗'];
+
+// ─── LIST PICKER MODAL ────────────────────────────────────────
+const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
+  const { shoppingLists, activeListId, switchList, createShoppingList, deleteShoppingList } = useStore();
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newEmoji, setNewEmoji] = useState('🛒');
+  const nameRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (!visible) { setCreating(false); setNewName(''); setNewEmoji('🛒'); }
+  }, [visible]);
+
+  useEffect(() => {
+    if (creating) setTimeout(() => nameRef.current?.focus(), 200);
+  }, [creating]);
+
+  const handleSwitch = async (id: string) => {
+    await switchList(id);
+    onClose();
+  };
+
+  const handleCreate = async () => {
+    if (!newName.trim()) return;
+    await createShoppingList(newName.trim(), newEmoji);
+    onClose();
+  };
+
+  const handleDelete = (id: string, name: string) => {
+    if (shoppingLists.length <= 1) {
+      Alert.alert('Nicht möglich', 'Du brauchst mindestens eine Einkaufsliste.');
+      return;
+    }
+    Alert.alert(`"${name}" löschen?`, 'Alle Artikel in dieser Liste werden ebenfalls gelöscht.', [
+      { text: 'Abbrechen', style: 'cancel' },
+      { text: 'Löschen', style: 'destructive', onPress: () => deleteShoppingList(id) },
+    ]);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
+        <Pressable style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>Einkaufslisten</Text>
+
+          {shoppingLists.map(list => (
+            <TouchableOpacity
+              key={list.id}
+              style={[styles.listRow, list.id === activeListId && styles.listRowActive]}
+              onPress={() => handleSwitch(list.id)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.listRowEmoji}>{list.emoji ?? '🛒'}</Text>
+              <Text style={[styles.listRowName, list.id === activeListId && styles.listRowNameActive]}>
+                {list.name}
+              </Text>
+              {list.id === activeListId && <Text style={styles.listRowCheck}>✓</Text>}
+              {list.id !== activeListId && (
+                <TouchableOpacity
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  onPress={() => handleDelete(list.id, list.name)}
+                >
+                  <Text style={styles.listRowDelete}>🗑</Text>
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+          ))}
+
+          {creating ? (
+            <View style={styles.createBox}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  {LIST_EMOJIS.map(e => (
+                    <TouchableOpacity
+                      key={e}
+                      style={[styles.emojiChip, newEmoji === e && styles.emojiChipActive]}
+                      onPress={() => setNewEmoji(e)}
+                    >
+                      <Text style={styles.emojiChipText}>{e}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+              <View style={styles.inputRow}>
+                <TextInput
+                  ref={nameRef}
+                  style={[styles.input, styles.inputFlex]}
+                  placeholder="Name der Liste"
+                  placeholderTextColor={colors.textMuted}
+                  value={newName}
+                  onChangeText={setNewName}
+                  returnKeyType="done"
+                  onSubmitEditing={handleCreate}
+                />
+              </View>
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <TouchableOpacity style={[styles.addBtn, { flex: 1, backgroundColor: colors.border }]} onPress={() => setCreating(false)}>
+                  <Text style={[styles.addBtnText, { color: colors.text }]}>Abbrechen</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.addBtn, { flex: 1 }, !newName.trim() && styles.addBtnDisabled]}
+                  onPress={handleCreate}
+                  disabled={!newName.trim()}
+                >
+                  <Text style={styles.addBtnText}>Erstellen</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.newListBtn} onPress={() => setCreating(true)}>
+              <Text style={styles.newListBtnText}>+ Neue Liste</Text>
+            </TouchableOpacity>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+};
+
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function ShoppingScreen() {
   const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe, loadItemCatalog } = useStore();
   const [showModal, setShowModal] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [showListPicker, setShowListPicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showChecked, setShowChecked] = useState(true);
   const isPremium = household?.plan_tier !== 'free';
@@ -370,7 +492,7 @@ export default function ShoppingScreen() {
             {household?.name ?? 'Mein Haushalt'}
           </Text>
         </View>
-        <TouchableOpacity style={styles.listSwitchBtn}>
+        <TouchableOpacity style={styles.listSwitchBtn} onPress={() => setShowListPicker(true)}>
           <Text style={styles.listSwitchText}>Listen ▾</Text>
         </TouchableOpacity>
       </View>
@@ -407,6 +529,7 @@ export default function ShoppingScreen() {
 
       <AddItemModal visible={showModal} onClose={() => setShowModal(false)} onAdd={handleAdd} />
       <RecipeImportModal visible={showRecipeModal} onClose={() => setShowRecipeModal(false)} onAdd={handleRecipeAdd} />
+      <ListPickerModal visible={showListPicker} onClose={() => setShowListPicker(false)} />
     </SafeAreaView>
   );
 }
@@ -561,4 +684,29 @@ const styles = StyleSheet.create({
   },
   addBtnDisabled: { opacity: 0.4 },
   addBtnText: { ...typography.body, color: colors.textInverse, fontWeight: '700' },
+
+  // List picker
+  listRow: {
+    flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md,
+    borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+  },
+  listRowActive: { backgroundColor: colors.brandPale, marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg, borderRadius: radius.md },
+  listRowEmoji: { fontSize: 22, marginRight: spacing.md },
+  listRowName: { flex: 1, ...typography.body, color: colors.text },
+  listRowNameActive: { color: colors.brand, fontWeight: '700' },
+  listRowCheck: { fontSize: 16, color: colors.brand, fontWeight: '700' },
+  listRowDelete: { fontSize: 18, paddingLeft: spacing.sm },
+  newListBtn: {
+    marginTop: spacing.md, borderWidth: 1.5, borderColor: colors.brand,
+    borderRadius: radius.md, padding: spacing.md, alignItems: 'center',
+    borderStyle: 'dashed',
+  },
+  newListBtnText: { ...typography.body, color: colors.brand, fontWeight: '600' },
+  createBox: { marginTop: spacing.md },
+  emojiChip: {
+    width: 42, height: 42, borderRadius: radius.md, borderWidth: 1.5,
+    borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
+  },
+  emojiChipActive: { borderColor: colors.brand, backgroundColor: colors.brandPale },
+  emojiChipText: { fontSize: 20 },
 });
