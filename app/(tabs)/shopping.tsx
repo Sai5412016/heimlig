@@ -296,7 +296,37 @@ const ITEM_EMOJIS: Record<string, string> = {
   'honig': '🍯',
   'schokolade': '🍫',
   'erdnussbutter': '🥜', 'nüsse': '🥜',
-  'chips': '🫙', 'snacks': '🫙',
+  'chips': '🍟', 'snacks': '🫙',
+  // Fleisch & Wurst
+  'bratwurst': '🌭', 'wurst': '🌭', 'würstchen': '🌭', 'wiener': '🌭', 'frankfurter': '🌭',
+  'aufschnitt': '🥩', 'salami': '🥩', 'speck': '🥓', 'bacon': '🥓',
+  'steak': '🥩', 'schweinefleisch': '🥩', 'rindfleisch': '🥩',
+  'grillfleisch': '🍖', 'grillwurst': '🌭', 'grillgut': '🍖',
+  'fischstäbchen': '🐟', 'garnelen': '🦐',
+  // Salate & Fertiggerichte
+  'kartoffelsalat': '🥔', 'nudelsalat': '🍝', 'krautsalat': '🥗',
+  'salat': '🥗', 'feldsalat': '🥗', 'rucola': '🥗', 'eisbergsalat': '🥗',
+  'coleslaw': '🥗',
+  // Gemüse ergänzend
+  'spinat': '🥬', 'mangold': '🥬', 'grünkohl': '🥬', 'wirsing': '🥬',
+  'rotkohl': '🥬', 'weißkohl': '🥬', 'sauerkraut': '🥬',
+  'lauch': '🧅', 'porree': '🧅', 'frühlingszwiebeln': '🧅',
+  'radieschen': '🫑', 'rote beete': '🟣', 'zucchini': '🥒', 'aubergine': '🍆',
+  'erbsen': '🫛', 'bohnen': '🫛', 'linsen': '🫛', 'kichererbsen': '🫛',
+  // Obst ergänzend
+  'mango': '🥭', 'ananas': '🍍', 'melone': '🍈', 'wassermelone': '🍉',
+  'kiwi': '🥝', 'birnen': '🍐', 'birne': '🍐', 'pflaumen': '🍑',
+  'kirschen': '🍒', 'blaubeeren': '🫐', 'himbeeren': '🍓',
+  // Saucen & Gewürze
+  'ketchup': '🍅', 'senf': '🌿', 'mayonnaise': '🥚', 'mayo': '🥚',
+  'soße': '🫙', 'tomatensoße': '🍅', 'pestosoße': '🌿', 'pesto': '🌿',
+  'essig': '🫙', 'balsamico': '🫙',
+  // Tiefkühl
+  'tiefkühlpizza': '🍕', 'tiefkühlfisch': '🐟',
+  'eis': '🍦', 'eiscreme': '🍦',
+  // Haushalt
+  'waschmittel': '🧺', 'spülmittel': '🧴', 'toilettenpapier': '🧻',
+  'küchenrolle': '🧻', 'müllbeutel': '🗑️',
 };
 
 function getItemEmoji(name: string, category: string): string {
@@ -357,6 +387,37 @@ const ITEM_COLORS: Record<string, string> = {
   'schokolade': '#7C4D33',
   'erdnussbutter': '#C49A6C', 'nüsse': '#C49A6C',
   'chips': '#FFD93D', 'snacks': '#FF7038',
+  // Fleisch & Wurst (ergänzend)
+  'bratwurst': '#D4603A', 'wurst': '#D4603A', 'würstchen': '#D4603A', 'wiener': '#D4603A', 'frankfurter': '#D4603A',
+  'aufschnitt': '#C0544D', 'salami': '#C0544D',
+  'speck': '#E87A7A', 'bacon': '#E87A7A',
+  'steak': '#C0544D', 'schweinefleisch': '#C0544D', 'rindfleisch': '#C0544D',
+  'grillfleisch': '#B94040', 'grillwurst': '#D4603A', 'grillgut': '#B94040',
+  'fischstäbchen': '#7EB4D5', 'garnelen': '#FF9E7D',
+  // Salate & Fertiggerichte
+  'kartoffelsalat': '#C49A6C', 'nudelsalat': '#F5D293', 'krautsalat': '#74C69D',
+  'salat': '#51CF66', 'feldsalat': '#51CF66', 'rucola': '#51CF66', 'eisbergsalat': '#74C69D',
+  'coleslaw': '#74C69D',
+  // Gemüse (ergänzend)
+  'spinat': '#2D9E57', 'mangold': '#51CF66', 'grünkohl': '#2D9E57', 'wirsing': '#74C69D',
+  'rotkohl': '#9B59B6', 'weißkohl': '#DDD5C8', 'sauerkraut': '#A8CF74',
+  'lauch': '#74C69D', 'porree': '#74C69D', 'frühlingszwiebeln': '#74C69D',
+  'radieschen': '#FF4B6E', 'rote beete': '#9B2335', 'zucchini': '#74C69D', 'aubergine': '#6C3483',
+  'erbsen': '#51CF66', 'bohnen': '#2D9E57', 'linsen': '#C49A6C', 'kichererbsen': '#D4A847',
+  // Obst (ergänzend)
+  'mango': '#FF9F1C', 'ananas': '#FFD93D', 'melone': '#A8CF74', 'wassermelone': '#FF4B6E',
+  'kiwi': '#6BAD6A', 'birnen': '#A8CF74', 'birne': '#A8CF74', 'pflaumen': '#9B59B6',
+  'kirschen': '#C0392B', 'blaubeeren': '#4A6FA5', 'himbeeren': '#E91E8C',
+  // Saucen & Gewürze
+  'ketchup': '#FF4444', 'senf': '#FFD93D', 'mayonnaise': '#F5D293', 'mayo': '#F5D293',
+  'soße': '#C49A6C', 'tomatensoße': '#FF4444', 'pestosoße': '#2D9E57', 'pesto': '#2D9E57',
+  'essig': '#DDD5C8', 'balsamico': '#7C4D33',
+  // Tiefkühl
+  'tiefkühlpizza': '#FF7038', 'tiefkühlfisch': '#7EB4D5',
+  'eis': '#81ECEC', 'eiscreme': '#81ECEC',
+  // Haushalt
+  'waschmittel': '#74C5F5', 'spülmittel': '#74C5F5', 'toilettenpapier': '#DDD5C8',
+  'küchenrolle': '#DDD5C8', 'müllbeutel': '#7F8C8D',
 };
 
 function getItemColor(name: string, category: string): string {
