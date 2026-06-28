@@ -1,20 +1,23 @@
 // app/(tabs)/_layout.tsx
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
+import { radius, typography } from '../../constants/theme';
 
 function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
+  const { colors } = useTheme();
   return (
-    <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
-      <Text style={styles.tabEmoji}>{emoji}</Text>
-      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
+    <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.sm, minWidth: 56, backgroundColor: focused ? colors.brandPale : 'transparent' }}>
+      <Text style={{ fontSize: 20 }}>{emoji}</Text>
+      <Text style={{ fontSize: 8, color: focused ? colors.brand : colors.textMuted, marginTop: 1, fontWeight: focused ? '700' : '600' }}>{label}</Text>
     </View>
   );
 }
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   return (
     <Tabs
@@ -40,11 +43,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  tabIcon: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, minWidth: 56 },
-  tabIconActive: { backgroundColor: colors.brandPale },
-  tabEmoji: { fontSize: 20 },
-  tabLabel: { fontSize: 8, color: colors.textMuted, marginTop: 1, fontWeight: '600' },
-  tabLabelActive: { color: colors.brand, fontWeight: '700' },
-});

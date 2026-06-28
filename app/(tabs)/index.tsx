@@ -1,23 +1,27 @@
 // app/(tabs)/index.tsx – Dashboard
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { colors, spacing, radius, typography, shadow } from '../../constants/theme';
+import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
 import { useStore } from '../../store/useStore';
 import { supabase } from '../../lib/supabase';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 function AvatarCircle({ name, color, size = 36 }: { name: string; color: string; size?: number }) {
+  const { colors } = useTheme();
   return (
-    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: color }]}>
-      <Text style={[styles.avatarText, { fontSize: size * 0.38 }]}>{name[0].toUpperCase()}</Text>
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.surface }}>
+      <Text style={{ color: '#fff', fontWeight: '700', fontSize: size * 0.38 }}>{name[0].toUpperCase()}</Text>
     </View>
   );
 }
 
 function StatCard({ emoji, label, value, sub, onPress, color = colors.brand }: any) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <TouchableOpacity style={styles.statCard} onPress={onPress} activeOpacity={0.8}>
       <Text style={styles.statEmoji}>{emoji}</Text>
@@ -29,6 +33,8 @@ function StatCard({ emoji, label, value, sub, onPress, color = colors.brand }: a
 }
 
 function TaskRow({ task, onComplete }: any) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const dueText = task.due_date
     ? isToday(parseISO(task.due_date)) ? 'Heute'
     : isTomorrow(parseISO(task.due_date)) ? 'Morgen'
@@ -57,6 +63,8 @@ const QUICK_ACTIONS = [
 ];
 
 export default function DashboardScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const router = useRouter();
   const { household, currentMember, members, tasks, items, transactions, completeTask, setTasks, setTransactions } = useStore();
   const [refreshing, setRefreshing] = React.useState(false);
@@ -190,7 +198,7 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { paddingHorizontal: spacing.lg },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.md, marginBottom: spacing.sm },
@@ -228,4 +236,4 @@ const styles = StyleSheet.create({
   shoppingPreviewItems: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   previewChip: { backgroundColor: colors.background, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   previewChipText: { ...typography.sm, color: colors.text },
-});
+}); }

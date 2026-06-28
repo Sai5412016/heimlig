@@ -1,10 +1,11 @@
 // components/RecipeImportModal.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   Modal, Pressable, ScrollView, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
-import { colors, spacing, radius, typography } from '../constants/theme';
+import { colors, spacing, radius, typography, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../hooks/useTheme';
 import { supabase, RecipeIngredient, MealType } from '../lib/supabase';
 import { format, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -19,6 +20,8 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
   onClose: () => void;
   onAdd: (ingredients: RecipeIngredient[], recipeName: string, opts: RecipeAddOpts) => void;
 }) {
+  const { colors } = useTheme();
+  const s = useMemo(() => makeStyles(colors), [colors]);
   const [inputMode, setInputMode] = useState<'url' | 'text' | 'image'>('url');
   const [input, setInput] = useState('');
   const [imageB64, setImageB64] = useState<string | null>(null);
@@ -205,7 +208,7 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
   );
 }
 
-const s = StyleSheet.create({
+function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   flex: { flex: 1 },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xxl },
@@ -241,4 +244,4 @@ const s = StyleSheet.create({
   chipTextActive: { color: colors.brand },
   mealTypeRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
   mealChip: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
-});
+}); }

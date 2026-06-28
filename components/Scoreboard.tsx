@@ -1,7 +1,8 @@
 // components/Scoreboard.tsx — monthly household scoreboard with fun titles
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
-import { colors, spacing, radius, typography, shadow } from '../constants/theme';
+import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../constants/theme';
+import { useTheme } from '../hooks/useTheme';
 import { supabase, Member } from '../lib/supabase';
 import { taskPoints, titleForPoints } from '../lib/gamification';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
@@ -43,6 +44,8 @@ export default function Scoreboard({ visible, onClose, householdId, members, cur
   members: Member[];
   currentMemberId?: string;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const now = new Date();
@@ -100,7 +103,7 @@ export default function Scoreboard({ visible, onClose, householdId, members, cur
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xxl, maxHeight: '85%' },
   handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
@@ -119,4 +122,4 @@ const styles = StyleSheet.create({
   footnote: { ...typography.xs, color: colors.textMuted, textAlign: 'center', marginTop: spacing.lg, marginHorizontal: spacing.md },
   closeBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },
   closeBtnText: { ...typography.body, color: colors.textSecondary },
-});
+}); }
