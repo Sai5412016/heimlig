@@ -298,23 +298,83 @@ function getItemEmoji(name: string, category: string): string {
   return ITEM_EMOJIS[name.toLowerCase().trim()] || CATEGORY_EMOJIS[category] || '🛒';
 }
 
+const ITEM_COLORS: Record<string, string> = {
+  // Obst & Gemüse
+  'bananen': '#FFD93D', 'banane': '#FFD93D',
+  'tomaten': '#FF4444', 'tomate': '#FF4444', 'cherrytomaten': '#FF4444', 'rispentomaten': '#FF4444',
+  'brokkoli': '#51CF66', 'blumenkohl': '#94A3B8',
+  'gurke': '#74C69D', 'salatgurke': '#74C69D',
+  'paprika': '#FF6B35', 'spitzpaprika': '#FF6B35',
+  'karotten': '#FF922B', 'möhren': '#FF922B', 'karotte': '#FF922B', 'pastinaken': '#FF922B',
+  'kartoffeln': '#C49A6C', 'kartoffel': '#C49A6C', 'süßkartoffeln': '#E27D3E',
+  'äpfel': '#FF4B4B', 'apfel': '#FF4B4B',
+  'zitronen': '#FFD93D', 'zitrone': '#FFD93D', 'limetten': '#51CF66',
+  'orangen': '#FF9F1C', 'orange': '#FF9F1C', 'mandarinen': '#FF9F1C', 'clementinen': '#FF9F1C',
+  'erdbeeren': '#FF4B6E', 'erdbeere': '#FF4B6E',
+  'weintrauben': '#9B59B6', 'trauben': '#9B59B6',
+  'avocado': '#6BAD6A',
+  'mais': '#FFD93D',
+  'chili': '#EF4444', 'peperoni': '#EF4444',
+  'pilze': '#A0856C', 'champignons': '#A0856C', 'kräuterseitlinge': '#A0856C',
+  'zwiebeln': '#C084FC', 'zwiebel': '#C084FC', 'rote zwiebeln': '#C084FC',
+  'knoblauch': '#DDD5C8',
+  'kürbis': '#FF7F00', 'hokkaido': '#FF7F00', 'butternut': '#FF7F00',
+  // Milch & Kühlung
+  'milch': '#7CB9E8', 'sahne': '#7CB9E8', 'hafermilch': '#A8D5A2',
+  'eier': '#F5D293', 'ei': '#F5D293',
+  'butter': '#FFD166',
+  'käse': '#FFC107',
+  'joghurt': '#81ECEC',
+  // Backwaren
+  'brot': '#C49A6C', 'toastbrot': '#C49A6C', 'vollkornbrot': '#8B6343',
+  'brötchen': '#F5D293', 'baguette': '#C49A6C', 'croissant': '#F5D293',
+  // Getränke
+  'bier': '#FBBF24', 'pils': '#FBBF24', 'weizenbier': '#FBBF24',
+  'wein': '#9B2335', 'rotwein': '#9B2335', 'weißwein': '#D4B896', 'roséwein': '#E8B4B8',
+  'kaffee': '#7C5C3E', 'kaffeebohnen': '#7C5C3E', 'espresso': '#7C5C3E',
+  'tee': '#A8CF74',
+  'wasser': '#90CAF9', 'mineralwasser': '#90CAF9', 'stilles wasser': '#90CAF9',
+  'saft': '#FF9F1C', 'orangensaft': '#FF9F1C', 'apfelsaft': '#FFBE57', 'apfelschorle': '#FFBE57',
+  'cola': '#C41E3A', 'limonade': '#FFD93D', 'fanta': '#FF8C00',
+  // Fleisch & Fisch
+  'lachs': '#FF9E7D', 'räucherlachs': '#FF9E7D', 'thunfisch': '#7EB4D5',
+  'hähnchen': '#F5D293', 'hähnchenbrust': '#F5D293', 'hähnchenschenkel': '#F5D293',
+  'hackfleisch': '#C0544D', 'rindersteak': '#C0544D', 'schinken': '#E87A7A',
+  // Tiefkühl & Sonstiges
+  'pizza': '#FF7038',
+  'nudeln': '#F5D293', 'pasta': '#F5D293', 'spaghetti': '#F5D293',
+  'reis': '#E8E0D0',
+  'mehl': '#DDD5C8',
+  'zucker': '#FFD93D',
+  'olivenöl': '#A8CF74', 'öl': '#A8CF74',
+  'salz': '#B0C4DE',
+  'honig': '#FFB830',
+  'schokolade': '#7C4D33',
+  'erdnussbutter': '#C49A6C', 'nüsse': '#C49A6C',
+  'chips': '#FFD93D', 'snacks': '#FF7038',
+};
+
+function getItemColor(name: string, category: string): string {
+  return ITEM_COLORS[name.toLowerCase().trim()] || CATEGORY_COLORS[category] || colors.sonstiges;
+}
+
 const TILE_SIZE = (Dimensions.get('window').width - spacing.lg * 2 - spacing.sm * 2) / 3;
 
 // ─── TILE ITEM ────────────────────────────────────────────────
 const TileItem = React.memo(({ item, onToggle, onDelete }: {
   item: ShoppingItem; onToggle: (id: string) => void; onDelete: (id: string) => void;
 }) => {
-  const catColor = CATEGORY_COLORS[item.category] || colors.sonstiges;
+  const itemColor = getItemColor(item.name, item.category);
   const emoji = getItemEmoji(item.name, item.category);
   return (
     <TouchableOpacity
-      style={[styles.tile, { width: TILE_SIZE, backgroundColor: item.checked ? catColor + '40' : catColor + '18', borderColor: catColor + '60' }]}
+      style={[styles.tile, { width: TILE_SIZE, backgroundColor: item.checked ? itemColor + '40' : itemColor + '18', borderColor: itemColor + '60' }]}
       onPress={() => onToggle(item.id)}
       onLongPress={() => onDelete(item.id)}
       activeOpacity={0.7}
     >
       {item.checked && (
-        <View style={[styles.tileCheckBadge, { backgroundColor: catColor }]}>
+        <View style={[styles.tileCheckBadge, { backgroundColor: itemColor }]}>
           <Text style={styles.tileCheckMark}>✓</Text>
         </View>
       )}
