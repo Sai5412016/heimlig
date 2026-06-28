@@ -5,6 +5,11 @@ export type Exercise = {
   description: string;
   steps: string[];
   warning?: string;
+  breathingGuide?: {
+    inhaleSeconds: number;
+    exhaleSeconds: number;
+    targetBreaths: number;
+  };
 };
 
 export type Phase = {
@@ -42,6 +47,11 @@ export const TRAINING_PHASES: Phase[] = [
           'Visualisiere warme goldene Energie, die durch die Körpermittellinie nach unten in den Schrittbereich fließt.',
           'Wiederhole 30–50 Atemzüge in ruhigem Tempo.',
         ],
+        breathingGuide: {
+          inhaleSeconds: 5,
+          exhaleSeconds: 7,
+          targetBreaths: 40,
+        },
       },
       {
         id: 'p1e2',
@@ -230,6 +240,11 @@ export const TRAINING_PHASES: Phase[] = [
           'Den Körper nicht verkrampfen – Kraft kommt durch Entspannung, nicht durch Anspannung.',
           'Visualisiere den Schrittbereich als dichtes, weiches Metall – nicht starr, aber belastbar.',
         ],
+        breathingGuide: {
+          inhaleSeconds: 3,
+          exhaleSeconds: 3,
+          targetBreaths: 20,
+        },
       },
     ],
     progressionTip: 'Langsam, fokussiert, achtsam. Geschwindigkeit und Kraft kommen nach Monaten konsistenter Übung. Nicht eilen.',

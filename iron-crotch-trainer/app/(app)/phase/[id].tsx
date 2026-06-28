@@ -10,13 +10,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors } from '../../../constants/colors';
-import { TRAINING_PHASES, getPhaseColor } from '../../../data/trainingPlan';
+import { TRAINING_PHASES, getPhaseColor, type Exercise } from '../../../data/trainingPlan';
 import { setCurrentPhase } from '../../../lib/storage';
+import BreathingGuide from '../../../components/BreathingGuide';
 
 export default function PhaseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
+  const [breathingExercise, setBreathingExercise] = useState<Exercise | null>(null);
 
   const phase = TRAINING_PHASES.find((p) => p.id === id);
 
@@ -123,6 +125,22 @@ export default function PhaseDetailScreen() {
                       <Text style={styles.exerciseWarningText}>⚠️ {exercise.warning}</Text>
                     </View>
                   )}
+
+                  {exercise.breathingGuide && (
+                    <TouchableOpacity
+                      style={[styles.breathingBtn, { borderColor: color }]}
+                      onPress={() => setBreathingExercise(exercise)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.breathingBtnIcon}>🫁</Text>
+                      <View>
+                        <Text style={[styles.breathingBtnText, { color }]}>Atemhilfe starten</Text>
+                        <Text style={styles.breathingBtnSub}>
+                          {exercise.breathingGuide.inhaleSeconds}s ein · {exercise.breathingGuide.exhaleSeconds}s aus · {exercise.breathingGuide.targetBreaths} Atemzüge
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </View>
@@ -142,6 +160,17 @@ export default function PhaseDetailScreen() {
           <Text style={styles.logButtonText}>📋  Session protokollieren</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {breathingExercise?.breathingGuide && (
+        <BreathingGuide
+          visible={breathingExercise !== null}
+          onClose={() => setBreathingExercise(null)}
+          inhaleSeconds={breathingExercise.breathingGuide.inhaleSeconds}
+          exhaleSeconds={breathingExercise.breathingGuide.exhaleSeconds}
+          targetBreaths={breathingExercise.breathingGuide.targetBreaths}
+          title={breathingExercise.name}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -398,5 +427,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  breathingBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 14,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  breathingBtnIcon: {
+    fontSize: 26,
+  },
+  breathingBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  breathingBtnSub: {
+    fontSize: 11,
+    color: '#666666',
   },
 });
