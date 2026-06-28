@@ -239,10 +239,64 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
 const LIST_EMOJIS = ['🛒', '🛍️', '🏪', '💊', '🥦', '🥩', '🐾', '🏠', '📦', '👗'];
 
 const CATEGORY_EMOJIS: Record<string, string> = {
-  'Lebensmittel': '🥫', 'Obst & Gemüse': '🥦', 'Tiefkühl': '❄️',
+  'Lebensmittel': '🥫', 'Obst & Gemüse': '🥬', 'Tiefkühl': '❄️',
   'Fleisch & Fisch': '🥩', 'Drogerie': '💊', 'Backwaren': '🥖',
   'Getränke': '🥤', 'Sonstiges': '🛒',
 };
+
+const ITEM_EMOJIS: Record<string, string> = {
+  'gurke': '🥒', 'salatgurke': '🥒',
+  'brokkoli': '🥦', 'blumenkohl': '🥦',
+  'tomaten': '🍅', 'tomate': '🍅', 'cherrytomaten': '🍅', 'rispentomaten': '🍅',
+  'äpfel': '🍎', 'apfel': '🍎',
+  'bananen': '🍌', 'banane': '🍌',
+  'karotten': '🥕', 'möhren': '🥕', 'karotte': '🥕', 'pastinaken': '🥕',
+  'kartoffeln': '🥔', 'kartoffel': '🥔', 'süßkartoffeln': '🥔',
+  'paprika': '🫑', 'spitzpaprika': '🫑',
+  'zitronen': '🍋', 'zitrone': '🍋', 'limetten': '🍋',
+  'orangen': '🍊', 'orange': '🍊', 'mandarinen': '🍊', 'clementinen': '🍊',
+  'erdbeeren': '🍓', 'erdbeere': '🍓',
+  'weintrauben': '🍇', 'trauben': '🍇',
+  'avocado': '🥑',
+  'mais': '🌽',
+  'chili': '🌶️', 'peperoni': '🌶️',
+  'pilze': '🍄', 'champignons': '🍄', 'kräuterseitlinge': '🍄',
+  'zwiebeln': '🧅', 'zwiebel': '🧅', 'rote zwiebeln': '🧅',
+  'knoblauch': '🧄',
+  'kürbis': '🎃', 'hokkaido': '🎃', 'butternut': '🎃',
+  'milch': '🥛', 'sahne': '🥛', 'hafermilch': '🥛',
+  'eier': '🥚', 'ei': '🥚',
+  'butter': '🧈',
+  'käse': '🧀',
+  'joghurt': '🫙',
+  'brot': '🍞', 'toastbrot': '🍞', 'vollkornbrot': '🍞',
+  'brötchen': '🥐', 'baguette': '🥖', 'croissant': '🥐',
+  'bier': '🍺', 'pils': '🍺', 'weizenbier': '🍺',
+  'wein': '🍷', 'rotwein': '🍷', 'weißwein': '🍷', 'roséwein': '🍷',
+  'kaffee': '☕', 'kaffeebohnen': '☕', 'espresso': '☕',
+  'tee': '🍵',
+  'lachs': '🐟', 'räucherlachs': '🐟', 'thunfisch': '🐟',
+  'hähnchen': '🍗', 'hähnchenbrust': '🍗', 'hähnchenschenkel': '🍗',
+  'hackfleisch': '🥩', 'rindersteak': '🥩', 'schinken': '🥩',
+  'pizza': '🍕',
+  'nudeln': '🍝', 'pasta': '🍝', 'spaghetti': '🍝',
+  'reis': '🍚',
+  'wasser': '💧', 'mineralwasser': '💧', 'stilles wasser': '💧',
+  'saft': '🧃', 'orangensaft': '🧃', 'apfelsaft': '🧃', 'apfelschorle': '🧃',
+  'cola': '🥤', 'limonade': '🥤', 'fanta': '🥤',
+  'mehl': '🌾',
+  'zucker': '🍬',
+  'olivenöl': '🫒', 'öl': '🫒',
+  'salz': '🧂',
+  'honig': '🍯',
+  'schokolade': '🍫',
+  'erdnussbutter': '🥜', 'nüsse': '🥜',
+  'chips': '🫙', 'snacks': '🫙',
+};
+
+function getItemEmoji(name: string, category: string): string {
+  return ITEM_EMOJIS[name.toLowerCase().trim()] || CATEGORY_EMOJIS[category] || '🛒';
+}
 
 const TILE_SIZE = (Dimensions.get('window').width - spacing.lg * 2 - spacing.sm * 2) / 3;
 
@@ -251,7 +305,7 @@ const TileItem = React.memo(({ item, onToggle, onDelete }: {
   item: ShoppingItem; onToggle: (id: string) => void; onDelete: (id: string) => void;
 }) => {
   const catColor = CATEGORY_COLORS[item.category] || colors.sonstiges;
-  const emoji = CATEGORY_EMOJIS[item.category] || '🛒';
+  const emoji = getItemEmoji(item.name, item.category);
   return (
     <TouchableOpacity
       style={[styles.tile, { width: TILE_SIZE, backgroundColor: item.checked ? catColor + '40' : catColor + '18', borderColor: catColor + '60' }]}

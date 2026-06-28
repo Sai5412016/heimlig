@@ -658,7 +658,7 @@ export default function TasksScreen() {
     if (!showCompleted && t.completed_at) return false;
     if (filterCategory && t.category !== filterCategory) return false;
     if (selectedDate && viewMode === 'calendar') return t.due_date && isSameDay(parseISO(t.due_date), selectedDate);
-    if (viewMode === 'list' && t.due_date && parseISO(t.due_date).getFullYear() !== selectedYear) return false;
+    if (!selectedDate && t.due_date && parseISO(t.due_date).getFullYear() !== selectedYear) return false;
     return true;
   });
 
@@ -707,7 +707,7 @@ export default function TasksScreen() {
           <CalendarView tasks={tasks} selectedDate={selectedDate} mealPlans={mealPlans} onDayPress={(day) => setSelectedDate(isSameDay(day, selectedDate || new Date(-1)) ? null : day)} />
         )}
 
-        {viewMode === 'list' && availableYears.length > 1 && (
+        {availableYears.length > 1 && !selectedDate && (
           <View style={styles.yearNav}>
             <TouchableOpacity onPress={() => { const i = availableYears.indexOf(selectedYear); if (i > 0) setSelectedYear(availableYears[i - 1]); }} style={styles.yearNavBtn}>
               <Text style={styles.yearNavArrow}>‹</Text>

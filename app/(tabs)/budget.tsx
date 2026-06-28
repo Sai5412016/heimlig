@@ -345,6 +345,8 @@ export default function BudgetScreen() {
   const filteredTransactions = monthTransactions.filter(tx => !filterCat || tx.category === filterCat);
   const availableCats = [...new Set(monthTransactions.map(t => t.category))];
 
+  useEffect(() => { setFilterCat(null); }, [currentMonth]);
+
   const handleAddTransaction = async (txData: Partial<Transaction>) => {
     if (!household) return;
     const { data } = await supabase.from('transactions').insert({ ...txData, household_id: household.id }).select().single();
@@ -520,8 +522,8 @@ export default function BudgetScreen() {
         {activeTab === 'transactions' && (
           <View style={styles.section}>
             {/* Kategorie Filter */}
-            {availableCats.length > 1 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
+            {availableCats.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ marginBottom: spacing.md }}>
                 <TouchableOpacity
                   style={[styles.filterChip, !filterCat && styles.filterChipActive]}
                   onPress={() => setFilterCat(null)}
