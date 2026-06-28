@@ -101,6 +101,10 @@ export const useStore = create<AppState>((set, get) => ({
 
   // Load all data for a household and make it the active one
   activateHousehold: async (household, member) => {
+    // Clear stale per-household caches BEFORE setting household, so that
+    // useEffect([household]) in screens triggers AFTER the clear (not before).
+    // If we cleared at the end, loadData() in the Dashboard would race and lose.
+    set({ tasks: [], transactions: [], recipes: [] });
     set({ household, currentMember: member });
 
     const { data: allMembers } = await supabase.from('members').select('*').eq('household_id', household.id);
@@ -121,8 +125,6 @@ export const useStore = create<AppState>((set, get) => ({
     } else {
       set({ shoppingLists: [], activeListId: null, items: [] });
     }
-    // Reset per-household caches so each screen reloads fresh for the new household
-    set({ tasks: [], transactions: [], recipes: [] });
   },
 
   switchHousehold: async (householdId) => {
