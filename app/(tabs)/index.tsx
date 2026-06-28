@@ -1,8 +1,8 @@
 // app/(tabs)/index.tsx – Dashboard
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useStore } from '../../store/useStore';
@@ -89,6 +89,9 @@ export default function DashboardScreen() {
   };
 
   useEffect(() => { loadData(); }, [household]);
+
+  // Reload whenever the Home tab is focused (e.g. returning from Tasks or Budget)
+  useFocusEffect(useCallback(() => { loadData(); }, [household]));
 
   const onRefresh = async () => { setRefreshing(true); await loadData(); setRefreshing(false); };
 
