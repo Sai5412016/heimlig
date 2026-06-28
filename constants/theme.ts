@@ -1,6 +1,6 @@
 // constants/theme.ts
 
-export const colors = {
+export const lightColors = {
   // Brand
   brand:         '#2D6A4F',
   brandLight:    '#52B788',
@@ -40,6 +40,52 @@ export const colors = {
   getraenke:     '#06B6D4',
   sonstiges:     '#6B7280',
 };
+
+export const darkColors = {
+  // Brand (unchanged)
+  brand:         '#2D6A4F',
+  brandLight:    '#52B788',
+  brandPale:     '#1B3D28',
+  brandDark:     '#1B4332',
+
+  // Accent (unchanged)
+  accent:        '#FF6B35',
+  accentLight:   '#4A2010',
+
+  // UI
+  background:    '#0D1F15',
+  surface:       '#162A1C',
+  surfaceElevated: '#1E3526',
+  border:        '#2A4030',
+  borderLight:   '#1E3526',
+
+  // Text
+  text:          '#E8F5EC',
+  textSecondary: '#89B89A',
+  textMuted:     '#5A7A65',
+  textInverse:   '#0D1F15',
+
+  // Semantic
+  success:       '#52B788',
+  warning:       '#F59E0B',
+  error:         '#EF4444',
+  info:          '#3B82F6',
+
+  // Categories (unchanged — these are item/category colors, stay vivid)
+  lebensmittel:  '#10B981',
+  drogerie:      '#8B5CF6',
+  tiefkuehl:     '#3B82F6',
+  obst:          '#F59E0B',
+  fleisch:       '#EF4444',
+  backwaren:     '#F97316',
+  getraenke:     '#06B6D4',
+  sonstiges:     '#6B7280',
+};
+
+export type ColorPalette = typeof lightColors;
+
+// Kept as alias so non-themed code (lib/, store/) still compiles
+export const colors = lightColors;
 
 export const CATEGORY_COLORS: Record<string, string> = {
   'Lebensmittel':       colors.lebensmittel,

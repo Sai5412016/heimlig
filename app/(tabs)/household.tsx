@@ -1,5 +1,5 @@
 // app/(tabs)/household.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Alert, Share, Modal, Pressable, TextInput, Platform, KeyboardAvoidingView
@@ -7,17 +7,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
-import { colors, spacing, radius, typography, shadow, AVATAR_COLORS } from '../../constants/theme';
+import { colors, spacing, radius, typography, shadow, AVATAR_COLORS, type ColorPalette } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
+import { useTheme } from '../../hooks/useTheme';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 // ─── AVATAR ───────────────────────────────────────────────────
 function Avatar({ name, color, size = 48 }: { name: string; color: string; size?: number }) {
   return (
-    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: color }]}>
-      <Text style={[styles.avatarText, { fontSize: size * 0.38 }]}>{name[0].toUpperCase()}</Text>
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ color: '#fff', fontWeight: '800', fontSize: size * 0.38 }}>{name[0].toUpperCase()}</Text>
     </View>
   );
 }
@@ -29,6 +30,8 @@ function InviteModal({ visible, onClose, inviteCode, householdName }: {
   inviteCode: string;
   householdName: string;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const handleShare = async () => {
     const message = `🏡 Ich lade dich zu unserem Haushalt "${householdName}" in Heimlig ein!\n\n👉 Einfach hier tippen, um beizutreten:\nhttps://heimlig.vercel.app/join/${inviteCode}\n\nFalls der Link nicht klappt, gib in der App diesen Code ein:\n🔑 ${inviteCode}`;
     if (Platform.OS === 'web') {
@@ -79,6 +82,8 @@ function JoinModal({ visible, onClose, onJoin }: {
   onClose: () => void;
   onJoin: (code: string) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -136,6 +141,8 @@ function EditModal({ visible, title, label, initialValue, secure, placeholder, s
   onClose: () => void;
   onSave: (value: string) => Promise<void>;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [value, setValue] = useState(initialValue ?? '');
   const [loading, setLoading] = useState(false);
   useEffect(() => { if (visible) setValue(initialValue ?? ''); }, [visible]);
@@ -180,8 +187,10 @@ function EditModal({ visible, title, label, initialValue, secure, placeholder, s
 
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function HouseholdScreen() {
+  const { colors, isDark } = useTheme();
   const { household, currentMember, members, setMembers, setHousehold, tasks, transactions,
-    myHouseholds, loadMyHouseholds, switchHousehold, leaveHousehold } = useStore();
+    myHouseholds, loadMyHouseholds, switchHousehold, leaveHousehold, toggleDarkMode } = useStore();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [showInvite, setShowInvite] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [showEditName, setShowEditName] = useState(false);
@@ -430,6 +439,16 @@ export default function HouseholdScreen() {
           </View>
         </View>
 
+        {/* Dark mode toggle */}
+        <TouchableOpacity style={styles.settingsBtn} onPress={toggleDarkMode}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <Text style={styles.settingsBtnText}>{isDark ? '☀️' : '🌙'} Dark Mode</Text>
+            <View style={[styles.toggle, isDark && styles.toggleOn]}>
+              <View style={[styles.toggleThumb, isDark && styles.toggleThumbOn]} />
+            </View>
+          </View>
+        </TouchableOpacity>
+
         {/* Gamification toggle */}
         <TouchableOpacity style={styles.settingsBtn} onPress={handleToggleGamification}>
           <Text style={styles.settingsBtnText}>
@@ -513,7 +532,7 @@ export default function HouseholdScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md },
 
@@ -595,9 +614,6 @@ const styles = StyleSheet.create({
   signOutBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },
   signOutBtnText: { ...typography.body, color: colors.error, fontWeight: '600' },
 
-  avatar: { alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontWeight: '800' },
-
   // Modal
   modalOverlay: { flex: 1, justifyContent: Platform.OS === 'web' ? 'flex-start' : 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
@@ -626,4 +642,10 @@ const styles = StyleSheet.create({
   shareBtnText: { ...typography.body, color: '#fff', fontWeight: '700' },
   closeBtn: { padding: spacing.md, alignItems: 'center' },
   closeBtnText: { ...typography.body, color: colors.textSecondary },
-});
+
+  // Dark mode toggle switch
+  toggle: { width: 48, height: 28, borderRadius: 14, backgroundColor: colors.border, justifyContent: 'center', paddingHorizontal: 3 },
+  toggleOn: { backgroundColor: colors.brand },
+  toggleThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: 'flex-start' },
+  toggleThumbOn: { alignSelf: 'flex-end' },
+}); }

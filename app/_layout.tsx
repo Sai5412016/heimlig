@@ -5,6 +5,7 @@ import * as Linking from 'expo-linking';
 import { Platform, Dimensions } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { checkForUpdate } from '../lib/appUpdate';
@@ -19,7 +20,7 @@ function extractJoinCode(url: string | null): string | null {
 export default function RootLayout() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
-  const { setUserId, loadMyHouseholds, activateHousehold } = useStore();
+  const { setUserId, loadMyHouseholds, activateHousehold, setDarkMode } = useStore();
 
   // Lock phones to portrait, but let large screens (tablets/foldables) rotate freely.
   // The static manifest restriction is removed (orientation: default) so Play stops
@@ -54,6 +55,10 @@ export default function RootLayout() {
 
   const checkSession = async (pendingJoinCode?: string | null) => {
     try {
+      // Load persisted theme preference before rendering
+      const dm = await AsyncStorage.getItem('@heimlig/darkMode');
+      if (dm === '1') setDarkMode(true);
+
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session?.user) {

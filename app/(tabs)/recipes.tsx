@@ -1,5 +1,5 @@
 // app/(tabs)/recipes.tsx
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Platform,
   Alert, Linking, Modal, Pressable, ScrollView,
@@ -7,7 +7,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { colors, spacing, radius, typography, shadow } from '../../constants/theme';
+import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
 import { Recipe, MealType } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
@@ -23,6 +24,8 @@ function PlanModal({ recipe, onClose, onConfirm }: {
   onClose: () => void;
   onConfirm: (date: string, mealType: MealType, addToCart: boolean) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [mealType, setMealType] = useState<MealType>('abendessen');
   const [addToCart, setAddToCart] = useState(true);
@@ -82,6 +85,8 @@ function PlanModal({ recipe, onClose, onConfirm }: {
 
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function RecipesScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { household, recipes, loadRecipes, toggleRecipeFavorite, deleteRecipe, saveRecipe, planRecipe } = useStore();
   const [showImport, setShowImport] = useState(false);
   const [planTarget, setPlanTarget] = useState<Recipe | null>(null);
@@ -182,7 +187,7 @@ export default function RecipesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -233,4 +238,4 @@ const styles = StyleSheet.create({
   primaryBtnText: { ...typography.body, color: colors.textInverse, fontWeight: '700' },
   closeBtn: { padding: spacing.md, alignItems: 'center' },
   closeBtnText: { ...typography.body, color: colors.textSecondary },
-});
+}); }

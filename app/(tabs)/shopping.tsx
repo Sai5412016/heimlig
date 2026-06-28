@@ -10,7 +10,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 const hapticImpact = (style: Haptics.ImpactFeedbackStyle) => { if (Platform.OS !== 'web') Haptics.impactAsync(style); };
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
-import { colors, spacing, radius, typography, shadow, SHOPPING_CATEGORIES, CATEGORY_COLORS } from '../../constants/theme';
+import { colors, spacing, radius, typography, shadow, SHOPPING_CATEGORIES, CATEGORY_COLORS, type ColorPalette } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
 import { supabase, ShoppingItem, RecipeIngredient, MealType } from '../../lib/supabase';
 import { format, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -25,6 +26,8 @@ const ItemCard = React.memo(({ item, onToggle, onDelete, memberName }: {
   onDelete: (id: string) => void;
   memberName?: string;
 }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(item.checked ? 0.5 : 1)).current;
 
@@ -87,6 +90,8 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
   onClose: () => void;
   onAdd: (name: string, quantity: string, category: string) => void;
 }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [category, setCategory] = useState('Lebensmittel');
@@ -364,6 +369,8 @@ const TILE_SIZE = (Dimensions.get('window').width - spacing.lg * 2 - spacing.sm 
 const TileItem = React.memo(({ item, onToggle, onDelete }: {
   item: ShoppingItem; onToggle: (id: string) => void; onDelete: (id: string) => void;
 }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const itemColor = getItemColor(item.name, item.category);
   const emoji = getItemEmoji(item.name, item.category);
   return (
@@ -387,6 +394,8 @@ const TileItem = React.memo(({ item, onToggle, onDelete }: {
 
 // ─── LIST PICKER MODAL ────────────────────────────────────────
 const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { shoppingLists, activeListId, switchList, createShoppingList, deleteShoppingList } = useStore();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -506,6 +515,8 @@ const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () =
 
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function ShoppingScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe, loadItemCatalog } = useStore();
   const [showModal, setShowModal] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
@@ -742,7 +753,7 @@ export default function ShoppingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: colors.background },
 
@@ -941,4 +952,4 @@ const styles = StyleSheet.create({
   },
   emojiChipActive: { borderColor: colors.brand, backgroundColor: colors.brandPale },
   emojiChipText: { fontSize: 20 },
-});
+}); }

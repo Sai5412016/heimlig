@@ -1,5 +1,5 @@
 // app/(tabs)/budget.tsx
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
   Modal, Pressable, KeyboardAvoidingView, Platform, Alert, Animated
@@ -23,7 +23,8 @@ function advanceDate(dateStr: string, unit: string, n: number): string {
   return format(next, 'yyyy-MM-dd');
 }
 import { de } from 'date-fns/locale';
-import { colors, spacing, radius, typography, shadow } from '../../constants/theme';
+import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
 import { supabase, Transaction } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import * as DocumentPicker from 'expo-document-picker';
@@ -65,6 +66,8 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
   visible: boolean; onClose: () => void; onSave: (tx: Partial<Transaction>) => void;
   members: any[]; currentMemberId: string;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Lebensmittel');
@@ -192,6 +195,8 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
   label: string; amount: number; total: number; color: string; emoji: string;
   members: any[]; transactions: Transaction[];
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const progress = total > 0 ? Math.min(amount / total, 1) : 0;
   const animWidth = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -244,6 +249,8 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
 }
 
 function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: (id: string) => void; members: any[] }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const catColor = CAT_COLORS[tx.category] || colors.brand;
   const payer = members.find(m => m.id === tx.member_id);
   return (
@@ -278,6 +285,8 @@ function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: 
 }
 
 export default function BudgetScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { household, currentMember, members, transactions, setTransactions } = useStore();
   const [showModal, setShowModal] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -570,7 +579,7 @@ export default function BudgetScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   headerTitle: { ...typography.h2, color: colors.text },
@@ -682,4 +691,4 @@ const styles = StyleSheet.create({
   intervalValue: { ...typography.body, color: colors.text, fontWeight: '800', minWidth: 28, textAlign: 'center' },
   saveBtn: { backgroundColor: colors.brand, borderRadius: radius.md, padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },
   saveBtnText: { ...typography.body, color: '#fff', fontWeight: '700' },
-});
+}); }

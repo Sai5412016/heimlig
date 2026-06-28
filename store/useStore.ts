@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType } from '../lib/supabase';
 import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface SaveRecipeOpts { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }
 export interface PlanRecipeOpts { date: string; mealType: MealType; addToCart: boolean }
@@ -67,6 +68,11 @@ interface AppState {
 
   isLoading: boolean;
   setIsLoading: (v: boolean) => void;
+
+  // 🌙 Theme
+  darkMode: boolean;
+  setDarkMode: (v: boolean) => void;
+  toggleDarkMode: () => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -457,4 +463,13 @@ export const useStore = create<AppState>((set, get) => ({
 
   isLoading: false,
   setIsLoading: (v) => set({ isLoading: v }),
+
+  // 🌙 Theme
+  darkMode: false,
+  setDarkMode: (v) => set({ darkMode: v }),
+  toggleDarkMode: async () => {
+    const next = !get().darkMode;
+    set({ darkMode: next });
+    await AsyncStorage.setItem('@heimlig/darkMode', next ? '1' : '0');
+  },
 }));

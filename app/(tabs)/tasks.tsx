@@ -14,7 +14,8 @@ import {
   subMonths, parseISO, addDays
 } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { colors, spacing, radius, typography, shadow } from '../../constants/theme';
+import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
+import { useTheme } from '../../hooks/useTheme';
 import { supabase, Task, MealPlan, MealType } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { scheduleTaskNotification, requestNotificationPermission } from '../../lib/notifications';
@@ -63,6 +64,8 @@ function getCurrentTimeSlot(): string {
 
 // ─── TIME PICKER DROPDOWN ─────────────────────────────────────
 function TimePickerDropdown({ value, onChange }: { value: string; onChange: (t: string) => void }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [open, setOpen] = useState(false);
 
   return (
@@ -105,6 +108,8 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
   members: any[]; preselectedDate?: Date | null;
   editTask?: (Task & { due_time?: string }) | null;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Haushalt');
@@ -294,6 +299,8 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
   task: Task & { due_time?: string }; onComplete: (id: string) => void;
   onDelete: (id: string) => void; members: any[]; showPoints?: boolean; onOpen?: (task: Task) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const isCompleted = !!task.completed_at;
   const isOverdue = task.due_date && !isCompleted && isBefore(parseISO(task.due_date), new Date()) && !isToday(parseISO(task.due_date));
   const assignedMember = members.find(m => m.id === task.assigned_to);
@@ -370,6 +377,8 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit 
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   if (!task) return null;
   const isCompleted = !!task.completed_at;
   const assignedMember = members.find(m => m.id === task.assigned_to);
@@ -416,6 +425,8 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit 
 function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
   tasks: Task[]; onDayPress: (date: Date) => void; selectedDate: Date | null; mealPlans: MealPlan[];
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const monthStart = startOfMonth(currentMonth);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -470,6 +481,8 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
 
 // ─── POINTS TOAST ─────────────────────────────────────────────
 function PointsToast({ points, visible }: { points: number; visible: boolean }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (visible) {
@@ -495,6 +508,8 @@ function PointsToast({ points, visible }: { points: number; visible: boolean }) 
 
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function TasksScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { household, currentMember, members, tasks, setTasks, completeTask, weekScores, loadWeekScores, items, setItems } = useStore();
   const [viewMode, setViewMode] = useState<ViewMode>('calendar');
   const [showModal, setShowModal] = useState(false);
@@ -831,7 +846,7 @@ export default function TasksScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   headerTitle: { ...typography.h2, color: colors.text },
@@ -959,4 +974,4 @@ const styles = StyleSheet.create({
   chipText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
   saveBtn: { backgroundColor: colors.brand, borderRadius: radius.md, padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },
   saveBtnText: { ...typography.body, color: '#fff', fontWeight: '700' },
-});
+}); }
