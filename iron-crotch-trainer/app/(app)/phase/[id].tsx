@@ -13,6 +13,7 @@ import { Colors } from '../../../constants/colors';
 import { TRAINING_PHASES, getPhaseColor, type Exercise } from '../../../data/trainingPlan';
 import { setCurrentPhase } from '../../../lib/storage';
 import BreathingGuide from '../../../components/BreathingGuide';
+import ExerciseAnimation from '../../../components/ExerciseAnimation';
 
 export default function PhaseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -107,6 +108,9 @@ export default function PhaseDetailScreen() {
 
               {isExpanded && (
                 <View style={styles.exerciseBody}>
+                  {exercise.animationType && (
+                    <ExerciseAnimation animationType={exercise.animationType} color={color} />
+                  )}
                   <Text style={styles.exerciseDescription}>{exercise.description}</Text>
 
                   <View style={styles.stepsList}>

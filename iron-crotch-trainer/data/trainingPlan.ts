@@ -5,6 +5,7 @@ export type Exercise = {
   description: string;
   steps: string[];
   warning?: string;
+  animationType?: string;
   breathingGuide?: {
     inhaleSeconds: number;
     exhaleSeconds: number;
@@ -47,6 +48,7 @@ export const TRAINING_PHASES: Phase[] = [
           'Visualisiere warme goldene Energie, die durch die Körpermittellinie nach unten in den Schrittbereich fließt.',
           'Wiederhole 30–50 Atemzüge in ruhigem Tempo.',
         ],
+        animationType: 'qi-atmung',
         breathingGuide: {
           inhaleSeconds: 5,
           exhaleSeconds: 7,
@@ -58,6 +60,7 @@ export const TRAINING_PHASES: Phase[] = [
         name: 'Bauchmassage',
         duration: '5–7 Min',
         description: 'Sanfte Massage zur Förderung der Durchblutung im Unterleib und zum Lösen von Verspannungen.',
+        animationType: 'bauchmassage',
         steps: [
           'Reibe beide Handflächen aneinander, bis sie warm sind.',
           'Lege sie auf den Oberbauch und massiere gleichmäßig nach unten bis zum Schambein (10–20 Mal).',
@@ -154,6 +157,7 @@ export const TRAINING_PHASES: Phase[] = [
       {
         id: 'p3e1',
         name: 'Gewichtshängen – Grundtechnik',
+        animationType: 'gewicht-haengen',
         duration: '3–5 Sets × 10–30 Sek',
         description: 'Kontrollierte Belastungsübung mit progressiver Gewichtssteigerung.',
         steps: [
@@ -196,6 +200,7 @@ export const TRAINING_PHASES: Phase[] = [
       {
         id: 'p4e1',
         name: 'Rhythmisches Trommeln',
+        animationType: 'trommeln',
         duration: '5–10 Min',
         description: 'Alternierendes Beklopfen zur progressiven Konditionierung.',
         steps: [
@@ -209,6 +214,7 @@ export const TRAINING_PHASES: Phase[] = [
       {
         id: 'p4e2',
         name: 'Kontrollierte Handflächenschläge',
+        animationType: 'handflächen',
         duration: '5 Min',
         description: 'Flache oder seitliche Handschläge mit präziser Kontrolle.',
         steps: [
@@ -221,6 +227,7 @@ export const TRAINING_PHASES: Phase[] = [
       {
         id: 'p4e3',
         name: 'Solarplexus-Konditionierung',
+        animationType: 'solarplexus',
         duration: '5 Min',
         description: 'Synchronisierung des Solarplexus zur Reduktion der reflektierten Schmerzantwort.',
         steps: [
