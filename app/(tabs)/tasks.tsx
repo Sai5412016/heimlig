@@ -25,7 +25,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { parseICS } from '../../lib/ics';
 
-type ViewMode = 'calendar' | 'list';
+type ViewMode = 'week' | 'month' | 'list';
 type Priority = 'low' | 'normal' | 'high';
 
 const PRIORITY_COLORS: Record<Priority, string> = {
@@ -423,6 +423,97 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit 
 }
 
 // ─── CALENDAR VIEW ────────────────────────────────────────────
+// ─── 7-DAY VIEW ───────────────────────────────────────────────
+function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
+  tasks: Task[]; onDayPress: (date: Date) => void; selectedDate: Date | null; mealPlans: MealPlan[];
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  const tasksByDate: Record<string, Task[]> = {};
+  tasks.forEach(t => {
+    if (t.due_date) {
+      const key = t.due_date.substring(0, 10);
+      if (!tasksByDate[key]) tasksByDate[key] = [];
+      tasksByDate[key].push(t);
+    }
+  });
+
+  const weekLabel = `${format(days[0], 'd. MMM', { locale: de })} – ${format(days[6], 'd. MMM yyyy', { locale: de })}`;
+
+  return (
+    <View style={styles.calendarContainer}>
+      <View style={styles.monthNav}>
+        <TouchableOpacity onPress={() => setWeekStart(d => addDays(d, -7))} style={styles.monthNavBtn}>
+          <Text style={styles.monthNavIcon}>‹</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>
+          <Text style={styles.monthTitle}>{weekLabel}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setWeekStart(d => addDays(d, 7))} style={styles.monthNavBtn}>
+          <Text style={styles.monthNavIcon}>›</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.weekStrip}>
+        {days.map(day => {
+          const key = format(day, 'yyyy-MM-dd');
+          const dayTasks = (tasksByDate[key] || []).filter(t => !t.completed_at);
+          const hasMeal = mealPlans.some(m => m.planned_date === key);
+          const isSelected = selectedDate && isSameDay(day, selectedDate);
+          const isToday_ = isToday(day);
+
+          const MAX_EMOJIS = 3;
+          const allEmojis: string[] = [
+            ...dayTasks.map(t => CATEGORY_EMOJIS[t.category || ''] || '📋'),
+            ...(hasMeal ? ['🍽️'] : []),
+          ];
+          const visibleEmojis = allEmojis.slice(0, MAX_EMOJIS);
+          const extraCount = allEmojis.length - visibleEmojis.length;
+
+          return (
+            <TouchableOpacity
+              key={key}
+              style={[styles.weekDayCol, isSelected && styles.weekDayColSelected]}
+              onPress={() => onDayPress(day)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.weekDayName, isToday_ && { color: colors.brand }]}>
+                {format(day, 'EEE', { locale: de }).slice(0, 2).toUpperCase()}
+              </Text>
+              <View style={[
+                styles.weekDayNumWrap,
+                isToday_ && !isSelected && styles.weekDayNumToday,
+                isSelected && styles.weekDayNumSelected,
+              ]}>
+                <Text style={[
+                  styles.weekDayNum,
+                  isToday_ && !isSelected && { color: colors.brand },
+                  isSelected && { color: '#fff' },
+                ]}>
+                  {format(day, 'd')}
+                </Text>
+              </View>
+              <View style={styles.weekEmojiStack}>
+                {visibleEmojis.map((emoji, i) => (
+                  <Text key={i} style={styles.weekTaskEmoji}>{emoji}</Text>
+                ))}
+                {extraCount > 0 && (
+                  <View style={styles.weekMoreBadge}>
+                    <Text style={styles.weekMoreText}>+{extraCount}</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// ─── MONTH VIEW ───────────────────────────────────────────────
 function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
   tasks: Task[]; onDayPress: (date: Date) => void; selectedDate: Date | null; mealPlans: MealPlan[];
 }) {
@@ -512,7 +603,7 @@ export default function TasksScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { household, currentMember, members, tasks, setTasks, completeTask, weekScores, loadWeekScores, items, setItems } = useStore();
-  const [viewMode, setViewMode] = useState<ViewMode>('calendar');
+  const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
@@ -673,7 +764,7 @@ export default function TasksScreen() {
   const filteredTasks = tasks.filter(t => {
     if (!showCompleted && t.completed_at) return false;
     if (filterCategory && t.category !== filterCategory) return false;
-    if (selectedDate && viewMode === 'calendar') return t.due_date && isSameDay(parseISO(t.due_date), selectedDate);
+    if (selectedDate && viewMode !== 'list') return t.due_date && isSameDay(parseISO(t.due_date), selectedDate);
     if (!selectedDate && t.due_date && parseISO(t.due_date).getFullYear() !== selectedYear) return false;
     return true;
   });
@@ -702,8 +793,11 @@ export default function TasksScreen() {
             <Text style={styles.viewToggleText}>📥</Text>
           </TouchableOpacity>
           <View style={styles.viewToggle}>
-            <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'calendar' && styles.viewToggleBtnActive]} onPress={() => { setViewMode('calendar'); setSelectedDate(null); }}>
+            <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'week' && styles.viewToggleBtnActive]} onPress={() => { setViewMode('week'); setSelectedDate(null); }}>
               <Text style={styles.viewToggleText}>📅</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'month' && styles.viewToggleBtnActive]} onPress={() => { setViewMode('month'); setSelectedDate(null); }}>
+              <Text style={styles.viewToggleText}>🗓️</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]} onPress={() => setViewMode('list')}>
               <Text style={styles.viewToggleText}>☰</Text>
@@ -719,7 +813,10 @@ export default function TasksScreen() {
       )}
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {viewMode === 'calendar' && (
+        {viewMode === 'week' && (
+          <WeekView tasks={tasks} selectedDate={selectedDate} mealPlans={mealPlans} onDayPress={(day) => setSelectedDate(isSameDay(day, selectedDate || new Date(-1)) ? null : day)} />
+        )}
+        {viewMode === 'month' && (
           <CalendarView tasks={tasks} selectedDate={selectedDate} mealPlans={mealPlans} onDayPress={(day) => setSelectedDate(isSameDay(day, selectedDate || new Date(-1)) ? null : day)} />
         )}
 
@@ -868,6 +965,18 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   monthNavBtn: { padding: spacing.sm },
   monthNavIcon: { fontSize: 24, color: colors.brand, fontWeight: '600' },
   monthTitle: { ...typography.h3, color: colors.text },
+  weekStrip: { flexDirection: 'row' },
+  weekDayCol: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: radius.md, minHeight: 110 },
+  weekDayColSelected: { backgroundColor: colors.brandPale },
+  weekDayName: { ...typography.xs, color: colors.textMuted, fontWeight: '700', letterSpacing: 0.3, marginBottom: 3 },
+  weekDayNumWrap: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
+  weekDayNumToday: { backgroundColor: colors.brandPale },
+  weekDayNumSelected: { backgroundColor: colors.brand },
+  weekDayNum: { ...typography.sm, color: colors.text, fontWeight: '700' },
+  weekEmojiStack: { alignItems: 'center', gap: 1 },
+  weekTaskEmoji: { fontSize: 19, lineHeight: 24 },
+  weekMoreBadge: { backgroundColor: colors.border, borderRadius: radius.full, paddingHorizontal: 5, paddingVertical: 1, marginTop: 2 },
+  weekMoreText: { ...typography.xs, color: colors.textSecondary, fontWeight: '700' },
   weekdayRow: { flexDirection: 'row', marginBottom: spacing.sm },
   weekdayLabel: { flex: 1, textAlign: 'center', ...typography.xs, color: colors.textMuted, fontWeight: '700', textTransform: 'uppercase' },
   daysGrid: { flexDirection: 'row', flexWrap: 'wrap' },
