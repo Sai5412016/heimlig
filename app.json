@@ -24,7 +24,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.fledderman.heimlig",
-      "versionCode": 30,
+      "versionCode": 31,
       "permissions": ["NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED", "VIBRATE"]
     },
     "web": {
@@ -38,6 +38,9 @@
       }],
       ["expo-image-picker", {
         "photosPermission": "Heimlig braucht Zugriff auf deine Fotos, um Zutaten aus Rezept-Screenshots zu erkennen."
+      }],
+      ["expo-camera", {
+        "cameraPermission": "Heimlig braucht Zugriff auf die Kamera, um Produkt-Barcodes zu scannen."
       }]
     ],
     "extra": {

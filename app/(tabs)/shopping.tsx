@@ -17,6 +17,7 @@ import { format, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useStore } from '../../store/useStore';
 import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
+import ProductScanner from '../../components/ProductScanner';
 import { searchGroceries, categoryForItem, normalizeKey } from '../../lib/groceries';
 import { searchBrands, bumpBrand, supermarketKey, type BrandEntry } from '../../lib/brands';
 
@@ -678,6 +679,7 @@ export default function ShoppingScreen() {
   const [showModal, setShowModal] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [showListPicker, setShowListPicker] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showChecked, setShowChecked] = useState(true);
   const isPremium = household?.plan_tier !== 'free';
@@ -740,6 +742,13 @@ export default function ShoppingScreen() {
     if (!activeListId) return;
     await addItem(activeListId, name, quantity || undefined, category, undefined, brand);
     setShowModal(false);
+    hapticNotification(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleScanAdd = async (name: string, brand?: string) => {
+    if (!activeListId) return;
+    const cat = categoryForItem(name) || 'Lebensmittel';
+    await addItem(activeListId, name, undefined, cat, undefined, brand);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -893,6 +902,9 @@ export default function ShoppingScreen() {
 
       {/* FABs */}
       <View style={styles.fabGroup}>
+        <TouchableOpacity style={styles.fabScan} onPress={() => setShowScanner(true)} activeOpacity={0.85}>
+          <Text style={styles.fabScanIcon}>📷</Text>
+        </TouchableOpacity>
         {isPremium && (
           <TouchableOpacity style={styles.fabRecipe} onPress={() => setShowRecipeModal(true)} activeOpacity={0.85}>
             <Text style={styles.fabRecipeIcon}>🍳</Text>
@@ -906,6 +918,7 @@ export default function ShoppingScreen() {
       <AddItemModal visible={showModal} onClose={() => setShowModal(false)} onAdd={handleAdd} supermarket={supermarketKey(activeList?.name) ? (activeList?.name ?? null) : null} />
       <RecipeImportModal visible={showRecipeModal} onClose={() => setShowRecipeModal(false)} onAdd={handleRecipeAdd} />
       <ListPickerModal visible={showListPicker} onClose={() => setShowListPicker(false)} />
+      <ProductScanner visible={showScanner} onClose={() => setShowScanner(false)} onAddToList={handleScanAdd} />
     </SafeAreaView>
   );
 }
@@ -999,6 +1012,13 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
     ...shadow.md,
   },
   fabRecipeIcon: { fontSize: 22 },
+  fabScan: {
+    width: 50, height: 50, borderRadius: 25,
+    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: colors.border,
+    ...shadow.md,
+  },
+  fabScanIcon: { fontSize: 22 },
 
   // Recipe Modal
   recipeTabRow: { flexDirection: 'row', marginBottom: spacing.md, gap: spacing.sm },
