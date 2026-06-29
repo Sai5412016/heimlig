@@ -18,6 +18,58 @@ import { de } from 'date-fns/locale';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 const MEAL_LABELS: Record<MealType, string> = { fruehstueck: '🌅 Frühstück', mittag: '☀️ Mittagessen', abendessen: '🌙 Abendessen' };
 
+const RECIPE_CATEGORIES: { key: string; emoji: string }[] = [
+  { key: 'Hauptgericht', emoji: '🍝' },
+  { key: 'Backen & Dessert', emoji: '🧁' },
+  { key: 'Frühstück', emoji: '🌅' },
+  { key: 'Salat & Beilage', emoji: '🥗' },
+  { key: 'Suppe', emoji: '🍲' },
+  { key: 'Snack', emoji: '🍿' },
+  { key: 'Getränk', emoji: '🥤' },
+  { key: 'Sonstiges', emoji: '🍽️' },
+];
+const RECIPE_CAT_EMOJI: Record<string, string> = Object.fromEntries(RECIPE_CATEGORIES.map(c => [c.key, c.emoji]));
+
+// ─── CATEGORY PICKER ──────────────────────────────────────────
+function CategoryModal({ recipe, onClose, onPick }: {
+  recipe: Recipe | null;
+  onClose: () => void;
+  onPick: (category: string | null) => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  return (
+    <Modal visible={!!recipe} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable style={styles.sheet}>
+          <View style={styles.handle} />
+          <Text style={styles.modalTitle}>📁 Kategorie für „{recipe?.name}"</Text>
+          <View style={styles.catGrid}>
+            {RECIPE_CATEGORIES.map(c => {
+              const active = recipe?.category === c.key;
+              return (
+                <TouchableOpacity
+                  key={c.key}
+                  style={[styles.catOption, active && styles.chipActive]}
+                  onPress={() => onPick(c.key)}
+                >
+                  <Text style={styles.catOptionEmoji}>{c.emoji}</Text>
+                  <Text style={[styles.catOptionText, active && styles.chipTextActive]}>{c.key}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {recipe?.category && (
+            <TouchableOpacity style={styles.closeBtn} onPress={() => onPick(null)}>
+              <Text style={styles.closeBtnText}>Kategorie entfernen</Text>
+            </TouchableOpacity>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 // ─── PLAN MODAL (schedule an existing recipe) ─────────────────
 function PlanModal({ recipe, onClose, onConfirm }: {
   recipe: Recipe | null;
@@ -87,10 +139,22 @@ function PlanModal({ recipe, onClose, onConfirm }: {
 export default function RecipesScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { household, recipes, loadRecipes, toggleRecipeFavorite, deleteRecipe, saveRecipe, planRecipe } = useStore();
+  const { household, recipes, loadRecipes, toggleRecipeFavorite, setRecipeCategory, deleteRecipe, saveRecipe, planRecipe } = useStore();
   const [showImport, setShowImport] = useState(false);
   const [planTarget, setPlanTarget] = useState<Recipe | null>(null);
+  const [catTarget, setCatTarget] = useState<Recipe | null>(null);
+  const [filter, setFilter] = useState<string | null>(null);
   const isPremium = household?.plan_tier !== 'free';
+
+  const visibleRecipes = useMemo(
+    () => (filter ? recipes.filter(r => r.category === filter) : recipes),
+    [recipes, filter],
+  );
+  // Only show category chips that actually have recipes, so the bar stays tidy.
+  const usedCategories = useMemo(
+    () => RECIPE_CATEGORIES.filter(c => recipes.some(r => r.category === c.key)),
+    [recipes],
+  );
 
   useFocusEffect(useCallback(() => { loadRecipes(); }, [household?.id]));
 
@@ -111,6 +175,11 @@ export default function RecipesScreen() {
     Alert.alert('✓ Eingeplant', `"${planTarget.name}" für ${format(new Date(date), 'EEEE, d. MMM', { locale: de })}${added ? ` – ${added} Zutaten im Einkauf` : ''}.`);
   };
 
+  const handlePickCategory = async (category: string | null) => {
+    if (catTarget) await setRecipeCategory(catTarget.id, category);
+    setCatTarget(null);
+  };
+
   const confirmDelete = (recipe: Recipe) => {
     Alert.alert('Rezept löschen?', `"${recipe.name}" dauerhaft entfernen?`, [
       { text: 'Abbrechen', style: 'cancel' },
@@ -128,8 +197,11 @@ export default function RecipesScreen() {
         <TouchableOpacity style={styles.cardBody} onPress={() => setPlanTarget(item)} activeOpacity={0.7}>
           <Text style={styles.cardName}>{item.name}</Text>
           <Text style={styles.cardMeta}>
-            {count} Zutaten{item.source_url ? ' · 🔗 Link' : ''}
+            {item.category ? `${RECIPE_CAT_EMOJI[item.category] ?? '📁'} ${item.category} · ` : ''}{count} Zutaten{item.source_url ? ' · 🔗 Link' : ''}
           </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => setCatTarget(item)}>
+          <Text style={styles.iconBtnText}>🏷️</Text>
         </TouchableOpacity>
         {item.source_url && (
           <TouchableOpacity style={styles.iconBtn} onPress={() => Linking.openURL(item.source_url!)}>
@@ -173,16 +245,31 @@ export default function RecipesScreen() {
           <Text style={styles.emptyText}>Tippe auf „+ Rezept", um dein erstes Rezept per Link oder Text zu speichern.</Text>
         </View>
       ) : (
-        <FlatList
-          data={recipes}
-          keyExtractor={r => r.id}
-          renderItem={renderItem}
-          contentContainerStyle={{ padding: spacing.md }}
-        />
+        <>
+          {usedCategories.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={{ paddingHorizontal: spacing.md, gap: spacing.sm }}>
+              <TouchableOpacity style={[styles.filterChip, !filter && styles.chipActive]} onPress={() => setFilter(null)}>
+                <Text style={[styles.chipText, !filter && styles.chipTextActive]}>Alle</Text>
+              </TouchableOpacity>
+              {usedCategories.map(c => (
+                <TouchableOpacity key={c.key} style={[styles.filterChip, filter === c.key && styles.chipActive]} onPress={() => setFilter(filter === c.key ? null : c.key)}>
+                  <Text style={[styles.chipText, filter === c.key && styles.chipTextActive]}>{c.emoji} {c.key}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+          <FlatList
+            data={visibleRecipes}
+            keyExtractor={r => r.id}
+            renderItem={renderItem}
+            contentContainerStyle={{ padding: spacing.md }}
+          />
+        </>
       )}
 
       <RecipeImportModal visible={showImport} onClose={() => setShowImport(false)} onAdd={handleImportAdd} />
       <PlanModal recipe={planTarget} onClose={() => setPlanTarget(null)} onConfirm={handlePlanConfirm} />
+      <CategoryModal recipe={catTarget} onClose={() => setCatTarget(null)} onPick={handlePickCategory} />
     </SafeAreaView>
   );
 }
@@ -198,6 +285,13 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   headerSub: { ...typography.sm, color: colors.textSecondary, marginTop: 2 },
   addBtn: { backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   addBtnText: { ...typography.sm, color: '#fff', fontWeight: '700' },
+
+  filterScroll: { maxHeight: 48, paddingVertical: spacing.sm, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  filterChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface, justifyContent: 'center' },
+  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
+  catOption: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  catOptionEmoji: { fontSize: 16 },
+  catOptionText: { ...typography.sm, color: colors.text, fontWeight: '600' },
 
   card: {
     flexDirection: 'row', alignItems: 'center',

@@ -69,6 +69,7 @@ interface AppState {
   setRecipes: (r: Recipe[]) => void;
   loadRecipes: () => Promise<void>;
   toggleRecipeFavorite: (id: string) => Promise<void>;
+  setRecipeCategory: (id: string, category: string | null) => Promise<void>;
   deleteRecipe: (id: string) => Promise<void>;
   saveRecipe: (ingredients: RecipeIngredient[], name: string, opts: SaveRecipeOpts) => Promise<{ added: number; planned: boolean }>;
   planRecipe: (recipe: Recipe, opts: PlanRecipeOpts) => Promise<{ added: number }>;
@@ -444,6 +445,11 @@ export const useStore = create<AppState>((set, get) => ({
     const is_favorite = !recipe.is_favorite;
     set(s => ({ recipes: s.recipes.map(r => r.id === id ? { ...r, is_favorite } : r) }));
     await supabase.from('recipes').update({ is_favorite }).eq('id', id);
+  },
+
+  setRecipeCategory: async (id, category) => {
+    set(s => ({ recipes: s.recipes.map(r => r.id === id ? { ...r, category: category ?? undefined } : r) }));
+    await supabase.from('recipes').update({ category }).eq('id', id);
   },
 
   deleteRecipe: async (id) => {
