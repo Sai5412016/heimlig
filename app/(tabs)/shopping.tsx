@@ -18,6 +18,7 @@ import { de } from 'date-fns/locale';
 import { useStore } from '../../store/useStore';
 import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
 import { searchGroceries, categoryForItem, normalizeKey } from '../../lib/groceries';
+import { searchBrands, bumpBrand, supermarketKey, type BrandEntry } from '../../lib/brands';
 
 // ─── ITEM CARD ────────────────────────────────────────────────
 const ItemCard = React.memo(({ item, onToggle, onDelete, memberName }: {
@@ -62,6 +63,9 @@ const ItemCard = React.memo(({ item, onToggle, onDelete, memberName }: {
           {item.name}
         </Text>
         <View style={styles.itemMeta}>
+          {item.brand && (
+            <Text style={styles.itemBrand}>🏷️ {item.brand}</Text>
+          )}
           {item.quantity && (
             <Text style={styles.itemQuantity}>{item.quantity}</Text>
           )}
@@ -85,26 +89,42 @@ const ItemCard = React.memo(({ item, onToggle, onDelete, memberName }: {
 });
 
 // ─── ADD ITEM MODAL ───────────────────────────────────────────
-const AddItemModal = ({ visible, onClose, onAdd }: {
+const AddItemModal = ({ visible, onClose, onAdd, supermarket }: {
   visible: boolean;
   onClose: () => void;
-  onAdd: (name: string, quantity: string, category: string) => void;
+  onAdd: (name: string, quantity: string, category: string, brand?: string) => void;
+  supermarket: string | null;
 }) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [category, setCategory] = useState('Lebensmittel');
+  const [brand, setBrand] = useState('');
+  const [brandOptions, setBrandOptions] = useState<BrandEntry[]>([]);
   const inputRef = useRef<TextInput>(null);
   const itemCatalog = useStore(s => s.itemCatalog);
+  const smKey = supermarketKey(supermarket);
 
   useEffect(() => {
     if (visible) {
       setTimeout(() => inputRef.current?.focus(), 300);
     } else {
-      setName(''); setQuantity(''); setCategory('Lebensmittel');
+      setName(''); setQuantity(''); setCategory('Lebensmittel'); setBrand(''); setBrandOptions([]);
     }
   }, [visible]);
+
+  // Crowdsourced brand suggestions for this product at this supermarket (debounced).
+  useEffect(() => {
+    if (!smKey || !name.trim()) { setBrandOptions([]); return; }
+    const q = name;
+    let active = true;
+    const t = setTimeout(async () => {
+      const res = await searchBrands(smKey, q);
+      if (active) setBrandOptions(res);
+    }, 300);
+    return () => { active = false; clearTimeout(t); };
+  }, [name, smKey]);
 
   // Merge the household's learned items (ranked by frequency) with the curated catalog
   const suggestions = useMemo(() => {
@@ -135,19 +155,23 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
   // Auto-assign category when the typed name matches a known item
   const applyName = (text: string) => {
     setName(text);
+    setBrand('');
     const known = categoryForItem(text) || itemCatalog.find(c => c.name_key === normalizeKey(text))?.category;
     if (known) setCategory(known);
   };
 
   const pickSuggestion = (s: { name: string; category: string }) => {
     setName(s.name);
+    setBrand('');
     setCategory(s.category);
   };
 
   const handleAdd = () => {
     if (!name.trim()) return;
-    onAdd(name.trim(), quantity.trim(), category);
-    setName(''); setQuantity('');
+    const b = brand.trim();
+    onAdd(name.trim(), quantity.trim(), category, b || undefined);
+    if (smKey && b) bumpBrand(smKey, name.trim(), b);
+    setName(''); setQuantity(''); setBrand(''); setBrandOptions([]);
   };
 
   const quickAdd = (s: { name: string; category: string }) => {
@@ -206,6 +230,36 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
                     </TouchableOpacity>
                   ))}
                 </View>
+              </>
+            )}
+
+            {/* Crowdsourced brand picker — only inside a supermarket list */}
+            {smKey && name.trim().length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>MARKE BEI {(supermarket ?? '').toUpperCase()} (OPTIONAL)</Text>
+                {brandOptions.length > 0 && (
+                  <View style={styles.freqWrap}>
+                    {brandOptions.map(b => {
+                      const active = brand.trim().toLowerCase() === b.brand.toLowerCase();
+                      return (
+                        <TouchableOpacity
+                          key={b.brand}
+                          style={[styles.brandChip, active && styles.brandChipActive]}
+                          onPress={() => setBrand(active ? '' : b.brand)}
+                        >
+                          <Text style={[styles.brandChipText, active && styles.brandChipTextActive]}>{b.brand}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+                <TextInput
+                  style={[styles.input, { marginTop: spacing.sm }]}
+                  placeholder="Eigene Marke eingeben…"
+                  placeholderTextColor={colors.textMuted}
+                  value={brand}
+                  onChangeText={setBrand}
+                />
               </>
             )}
 
@@ -458,6 +512,7 @@ const TileItem = React.memo(({ item, onToggle, onDelete }: {
       )}
       <Text style={styles.tileEmoji}>{emoji}</Text>
       <Text style={[styles.tileName, item.checked && styles.tileNameChecked]} numberOfLines={2}>{item.name}</Text>
+      {item.brand ? <Text style={styles.tileBrand} numberOfLines={1}>{item.brand}</Text> : null}
       {item.quantity ? <Text style={styles.tileQty}>{item.quantity}</Text> : null}
     </TouchableOpacity>
   );
@@ -681,9 +736,9 @@ export default function ShoppingScreen() {
     setRefreshing(false);
   };
 
-  const handleAdd = async (name: string, quantity: string, category: string) => {
+  const handleAdd = async (name: string, quantity: string, category: string, brand?: string) => {
     if (!activeListId) return;
-    await addItem(activeListId, name, quantity || undefined, category);
+    await addItem(activeListId, name, quantity || undefined, category, undefined, brand);
     setShowModal(false);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
   };
@@ -848,7 +903,7 @@ export default function ShoppingScreen() {
         </TouchableOpacity>
       </View>
 
-      <AddItemModal visible={showModal} onClose={() => setShowModal(false)} onAdd={handleAdd} />
+      <AddItemModal visible={showModal} onClose={() => setShowModal(false)} onAdd={handleAdd} supermarket={supermarketKey(activeList?.name) ? (activeList?.name ?? null) : null} />
       <RecipeImportModal visible={showRecipeModal} onClose={() => setShowRecipeModal(false)} onAdd={handleRecipeAdd} />
       <ListPickerModal visible={showListPicker} onClose={() => setShowListPicker(false)} />
     </SafeAreaView>
@@ -911,6 +966,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   itemNameChecked: { textDecorationLine: 'line-through', color: colors.textMuted },
   itemMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
   itemQuantity: { ...typography.xs, color: colors.textSecondary, marginRight: spacing.sm },
+  itemBrand: { ...typography.xs, color: colors.brand, fontWeight: '700', marginRight: spacing.sm },
   categoryDot: { width: 6, height: 6, borderRadius: 3, marginRight: 4 },
   itemCategory: { ...typography.xs, fontWeight: '500' },
   deleteBtn: { padding: spacing.sm },
@@ -985,6 +1041,10 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   freqWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   freqChip: { backgroundColor: colors.brandPale, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderWidth: 1, borderColor: colors.brand },
   freqChipText: { ...typography.sm, color: colors.brand, fontWeight: '700' },
+  brandChip: { backgroundColor: colors.surface, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderWidth: 1.5, borderColor: colors.border },
+  brandChipActive: { backgroundColor: colors.brand, borderColor: colors.brand },
+  brandChipText: { ...typography.sm, color: colors.text, fontWeight: '600' },
+  brandChipTextActive: { color: '#fff' },
   input: {
     backgroundColor: colors.background, borderRadius: radius.md,
     padding: spacing.md, ...typography.body, color: colors.text,
@@ -1027,6 +1087,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   tileEmoji: { fontSize: 22, marginBottom: 4 },
   tileName: { ...typography.xs, color: colors.text, fontWeight: '600', textAlign: 'center' },
   tileNameChecked: { textDecorationLine: 'line-through', color: colors.textMuted },
+  tileBrand: { ...typography.xs, color: colors.brand, fontWeight: '700', marginTop: 1, textAlign: 'center' },
   tileQty: { ...typography.xs, color: colors.textSecondary, marginTop: 2 },
   checkedSection: { marginTop: spacing.md },
 
@@ -1042,7 +1103,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   listRowCheck: { fontSize: 16, color: colors.brand, fontWeight: '700' },
   listRowDelete: { fontSize: 18, paddingLeft: spacing.sm },
   supermarketSection: { marginTop: spacing.md },
-  supermarketLabel: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 },
+  supermarketLabel: { ...typography.xs, color: colors.textMuted, marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 },
   supermarketChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,

@@ -60,6 +60,7 @@ export interface ShoppingItem {
   name: string;
   quantity?: string;
   category: string;
+  brand?: string;
   barcode?: string;
   checked: boolean;
   checked_by?: string;

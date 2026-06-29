@@ -38,7 +38,7 @@ interface AppState {
   createShoppingList: (name: string, emoji: string) => Promise<void>;
   deleteShoppingList: (id: string) => Promise<void>;
   toggleItem: (itemId: string) => Promise<void>;
-  addItem: (listId: string, name: string, quantity?: string, category?: string, mealPlanId?: string) => Promise<void>;
+  addItem: (listId: string, name: string, quantity?: string, category?: string, mealPlanId?: string, brand?: string) => Promise<void>;
   deleteItem: (itemId: string) => Promise<void>;
 
   // 🛒 Learned item catalog (personalized autocomplete / frequent items)
@@ -210,11 +210,11 @@ export const useStore = create<AppState>((set, get) => ({
       .eq('id', itemId);
   },
 
-  addItem: async (listId, name, quantity, category = 'Sonstiges', mealPlanId) => {
+  addItem: async (listId, name, quantity, category = 'Sonstiges', mealPlanId, brand) => {
     const { currentMember, household } = get();
     const { data } = await supabase
       .from('shopping_items')
-      .insert({ list_id: listId, name, quantity, category, added_by: currentMember?.id, meal_plan_id: mealPlanId })
+      .insert({ list_id: listId, name, quantity, category, brand: brand || null, added_by: currentMember?.id, meal_plan_id: mealPlanId })
       .select().single();
     if (data) set(s => ({ items: [...s.items, data] }));
 
