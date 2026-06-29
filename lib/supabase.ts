@@ -77,6 +77,7 @@ export interface Task {
   title: string;
   description?: string;
   assigned_to?: string;
+  rotation?: string[];
   created_by?: string;
   due_date?: string;
   completed_at?: string;

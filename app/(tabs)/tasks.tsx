@@ -121,6 +121,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
   const [useTime, setUseTime] = useState(false);
   const [recurrence, setRecurrence] = useState<string | null>(null);
   const [recurrenceInterval, setRecurrenceInterval] = useState(1);
+  const [rotation, setRotation] = useState<string[]>([]);
   const [notify, setNotify] = useState(true);
 
   useEffect(() => {
@@ -128,7 +129,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       setTitle(''); setDescription(''); setCategory('Haushalt');
       setPriority('normal'); setAssignedTo(null); setDueDate('');
       setDueTime(getCurrentTimeSlot()); setUseTime(false);
-      setRecurrence(null); setRecurrenceInterval(1); setNotify(true);
+      setRecurrence(null); setRecurrenceInterval(1); setRotation([]); setNotify(true);
       return;
     }
     if (editTask) {
@@ -143,6 +144,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       setDueTime(editTask.due_time || getCurrentTimeSlot());
       setRecurrence(editTask.recurrence || null);
       setRecurrenceInterval(editTask.recurrence_interval || 1);
+      setRotation(editTask.rotation || []);
       setNotify(true);
     } else if (preselectedDate) {
       setDueDate(format(preselectedDate, 'yyyy-MM-dd'));
@@ -151,9 +153,15 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
 
   const handleSave = () => {
     if (!title.trim()) return;
+    const useRotation = !!recurrence && rotation.length >= 2;
+    // With a rotation, the current task goes to whoever is up next (or stays put on edit).
+    const startAssignee = useRotation
+      ? (assignedTo && rotation.includes(assignedTo) ? assignedTo : rotation[0])
+      : (assignedTo || undefined);
     onSave({
       title: title.trim(), description: description.trim() || undefined,
-      category, priority, assigned_to: assignedTo || undefined,
+      category, priority, assigned_to: startAssignee,
+      rotation: useRotation ? rotation : null,
       due_date: dueDate || undefined,
       due_time: useTime ? dueTime : undefined,
       recurrence: recurrence || undefined,
@@ -283,6 +291,33 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
                 </View>
               )}
 
+              {/* Rotation – reihum zuweisen (nur bei Wiederholung & mehreren Mitgliedern) */}
+              {recurrence && members.length > 1 && (
+                <>
+                  <Text style={styles.fieldLabel}>🔄 REIHUM (WER IST DRAN)</Text>
+                  <Text style={styles.rotationHint}>
+                    Tippe die Mitglieder in der gewünschten Reihenfolge an – die Aufgabe wandert bei jeder Wiederholung zum Nächsten.
+                  </Text>
+                  <View style={styles.chipWrap}>
+                    {members.map(m => {
+                      const idx = rotation.indexOf(m.id);
+                      const active = idx >= 0;
+                      return (
+                        <TouchableOpacity
+                          key={m.id}
+                          style={[styles.chip, active && { backgroundColor: m.avatar_color, borderColor: m.avatar_color }]}
+                          onPress={() => setRotation(r => active ? r.filter(x => x !== m.id) : [...r, m.id])}
+                        >
+                          <Text style={[styles.chipText, active && { color: '#fff' }]}>
+                            {active ? `${idx + 1}. ` : ''}{m.display_name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+
               <TouchableOpacity style={[styles.saveBtn, !title.trim() && { opacity: 0.4 }]} onPress={handleSave} disabled={!title.trim()}>
                 <Text style={styles.saveBtnText}>{editTask ? 'Änderungen speichern ✓' : 'Aufgabe erstellen ✓'}</Text>
               </TouchableOpacity>
@@ -404,6 +439,9 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit 
             <View style={styles.detailRow}><Text style={styles.detailLabel}>🕐 Uhrzeit</Text><Text style={styles.detailValue}>{task.due_time ? `${task.due_time} Uhr` : 'Keine'}</Text></View>
             <View style={styles.detailRow}><Text style={styles.detailLabel}>⭐ Aufwand</Text><Text style={styles.detailValue}>{PRIORITY_LABELS[task.priority as Priority]} Pkt</Text></View>
             {recurrenceText && <View style={styles.detailRow}><Text style={styles.detailLabel}>🔄 Wiederholung</Text><Text style={styles.detailValue}>{recurrenceText}</Text></View>}
+            {task.rotation && task.rotation.length > 1 && (
+              <View style={styles.detailRow}><Text style={styles.detailLabel}>🔁 Reihum</Text><Text style={styles.detailValue}>{task.rotation.map(id => members.find(m => m.id === id)?.display_name ?? '?').join(' → ')}</Text></View>
+            )}
             <View style={styles.detailRow}><Text style={styles.detailLabel}>👤 Zugewiesen</Text><Text style={styles.detailValue}>{assignedMember ? assignedMember.display_name : 'Alle'}</Text></View>
 
             <TouchableOpacity style={styles.saveBtn} onPress={() => { onComplete(task.id); onClose(); }}>
@@ -1063,6 +1101,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   notifyToggleText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
   notifyToggleSub: { ...typography.xs, color: colors.textMuted, marginTop: 2 },
   fieldLabel: { ...typography.label, color: colors.textMuted, marginBottom: spacing.sm },
+  rotationHint: { ...typography.xs, color: colors.textSecondary, marginBottom: spacing.sm, marginTop: -spacing.xs },
   detailTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
   detailDesc: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.lg },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight },

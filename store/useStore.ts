@@ -330,6 +330,13 @@ export const useStore = create<AppState>((set, get) => ({
       else if (task.recurrence === 'weekly') next = addWeeks(base, n);
       else if (task.recurrence === 'monthly') next = addMonths(base, n);
       else if (task.recurrence === 'yearly') next = addYears(base, n);
+      // 🔁 Rotation: pass the next occurrence to the next person in the cycle.
+      const rotation = (task as any).rotation as string[] | null | undefined;
+      let nextAssignee = task.assigned_to;
+      if (rotation && rotation.length > 1) {
+        const cur = rotation.indexOf(task.assigned_to ?? '');
+        nextAssignee = rotation[(cur + 1) % rotation.length];
+      }
       if (next) {
         const { data: newTask } = await supabase.from('tasks').insert({
           household_id: task.household_id,
@@ -338,7 +345,8 @@ export const useStore = create<AppState>((set, get) => ({
           category: task.category,
           priority: task.priority,
           points: task.points,
-          assigned_to: task.assigned_to,
+          assigned_to: nextAssignee,
+          rotation: rotation && rotation.length > 1 ? rotation : null,
           due_date: format(next, 'yyyy-MM-dd'),
           due_time: (task as any).due_time || null,
           recurrence: task.recurrence,
