@@ -1,6 +1,7 @@
 // store/useStore.ts
 import { create } from 'zustand';
 import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType } from '../lib/supabase';
+import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
 import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -44,6 +45,12 @@ interface AppState {
   // 🛒 Learned item catalog (personalized autocomplete / frequent items)
   itemCatalog: { name: string; name_key: string; category: string; count: number }[];
   loadItemCatalog: () => Promise<void>;
+
+  // 🥗 Scanned-product health history (shared per household)
+  scanHistory: ScanHistoryEntry[];
+  loadScanHistory: () => Promise<void>;
+  saveScan: (result: ScanResult) => Promise<void>;
+  deleteScan: (id: string) => Promise<void>;
 
   tasks: Task[];
   setTasks: (tasks: Task[]) => void;
@@ -246,6 +253,44 @@ export const useStore = create<AppState>((set, get) => ({
       .order('count', { ascending: false })
       .limit(500);
     if (data) set({ itemCatalog: data as any });
+  },
+
+  scanHistory: [],
+  loadScanHistory: async () => {
+    const { household } = get();
+    if (!household) return;
+    const { data } = await supabase
+      .from('scan_history').select('*')
+      .eq('household_id', household.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (data) set({ scanHistory: data as any });
+  },
+  saveScan: async (result) => {
+    const { household, currentMember } = get();
+    if (!household || !result.found || !result.info || !result.rating) return;
+    const row = {
+      household_id: household.id,
+      barcode: result.info.barcode,
+      name: result.info.name,
+      brand: result.info.brand ?? null,
+      score: result.rating.score,
+      rating_label: result.rating.label,
+      nutri_score: result.info.nutriScore ?? null,
+      nova_group: result.info.novaGroup ?? null,
+      image_url: result.info.imageUrl ?? null,
+      added_by: currentMember?.id ?? null,
+      created_at: new Date().toISOString(),
+    };
+    const { data } = await supabase
+      .from('scan_history')
+      .upsert(row, { onConflict: 'household_id,barcode' })
+      .select().single();
+    if (data) set(s => ({ scanHistory: [data as any, ...s.scanHistory.filter(h => h.barcode !== row.barcode)] }));
+  },
+  deleteScan: async (id) => {
+    set(s => ({ scanHistory: s.scanHistory.filter(h => h.id !== id) }));
+    await supabase.from('scan_history').delete().eq('id', id);
   },
 
   tasks: [],

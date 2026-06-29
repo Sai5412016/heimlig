@@ -44,6 +44,20 @@ export interface ScanResult {
   rating?: HealthRating;
 }
 
+// A persisted scan, as stored in the household's scan_history table.
+export interface ScanHistoryEntry {
+  id: string;
+  barcode: string;
+  name: string;
+  brand?: string | null;
+  score?: number | null;
+  rating_label?: string | null;
+  nutri_score?: string | null;
+  nova_group?: number | null;
+  image_url?: string | null;
+  created_at: string;
+}
+
 // Additive risk classification (curated subset of the most discussed E-numbers).
 // Lowercased E-number keys without the 'e' prefix-tag formatting.
 const HIGH_RISK = new Set([

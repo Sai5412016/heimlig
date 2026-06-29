@@ -2,7 +2,7 @@
 // Scans a product barcode with the camera (native) or via manual entry (web/fallback),
 // looks it up in Open Food Facts and shows a 0–100 health score with a reasoned breakdown.
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView,
   ActivityIndicator, Platform, TextInput, Image,
@@ -12,16 +12,19 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, shadow, type ColorPalette } from '../constants/theme';
 import { fetchAndScore, type ScanResult } from '../lib/productScore';
+import { useStore } from '../store/useStore';
 
 type Mode = 'scan' | 'loading' | 'result';
 
-export default function ProductScanner({ visible, onClose, onAddToList }: {
+export default function ProductScanner({ visible, onClose, onAddToList, initialBarcode }: {
   visible: boolean;
   onClose: () => void;
   onAddToList?: (name: string, brand?: string) => void;
+  initialBarcode?: string;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const saveScan = useStore(s => s.saveScan);
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<Mode>('scan');
   const [result, setResult] = useState<ScanResult | null>(null);
@@ -38,7 +41,17 @@ export default function ProductScanner({ visible, onClose, onAddToList }: {
     const r = await fetchAndScore(code);
     setResult(r);
     setMode('result');
-  }, []);
+    if (r.found) saveScan(r);   // remember it in the household's scan history
+  }, [saveScan]);
+
+  // When opened on a specific product (e.g. tapping a history entry), look it up directly.
+  useEffect(() => {
+    if (visible && initialBarcode && !scannedRef.current) {
+      scannedRef.current = true;
+      lookup(initialBarcode);
+    }
+    if (!visible) reset();
+  }, [visible, initialBarcode]);
 
   const onBarcode = useCallback(({ data }: { data: string }) => {
     if (scannedRef.current) return;
