@@ -16,10 +16,11 @@ import { useStore } from '../store/useStore';
 
 type Mode = 'scan' | 'loading' | 'result';
 
-export default function ProductScanner({ visible, onClose, onAddToList, initialBarcode }: {
+export default function ProductScanner({ visible, onClose, onAddToList, onAddToPantry, initialBarcode }: {
   visible: boolean;
   onClose: () => void;
   onAddToList?: (name: string, brand?: string) => void;
+  onAddToPantry?: (name: string, barcode?: string) => void;
   initialBarcode?: string;
 }) {
   const { colors } = useTheme();
@@ -67,6 +68,13 @@ export default function ProductScanner({ visible, onClose, onAddToList, initialB
   const handleAdd = () => {
     if (result?.info && onAddToList) {
       onAddToList(result.info.name, result.info.brand);
+      handleClose();
+    }
+  };
+
+  const handleAddPantry = () => {
+    if (result?.info && onAddToPantry) {
+      onAddToPantry(result.info.name, result.info.barcode);
       handleClose();
     }
   };
@@ -228,6 +236,11 @@ export default function ProductScanner({ visible, onClose, onAddToList, initialB
           <TouchableOpacity style={[styles.primaryBtn, styles.flex, { backgroundColor: colors.border }]} onPress={reset}>
             <Text style={[styles.primaryBtnText, { color: colors.text }]}>Erneut scannen</Text>
           </TouchableOpacity>
+          {onAddToPantry && (
+            <TouchableOpacity style={[styles.primaryBtn, styles.flex, { backgroundColor: colors.accent }]} onPress={handleAddPantry}>
+              <Text style={styles.primaryBtnText}>In Vorrat</Text>
+            </TouchableOpacity>
+          )}
           {onAddToList && (
             <TouchableOpacity style={[styles.primaryBtn, styles.flex]} onPress={handleAdd}>
               <Text style={styles.primaryBtnText}>Zur Liste</Text>

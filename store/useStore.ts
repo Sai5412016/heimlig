@@ -1,6 +1,6 @@
 // store/useStore.ts
 import { create } from 'zustand';
-import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption } from '../lib/supabase';
+import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption, PantryItem } from '../lib/supabase';
 import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
 import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -61,6 +61,13 @@ interface AppState {
   deleteReward: (id: string) => Promise<void>;
   redeemReward: (reward: Reward, memberId: string) => Promise<boolean>;
   rewardBalance: (memberId: string) => number;
+
+  // 🧊 Pantry / Vorrat (with expiry tracking)
+  pantry: PantryItem[];
+  loadPantry: () => Promise<void>;
+  addPantryItem: (name: string, emoji?: string, expiry?: string | null, barcode?: string) => Promise<void>;
+  setPantryExpiry: (id: string, expiry: string | null) => Promise<void>;
+  deletePantryItem: (id: string) => Promise<void>;
 
   tasks: Task[];
   setTasks: (tasks: Task[]) => void;
@@ -349,6 +356,33 @@ export const useStore = create<AppState>((set, get) => ({
     const earned = get().pointsEarned[memberId] || 0;
     const spent = get().redemptions.filter(r => r.member_id === memberId).reduce((sum, r) => sum + r.cost, 0);
     return earned - spent;
+  },
+
+  pantry: [],
+  loadPantry: async () => {
+    const { household } = get();
+    if (!household) return;
+    const { data } = await supabase
+      .from('pantry_items').select('*')
+      .eq('household_id', household.id)
+      .order('expiry_date', { ascending: true, nullsFirst: false });
+    if (data) set({ pantry: data as PantryItem[] });
+  },
+  addPantryItem: async (name, emoji, expiry, barcode) => {
+    const { household, currentMember } = get();
+    if (!household || !name.trim()) return;
+    const { data } = await supabase.from('pantry_items')
+      .insert({ household_id: household.id, name: name.trim(), emoji: emoji || null, expiry_date: expiry || null, barcode: barcode || null, added_by: currentMember?.id })
+      .select().single();
+    if (data) set(s => ({ pantry: [...s.pantry, data as PantryItem] }));
+  },
+  setPantryExpiry: async (id, expiry) => {
+    set(s => ({ pantry: s.pantry.map(p => p.id === id ? { ...p, expiry_date: expiry ?? undefined } : p) }));
+    await supabase.from('pantry_items').update({ expiry_date: expiry }).eq('id', id);
+  },
+  deletePantryItem: async (id) => {
+    set(s => ({ pantry: s.pantry.filter(p => p.id !== id) }));
+    await supabase.from('pantry_items').delete().eq('id', id);
   },
 
   tasks: [],

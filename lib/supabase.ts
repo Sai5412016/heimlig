@@ -156,6 +156,18 @@ export interface RewardRedemption {
   created_at: string;
 }
 
+export interface PantryItem {
+  id: string;
+  household_id: string;
+  name: string;
+  emoji?: string;
+  quantity?: string;
+  expiry_date?: string;
+  barcode?: string;
+  added_by?: string;
+  created_at: string;
+}
+
 export type MealType = 'fruehstueck' | 'mittag' | 'abendessen';
 
 export interface MealPlan {
