@@ -156,6 +156,16 @@ export interface RewardRedemption {
   created_at: string;
 }
 
+export interface HouseholdNote {
+  id: string;
+  household_id: string;
+  title: string;
+  content?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PantryItem {
   id: string;
   household_id: string;

@@ -13,6 +13,7 @@ import { useStore } from '../../store/useStore';
 import { useTheme } from '../../hooks/useTheme';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { de } from 'date-fns/locale';
+import NotesModal from '../../components/NotesModal';
 
 // ─── AVATAR ───────────────────────────────────────────────────
 function Avatar({ name, color, size = 48 }: { name: string; color: string; size?: number }) {
@@ -195,6 +196,7 @@ export default function HouseholdScreen() {
   const [showJoin, setShowJoin] = useState(false);
   const [showEditName, setShowEditName] = useState(false);
   const [showChangePw, setShowChangePw] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [weekScores, setWeekScores] = useState<Record<string, number>>({});
 
@@ -456,6 +458,11 @@ export default function HouseholdScreen() {
           </Text>
         </TouchableOpacity>
 
+        {/* Household notes */}
+        <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowNotes(true)}>
+          <Text style={styles.settingsBtnText}>📒 Notizen & Infos</Text>
+        </TouchableOpacity>
+
         {/* Change password */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowChangePw(true)}>
           <Text style={styles.settingsBtnText}>🔑 Passwort ändern</Text>
@@ -480,6 +487,7 @@ export default function HouseholdScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
+      <NotesModal visible={showNotes} onClose={() => setShowNotes(false)} />
       <InviteModal
         visible={showInvite}
         onClose={() => setShowInvite(false)}

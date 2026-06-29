@@ -1,6 +1,6 @@
 // store/useStore.ts
 import { create } from 'zustand';
-import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption, PantryItem } from '../lib/supabase';
+import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption, PantryItem, HouseholdNote } from '../lib/supabase';
 import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
 import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -68,6 +68,12 @@ interface AppState {
   addPantryItem: (name: string, emoji?: string, expiry?: string | null, barcode?: string) => Promise<void>;
   setPantryExpiry: (id: string, expiry: string | null) => Promise<void>;
   deletePantryItem: (id: string) => Promise<void>;
+
+  // 📒 Household notes / documents
+  notes: HouseholdNote[];
+  loadNotes: () => Promise<void>;
+  saveNote: (note: { id?: string; title: string; content: string }) => Promise<void>;
+  deleteNote: (id: string) => Promise<void>;
 
   tasks: Task[];
   setTasks: (tasks: Task[]) => void;
@@ -383,6 +389,36 @@ export const useStore = create<AppState>((set, get) => ({
   deletePantryItem: async (id) => {
     set(s => ({ pantry: s.pantry.filter(p => p.id !== id) }));
     await supabase.from('pantry_items').delete().eq('id', id);
+  },
+
+  notes: [],
+  loadNotes: async () => {
+    const { household } = get();
+    if (!household) return;
+    const { data } = await supabase
+      .from('household_notes').select('*')
+      .eq('household_id', household.id)
+      .order('updated_at', { ascending: false });
+    if (data) set({ notes: data as HouseholdNote[] });
+  },
+  saveNote: async ({ id, title, content }) => {
+    const { household, currentMember } = get();
+    if (!household || !title.trim()) return;
+    if (id) {
+      const { data } = await supabase.from('household_notes')
+        .update({ title: title.trim(), content, updated_at: new Date().toISOString() })
+        .eq('id', id).select().single();
+      if (data) set(s => ({ notes: s.notes.map(n => n.id === id ? data as HouseholdNote : n).sort((a, b) => b.updated_at.localeCompare(a.updated_at)) }));
+    } else {
+      const { data } = await supabase.from('household_notes')
+        .insert({ household_id: household.id, title: title.trim(), content, created_by: currentMember?.id })
+        .select().single();
+      if (data) set(s => ({ notes: [data as HouseholdNote, ...s.notes] }));
+    }
+  },
+  deleteNote: async (id) => {
+    set(s => ({ notes: s.notes.filter(n => n.id !== id) }));
+    await supabase.from('household_notes').delete().eq('id', id);
   },
 
   tasks: [],
