@@ -69,8 +69,30 @@ export default function DashboardScreen() {
   const { household, currentMember, members, tasks, items, transactions, completeTask, setTasks, setTransactions } = useStore();
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const openTasks = tasks.filter(t => !t.completed_at);
+  // Birthdays live in the calendar + the dedicated widget below — keep them out of "open tasks".
+  const openTasks = tasks.filter(t => !t.completed_at && t.category !== 'Geburtstag');
   const uncheckedItems = items.filter(i => !i.checked);
+
+  // Strip "Geburtstag" boilerplate from a task title so we show just the person's name.
+  const birthdayName = (title: string) =>
+    title.replace(/geburtstag/ig, '').replace(/[:•\-–]/g, '').replace(/🎂/g, '').replace(/\s+/g, ' ').trim() || title;
+
+  // Next upcoming birthday (treats birthdays as recurring annually).
+  const nextBirthday = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const cands = tasks
+      .filter(t => t.category === 'Geburtstag' && t.due_date)
+      .map(t => {
+        const d = parseISO(t.due_date!);
+        const next = new Date(today.getFullYear(), d.getMonth(), d.getDate());
+        next.setHours(0, 0, 0, 0);
+        if (next.getTime() < today.getTime()) next.setFullYear(today.getFullYear() + 1);
+        const days = Math.round((next.getTime() - today.getTime()) / 86400000);
+        return { task: t, days };
+      })
+      .sort((a, b) => a.days - b.days);
+    return cands[0] ?? null;
+  }, [tasks]);
 
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -128,6 +150,25 @@ export default function DashboardScreen() {
         <View style={styles.householdBadge}>
           <Text style={styles.householdName}>🏡 {household?.name ?? 'Mein Haushalt'}</Text>
         </View>
+
+        {/* Next birthday */}
+        {nextBirthday && (
+          <TouchableOpacity style={styles.birthdayCard} activeOpacity={0.85} onPress={() => router.push('/(tabs)/tasks')}>
+            <Text style={styles.birthdayEmoji}>🎂</Text>
+            <View style={{ flex: 1 }}>
+              {nextBirthday.days === 0 ? (
+                <Text style={styles.birthdayToday}>{birthdayName(nextBirthday.task.title)} hat heute Geburtstag! 🎉</Text>
+              ) : (
+                <>
+                  <Text style={styles.birthdayLabel}>Nächster Geburtstag</Text>
+                  <Text style={styles.birthdayName}>
+                    {birthdayName(nextBirthday.task.title)} · {nextBirthday.days === 1 ? 'morgen' : `noch ${nextBirthday.days} Tage`}
+                  </Text>
+                </>
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Stats */}
         <View style={styles.statsRow}>
@@ -213,6 +254,11 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   avatarText: { color: colors.textInverse, fontWeight: '700' },
   householdBadge: { backgroundColor: colors.brandPale, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, alignSelf: 'flex-start', marginBottom: spacing.lg },
   householdName: { ...typography.sm, color: colors.brand, fontWeight: '600' },
+  birthdayCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.lg, ...shadow.sm, borderLeftWidth: 4, borderLeftColor: colors.accent },
+  birthdayEmoji: { fontSize: 30 },
+  birthdayLabel: { ...typography.xs, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  birthdayName: { ...typography.body, color: colors.text, fontWeight: '700', marginTop: 2 },
+  birthdayToday: { ...typography.body, color: colors.accent, fontWeight: '800' },
   statsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   statCard: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center', ...shadow.sm },
   statEmoji: { fontSize: 24, marginBottom: spacing.xs },
