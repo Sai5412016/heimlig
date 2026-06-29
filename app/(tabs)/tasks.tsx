@@ -46,7 +46,7 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   'Haushalt': '🏠', 'Einkauf': '🛒', 'Wartung': '🔧',
   'Garten': '🌱', 'Büro': '💼', 'Familie': '👨‍👩‍👧', 'Sonstiges': '📋',
   'Gesundheit': '💊', 'Sport': '🏃', 'Finanzen': '💶', 'Reise': '✈️',
-  'Geburtstag': '🎂',
+  'Geburtstag': '🎂', 'Medikament': '💊', 'Pflanzen': '🪴', 'Haustier': '🐾',
 };
 const HOUSEHOLD_CATEGORIES = ['Haushalt', 'Einkauf', 'Wartung', 'Garten'];
 
