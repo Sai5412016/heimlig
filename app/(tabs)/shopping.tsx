@@ -242,6 +242,16 @@ const AddItemModal = ({ visible, onClose, onAdd }: {
 
 
 const LIST_EMOJIS = ['🛒', '🛍️', '🏪', '💊', '🥦', '🥩', '🐾', '🏠', '📦', '👗'];
+const SUPERMARKETS = [
+  { name: 'Rewe', emoji: '🛍️' },
+  { name: 'Aldi', emoji: '🛒' },
+  { name: 'Edeka', emoji: '🏪' },
+  { name: 'Lidl', emoji: '💛' },
+  { name: 'Penny', emoji: '🟡' },
+  { name: 'Netto', emoji: '💰' },
+  { name: 'dm', emoji: '💊' },
+  { name: 'Rossmann', emoji: '🌸' },
+];
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   'Lebensmittel': '🥫', 'Obst & Gemüse': '🥬', 'Tiefkühl': '❄️',
@@ -522,6 +532,37 @@ const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () =
               )}
             </TouchableOpacity>
           ))}
+
+          <View style={styles.supermarketSection}>
+            <Text style={styles.supermarketLabel}>Schnell erstellen</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.xs }}>
+                {SUPERMARKETS.map(sm => {
+                  const existing = shoppingLists.find(l => l.name.toLowerCase() === sm.name.toLowerCase());
+                  const isActive = existing?.id === activeListId;
+                  return (
+                    <TouchableOpacity
+                      key={sm.name}
+                      style={[styles.supermarketChip, isActive && styles.supermarketChipActive]}
+                      onPress={async () => {
+                        if (existing) {
+                          await switchList(existing.id);
+                          onClose();
+                        } else {
+                          await createShoppingList(sm.name, sm.emoji);
+                          onClose();
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.supermarketChipEmoji}>{sm.emoji}</Text>
+                      <Text style={[styles.supermarketChipName, isActive && styles.supermarketChipNameActive]}>{sm.name}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
 
           {creating ? (
             <View style={styles.createBox}>
@@ -1000,6 +1041,18 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   listRowNameActive: { color: colors.brand, fontWeight: '700' },
   listRowCheck: { fontSize: 16, color: colors.brand, fontWeight: '700' },
   listRowDelete: { fontSize: 18, paddingLeft: spacing.sm },
+  supermarketSection: { marginTop: spacing.md },
+  supermarketLabel: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 },
+  supermarketChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  supermarketChipActive: { borderColor: colors.brand, backgroundColor: colors.brandPale },
+  supermarketChipEmoji: { fontSize: 16 },
+  supermarketChipName: { ...typography.sm, color: colors.text, fontWeight: '600' },
+  supermarketChipNameActive: { color: colors.brand },
   newListBtn: {
     marginTop: spacing.md, borderWidth: 1.5, borderColor: colors.brand,
     borderRadius: radius.md, padding: spacing.md, alignItems: 'center',

@@ -45,6 +45,7 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   'Haushalt': '🏠', 'Einkauf': '🛒', 'Wartung': '🔧',
   'Garten': '🌱', 'Büro': '💼', 'Familie': '👨‍👩‍👧', 'Sonstiges': '📋',
   'Gesundheit': '💊', 'Sport': '🏃', 'Finanzen': '💶', 'Reise': '✈️',
+  'Geburtstag': '🎂',
 };
 const HOUSEHOLD_CATEGORIES = ['Haushalt', 'Einkauf', 'Wartung', 'Garten'];
 
@@ -634,7 +635,7 @@ export default function TasksScreen() {
                 household_id: household.id,
                 title: e.title,
                 description: desc,
-                category: isBirthday ? 'Familie' : 'Sonstiges',
+                category: isBirthday ? 'Geburtstag' : 'Sonstiges',
                 priority: 'normal',
                 points: 10,
                 due_date: e.date,
