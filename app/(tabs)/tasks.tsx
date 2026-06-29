@@ -21,6 +21,7 @@ import { useStore } from '../../store/useStore';
 import { scheduleTaskNotification, requestNotificationPermission } from '../../lib/notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Scoreboard, { monthlyScores } from '../../components/Scoreboard';
+import RewardsModal from '../../components/RewardsModal';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { parseICS } from '../../lib/ics';
@@ -651,6 +652,7 @@ export default function TasksScreen() {
   const [toastPoints, setToastPoints] = useState(0);
   const [showToast, setShowToast] = useState(false);
   const [showScoreboard, setShowScoreboard] = useState(false);
+  const [showRewards, setShowRewards] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [monthScores, setMonthScores] = useState<Record<string, number>>({});
@@ -827,6 +829,11 @@ export default function TasksScreen() {
               <Text style={styles.scoreBadgeText}>{isLeading ? '👑' : '🏆'} {myScore}</Text>
             </TouchableOpacity>
           )}
+          {gamificationOn && (
+            <TouchableOpacity style={styles.importBtn} onPress={() => setShowRewards(true)}>
+              <Text style={styles.viewToggleText}>🎁</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.importBtn} onPress={handleImportIcs}>
             <Text style={styles.viewToggleText}>📥</Text>
           </TouchableOpacity>
@@ -969,6 +976,8 @@ export default function TasksScreen() {
           currentMemberId={currentMember?.id}
         />
       )}
+
+      <RewardsModal visible={showRewards} onClose={() => setShowRewards(false)} />
 
       <AddTaskModal
         visible={showModal || !!editingTask}

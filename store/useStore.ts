@@ -1,6 +1,6 @@
 // store/useStore.ts
 import { create } from 'zustand';
-import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType } from '../lib/supabase';
+import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption } from '../lib/supabase';
 import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
 import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -51,6 +51,16 @@ interface AppState {
   loadScanHistory: () => Promise<void>;
   saveScan: (result: ScanResult) => Promise<void>;
   deleteScan: (id: string) => Promise<void>;
+
+  // 🎁 Rewards: catalog + redemptions + per-member earned points
+  rewards: Reward[];
+  redemptions: RewardRedemption[];
+  pointsEarned: Record<string, number>;
+  loadRewards: () => Promise<void>;
+  addReward: (title: string, emoji: string, cost: number) => Promise<void>;
+  deleteReward: (id: string) => Promise<void>;
+  redeemReward: (reward: Reward, memberId: string) => Promise<boolean>;
+  rewardBalance: (memberId: string) => number;
 
   tasks: Task[];
   setTasks: (tasks: Task[]) => void;
@@ -292,6 +302,53 @@ export const useStore = create<AppState>((set, get) => ({
   deleteScan: async (id) => {
     set(s => ({ scanHistory: s.scanHistory.filter(h => h.id !== id) }));
     await supabase.from('scan_history').delete().eq('id', id);
+  },
+
+  rewards: [],
+  redemptions: [],
+  pointsEarned: {},
+  loadRewards: async () => {
+    const { household } = get();
+    if (!household) return;
+    const [rw, rd, sc] = await Promise.all([
+      supabase.from('rewards').select('*').eq('household_id', household.id).order('cost', { ascending: true }),
+      supabase.from('reward_redemptions').select('*').eq('household_id', household.id).order('created_at', { ascending: false }).limit(100),
+      supabase.from('member_scores').select('member_id, points').eq('household_id', household.id),
+    ]);
+    const earned: Record<string, number> = {};
+    (sc.data || []).forEach((r: any) => { earned[r.member_id] = (earned[r.member_id] || 0) + (r.points || 0); });
+    set({
+      rewards: (rw.data as Reward[]) || [],
+      redemptions: (rd.data as RewardRedemption[]) || [],
+      pointsEarned: earned,
+    });
+  },
+  addReward: async (title, emoji, cost) => {
+    const { household, currentMember } = get();
+    if (!household) return;
+    const { data } = await supabase.from('rewards')
+      .insert({ household_id: household.id, title: title.trim(), emoji: emoji || null, cost, created_by: currentMember?.id })
+      .select().single();
+    if (data) set(s => ({ rewards: [...s.rewards, data as Reward].sort((a, b) => a.cost - b.cost) }));
+  },
+  deleteReward: async (id) => {
+    set(s => ({ rewards: s.rewards.filter(r => r.id !== id) }));
+    await supabase.from('rewards').delete().eq('id', id);
+  },
+  redeemReward: async (reward, memberId) => {
+    const { household } = get();
+    if (!household) return false;
+    if (get().rewardBalance(memberId) < reward.cost) return false;
+    const { data } = await supabase.from('reward_redemptions')
+      .insert({ household_id: household.id, reward_id: reward.id, member_id: memberId, title: reward.title, emoji: reward.emoji ?? null, cost: reward.cost })
+      .select().single();
+    if (data) set(s => ({ redemptions: [data as RewardRedemption, ...s.redemptions] }));
+    return true;
+  },
+  rewardBalance: (memberId) => {
+    const earned = get().pointsEarned[memberId] || 0;
+    const spent = get().redemptions.filter(r => r.member_id === memberId).reduce((sum, r) => sum + r.cost, 0);
+    return earned - spent;
   },
 
   tasks: [],

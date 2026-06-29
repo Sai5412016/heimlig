@@ -135,6 +135,27 @@ export interface Recipe {
   created_at: string;
 }
 
+export interface Reward {
+  id: string;
+  household_id: string;
+  title: string;
+  emoji?: string;
+  cost: number;
+  created_by?: string;
+  created_at: string;
+}
+
+export interface RewardRedemption {
+  id: string;
+  household_id: string;
+  reward_id?: string;
+  member_id: string;
+  title: string;
+  emoji?: string;
+  cost: number;
+  created_at: string;
+}
+
 export type MealType = 'fruehstueck' | 'mittag' | 'abendessen';
 
 export interface MealPlan {
