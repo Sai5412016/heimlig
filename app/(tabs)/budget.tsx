@@ -30,6 +30,7 @@ import { useStore } from '../../store/useStore';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { buildTransactionsCsv, exportCsv, parseTransactionsCsv, memberIdByName } from '../../lib/dataIO';
+import BudgetSplitModal from '../../components/BudgetSplitModal';
 
 const CAT_EMOJIS: Record<string, string> = {
   'Lebensmittel': '🛒', 'Miete': '🏠', 'Transport': '🚗',
@@ -289,6 +290,7 @@ export default function BudgetScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { household, currentMember, members, transactions, setTransactions } = useStore();
   const [showModal, setShowModal] = useState(false);
+  const [showSplit, setShowSplit] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions'>('overview');
   const [filterCat, setFilterCat] = useState<string | null>(null);
@@ -422,6 +424,11 @@ export default function BudgetScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>💶 Budget</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+          {members.length > 1 && (
+            <TouchableOpacity style={styles.ioBtn} onPress={() => setShowSplit(true)}>
+              <Text style={styles.ioBtnText}>💸</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.ioBtn} onPress={handleExport}>
             <Text style={styles.ioBtnText}>📤</Text>
           </TouchableOpacity>
@@ -575,6 +582,7 @@ export default function BudgetScreen() {
         onSave={handleAddTransaction} members={members}
         currentMemberId={currentMember?.id ?? ''}
       />
+      <BudgetSplitModal visible={showSplit} onClose={() => setShowSplit(false)} />
     </SafeAreaView>
   );
 }

@@ -1,6 +1,6 @@
 // store/useStore.ts
 import { create } from 'zustand';
-import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption, PantryItem, HouseholdNote } from '../lib/supabase';
+import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption, PantryItem, HouseholdNote, Settlement } from '../lib/supabase';
 import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
 import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -74,6 +74,11 @@ interface AppState {
   loadNotes: () => Promise<void>;
   saveNote: (note: { id?: string; title: string; content: string }) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
+
+  // 💸 Budget settlements (member-to-member)
+  settlements: Settlement[];
+  loadSettlements: () => Promise<void>;
+  addSettlement: (fromMember: string, toMember: string, amount: number) => Promise<void>;
 
   tasks: Task[];
   setTasks: (tasks: Task[]) => void;
@@ -419,6 +424,25 @@ export const useStore = create<AppState>((set, get) => ({
   deleteNote: async (id) => {
     set(s => ({ notes: s.notes.filter(n => n.id !== id) }));
     await supabase.from('household_notes').delete().eq('id', id);
+  },
+
+  settlements: [],
+  loadSettlements: async () => {
+    const { household } = get();
+    if (!household) return;
+    const { data } = await supabase
+      .from('settlements').select('*')
+      .eq('household_id', household.id)
+      .order('created_at', { ascending: false });
+    if (data) set({ settlements: data as Settlement[] });
+  },
+  addSettlement: async (fromMember, toMember, amount) => {
+    const { household, currentMember } = get();
+    if (!household) return;
+    const { data } = await supabase.from('settlements')
+      .insert({ household_id: household.id, from_member: fromMember, to_member: toMember, amount, created_by: currentMember?.id })
+      .select().single();
+    if (data) set(s => ({ settlements: [data as Settlement, ...s.settlements] }));
   },
 
   tasks: [],

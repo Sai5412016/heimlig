@@ -156,6 +156,16 @@ export interface RewardRedemption {
   created_at: string;
 }
 
+export interface Settlement {
+  id: string;
+  household_id: string;
+  from_member: string;
+  to_member: string;
+  amount: number;
+  created_by?: string;
+  created_at: string;
+}
+
 export interface HouseholdNote {
   id: string;
   household_id: string;
