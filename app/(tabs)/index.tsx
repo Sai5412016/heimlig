@@ -100,6 +100,9 @@ export default function DashboardScreen() {
     .filter(t => t.type === 'expense' && t.transaction_date.startsWith(monthKey))
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
+  // Open tasks that are actually due this month (drives the "Offen · diesen Monat" card).
+  const openTasksThisMonth = openTasks.filter(t => t.due_date && t.due_date.startsWith(monthKey));
+
   const loadData = async () => {
     if (!household) return;
     const [tasksRes, txRes] = await Promise.all([
@@ -172,7 +175,7 @@ export default function DashboardScreen() {
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <StatCard emoji="📋" label="Offen" value={openTasks.length} sub="Aufgaben" onPress={() => router.push('/(tabs)/tasks')} />
+          <StatCard emoji="📋" label="Offen" value={openTasksThisMonth.length} sub="diesen Monat" onPress={() => router.push('/(tabs)/tasks')} />
           <StatCard emoji="🛒" label="Fehlt" value={uncheckedItems.length} sub="Artikel" onPress={() => router.push('/(tabs)/shopping')} color={colors.accent} />
           <StatCard emoji="💶" label="Ausgaben" value={`€ ${monthlyExpenses.toFixed(0)}`} sub="diesen Monat" onPress={() => router.push('/(tabs)/budget')} color={colors.info} />
         </View>

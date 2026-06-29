@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { checkForUpdate } from '../lib/appUpdate';
+import WhatsNewModal from '../components/WhatsNewModal';
 
 // Pull a join code out of an incoming deep link, e.g. heimlig://join/AB12CD34
 function extractJoinCode(url: string | null): string | null {
@@ -108,6 +109,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="join/[code]" />
       </Stack>
+      <WhatsNewModal />
     </GestureHandlerRootView>
   );
 }
