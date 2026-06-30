@@ -41,6 +41,9 @@
       }],
       ["expo-camera", {
         "cameraPermission": "Heimlig braucht Zugriff auf die Kamera, um Produkt-Barcodes zu scannen."
+      }],
+      ["expo-location", {
+        "locationWhenInUsePermission": "Heimlig teilt deinen Standort nur, wenn du auf „Standort teilen“ tippst – für deine Haushaltsmitglieder."
       }]
     ],
     "extra": {

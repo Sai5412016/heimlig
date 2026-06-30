@@ -1,6 +1,6 @@
 // store/useStore.ts
 import { create } from 'zustand';
-import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption, PantryItem, HouseholdNote, Settlement, HouseholdMessage } from '../lib/supabase';
+import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption, PantryItem, HouseholdNote, Settlement, HouseholdMessage, MemberLocation } from '../lib/supabase';
 import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
 import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -89,6 +89,11 @@ interface AppState {
   // 📅 Google Calendar sync
   importGoogleEvents: (events: any[]) => Promise<number>;
   exportTasksToGoogle: (token: string) => Promise<number>;
+
+  // 📍 Shared member locations
+  locations: MemberLocation[];
+  loadLocations: () => Promise<void>;
+  shareLocation: (lat: number, lng: number, accuracy?: number) => Promise<void>;
 
   tasks: Task[];
   setTasks: (tasks: Task[]) => void;
@@ -499,6 +504,21 @@ export const useStore = create<AppState>((set, get) => ({
     }
     return count;
   },
+  locations: [],
+  loadLocations: async () => {
+    const { household } = get();
+    if (!household) return;
+    const { data } = await supabase.from('member_locations').select('*').eq('household_id', household.id);
+    if (data) set({ locations: data as MemberLocation[] });
+  },
+  shareLocation: async (lat, lng, accuracy) => {
+    const { household, currentMember } = get();
+    if (!household || !currentMember) return;
+    const row = { member_id: currentMember.id, household_id: household.id, lat, lng, accuracy: accuracy ?? null, updated_at: new Date().toISOString() };
+    const { data } = await supabase.from('member_locations').upsert(row, { onConflict: 'member_id' }).select().single();
+    if (data) set(s => ({ locations: [...s.locations.filter(l => l.member_id !== currentMember.id), data as MemberLocation] }));
+  },
+
   exportTasksToGoogle: async (token) => {
     const { createEvent } = await import('../lib/googleCalendar');
     const { tasks } = get();

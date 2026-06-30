@@ -15,6 +15,7 @@ import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { de } from 'date-fns/locale';
 import NotesModal from '../../components/NotesModal';
 import GoogleCalendarModal from '../../components/GoogleCalendarModal';
+import LocationModal from '../../components/LocationModal';
 
 // ─── AVATAR ───────────────────────────────────────────────────
 function Avatar({ name, color, size = 48 }: { name: string; color: string; size?: number }) {
@@ -199,6 +200,7 @@ export default function HouseholdScreen() {
   const [showChangePw, setShowChangePw] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showGCal, setShowGCal] = useState(false);
+  const [showLocation, setShowLocation] = useState(false);
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [weekScores, setWeekScores] = useState<Record<string, number>>({});
 
@@ -470,6 +472,11 @@ export default function HouseholdScreen() {
           <Text style={styles.settingsBtnText}>📅 Google Kalender verbinden</Text>
         </TouchableOpacity>
 
+        {/* Location sharing */}
+        <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowLocation(true)}>
+          <Text style={styles.settingsBtnText}>📍 Standort teilen</Text>
+        </TouchableOpacity>
+
         {/* Change password */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowChangePw(true)}>
           <Text style={styles.settingsBtnText}>🔑 Passwort ändern</Text>
@@ -496,6 +503,7 @@ export default function HouseholdScreen() {
 
       <NotesModal visible={showNotes} onClose={() => setShowNotes(false)} />
       <GoogleCalendarModal visible={showGCal} onClose={() => setShowGCal(false)} />
+      <LocationModal visible={showLocation} onClose={() => setShowLocation(false)} />
       <InviteModal
         visible={showInvite}
         onClose={() => setShowInvite(false)}

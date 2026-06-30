@@ -157,6 +157,15 @@ export interface RewardRedemption {
   created_at: string;
 }
 
+export interface MemberLocation {
+  member_id: string;
+  household_id: string;
+  lat: number;
+  lng: number;
+  accuracy?: number;
+  updated_at: string;
+}
+
 export interface HouseholdMessage {
   id: string;
   household_id: string;
