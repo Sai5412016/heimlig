@@ -1,6 +1,6 @@
 // store/useStore.ts
 import { create } from 'zustand';
-import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption, PantryItem, HouseholdNote, Settlement } from '../lib/supabase';
+import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption, PantryItem, HouseholdNote, Settlement, HouseholdMessage } from '../lib/supabase';
 import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
 import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -79,6 +79,12 @@ interface AppState {
   settlements: Settlement[];
   loadSettlements: () => Promise<void>;
   addSettlement: (fromMember: string, toMember: string, amount: number) => Promise<void>;
+
+  // 💬 Household message board / pinboard
+  messages: HouseholdMessage[];
+  setMessages: (m: HouseholdMessage[]) => void;
+  loadMessages: () => Promise<void>;
+  sendMessage: (text: string) => Promise<void>;
 
   tasks: Task[];
   setTasks: (tasks: Task[]) => void;
@@ -443,6 +449,27 @@ export const useStore = create<AppState>((set, get) => ({
       .insert({ household_id: household.id, from_member: fromMember, to_member: toMember, amount, created_by: currentMember?.id })
       .select().single();
     if (data) set(s => ({ settlements: [data as Settlement, ...s.settlements] }));
+  },
+
+  messages: [],
+  setMessages: (m) => set({ messages: m }),
+  loadMessages: async () => {
+    const { household } = get();
+    if (!household) return;
+    const { data } = await supabase
+      .from('household_messages').select('*')
+      .eq('household_id', household.id)
+      .order('created_at', { ascending: true })
+      .limit(200);
+    if (data) set({ messages: data as HouseholdMessage[] });
+  },
+  sendMessage: async (text) => {
+    const { household, currentMember } = get();
+    if (!household || !text.trim()) return;
+    const { data } = await supabase.from('household_messages')
+      .insert({ household_id: household.id, member_id: currentMember?.id, text: text.trim() })
+      .select().single();
+    if (data) set(s => (s.messages.some(m => m.id === (data as any).id) ? {} as any : { messages: [...s.messages, data as HouseholdMessage] }));
   },
 
   tasks: [],

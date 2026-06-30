@@ -9,6 +9,7 @@ import { useStore } from '../../store/useStore';
 import { supabase } from '../../lib/supabase';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import ChatModal from '../../components/ChatModal';
 
 function AvatarCircle({ name, color, size = 36 }: { name: string; color: string; size?: number }) {
   const { colors } = useTheme();
@@ -68,6 +69,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const { household, currentMember, members, tasks, items, transactions, completeTask, setTasks, setTransactions } = useStore();
   const [refreshing, setRefreshing] = React.useState(false);
+  const [showChat, setShowChat] = React.useState(false);
 
   // Birthdays live in the calendar + the dedicated widget below — keep them out of "open tasks".
   const openTasks = tasks.filter(t => !t.completed_at && t.category !== 'Geburtstag');
@@ -180,6 +182,16 @@ export default function DashboardScreen() {
           <StatCard emoji="💶" label="Ausgaben" value={`€ ${monthlyExpenses.toFixed(0)}`} sub="diesen Monat" onPress={() => router.push('/(tabs)/budget')} color={colors.info} />
         </View>
 
+        {/* Pinboard / chat */}
+        <TouchableOpacity style={styles.pinboardCard} activeOpacity={0.85} onPress={() => setShowChat(true)}>
+          <Text style={styles.pinboardEmoji}>💬</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.pinboardTitle}>Pinnwand</Text>
+            <Text style={styles.pinboardSub}>Nachrichten an alle im Haushalt</Text>
+          </View>
+          <Text style={styles.pinboardArrow}>›</Text>
+        </TouchableOpacity>
+
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <Text style={styles.sectionTitle}>Schnellzugriff</Text>
@@ -241,6 +253,8 @@ export default function DashboardScreen() {
 
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
+
+      <ChatModal visible={showChat} onClose={() => setShowChat(false)} />
     </SafeAreaView>
   );
 }
@@ -262,6 +276,11 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   birthdayLabel: { ...typography.xs, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
   birthdayName: { ...typography.body, color: colors.text, fontWeight: '700', marginTop: 2 },
   birthdayToday: { ...typography.body, color: colors.accent, fontWeight: '800' },
+  pinboardCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.lg, ...shadow.sm, borderLeftWidth: 4, borderLeftColor: colors.brand },
+  pinboardEmoji: { fontSize: 28 },
+  pinboardTitle: { ...typography.body, color: colors.text, fontWeight: '700' },
+  pinboardSub: { ...typography.xs, color: colors.textSecondary, marginTop: 2 },
+  pinboardArrow: { fontSize: 26, color: colors.textMuted, fontWeight: '300' },
   statsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   statCard: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center', ...shadow.sm },
   statEmoji: { fontSize: 24, marginBottom: spacing.xs },
