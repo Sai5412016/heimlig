@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import ChatModal from '../../components/ChatModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function AvatarCircle({ name, color, size = 36 }: { name: string; color: string; size?: number }) {
   const { colors } = useTheme();
@@ -121,6 +122,15 @@ export default function DashboardScreen() {
   useFocusEffect(useCallback(() => { loadData(); }, [household]));
 
   const onRefresh = async () => { setRefreshing(true); await loadData(); setRefreshing(false); };
+
+  // Keep a tiny snapshot for the Android home-screen widget (read on its next refresh).
+  useEffect(() => {
+    AsyncStorage.setItem('@heimlig/widget', JSON.stringify({
+      openTasks: openTasks.length,
+      shoppingCount: uncheckedItems.length,
+      nextTask: openTasks[0]?.title ?? '',
+    })).catch(() => {});
+  }, [openTasks.length, uncheckedItems.length]);
 
   const greeting = () => {
     const h = new Date().getHours();

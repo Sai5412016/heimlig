@@ -24,7 +24,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.fledderman.heimlig",
-      "versionCode": 35,
+      "versionCode": 36,
       "permissions": ["NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED", "VIBRATE"]
     },
     "web": {
@@ -44,6 +44,18 @@
       }],
       ["expo-location", {
         "locationWhenInUsePermission": "Heimlig teilt deinen Standort nur, wenn du auf „Standort teilen“ tippst – für deine Haushaltsmitglieder."
+      }],
+      ["react-native-android-widget", {
+        "widgets": [{
+          "name": "Heimlig",
+          "label": "Heimlig",
+          "description": "Aufgaben & Einkauf auf einen Blick",
+          "minWidth": "180dp",
+          "minHeight": "110dp",
+          "targetCellWidth": 3,
+          "targetCellHeight": 2,
+          "updatePeriodMillis": 1800000
+        }]
       }]
     ],
     "extra": {
