@@ -48,6 +48,13 @@ const CATEGORY_EMOJIS: Record<string, string> = {
   'Gesundheit': '💊', 'Sport': '🏃', 'Finanzen': '💶', 'Reise': '✈️',
   'Geburtstag': '🎂', 'Medikament': '💊', 'Pflanzen': '🪴', 'Haustier': '🐾',
 };
+const CATEGORY_COLORS: Record<string, string> = {
+  'Haushalt': '#2D6A4F', 'Einkauf': '#FF6B35', 'Wartung': '#6C757D',
+  'Garten': '#52B788', 'Büro': '#4A6FA5', 'Familie': '#E91E8C', 'Sonstiges': '#9AB5A0',
+  'Gesundheit': '#E5573F', 'Sport': '#F5A623', 'Finanzen': '#2D9E57', 'Reise': '#00B4D8',
+  'Geburtstag': '#FF4B6E', 'Medikament': '#E5573F', 'Pflanzen': '#52B788', 'Haustier': '#B07D48',
+};
+const catColor = (cat?: string) => CATEGORY_COLORS[cat || ''] || '#9AB5A0';
 const HOUSEHOLD_CATEGORIES = ['Haushalt', 'Einkauf', 'Wartung', 'Garten'];
 
 // ─── TIME SLOTS ───────────────────────────────────────────────
@@ -504,12 +511,12 @@ function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
           const isToday_ = isToday(day);
 
           const MAX_EMOJIS = 3;
-          const allEmojis: string[] = [
-            ...dayTasks.map(t => CATEGORY_EMOJIS[t.category || ''] || '📋'),
-            ...(hasMeal ? ['🍽️'] : []),
+          const allEvents: { emoji: string; color: string }[] = [
+            ...dayTasks.map(t => ({ emoji: CATEGORY_EMOJIS[t.category || ''] || '📋', color: catColor(t.category) })),
+            ...(hasMeal ? [{ emoji: '🍽️', color: '#FF6B35' }] : []),
           ];
-          const visibleEmojis = allEmojis.slice(0, MAX_EMOJIS);
-          const extraCount = allEmojis.length - visibleEmojis.length;
+          const visibleEvents = allEvents.slice(0, MAX_EMOJIS);
+          const extraCount = allEvents.length - visibleEvents.length;
 
           return (
             <TouchableOpacity
@@ -535,8 +542,10 @@ function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
                 </Text>
               </View>
               <View style={styles.weekEmojiStack}>
-                {visibleEmojis.map((emoji, i) => (
-                  <Text key={i} style={styles.weekTaskEmoji}>{emoji}</Text>
+                {visibleEvents.map((ev, i) => (
+                  <View key={i} style={[styles.weekEmojiPill, { backgroundColor: ev.color + '26', borderColor: ev.color }]}>
+                    <Text style={styles.weekTaskEmoji}>{ev.emoji}</Text>
+                  </View>
                 ))}
                 {extraCount > 0 && (
                   <View style={styles.weekMoreBadge}>
@@ -594,11 +603,11 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
               <Text style={[styles.dayNumber, !isCurrentMonth && { opacity: 0.3 }, isSelected && { color: '#fff' }, isToday_ && !isSelected && { color: colors.brand, fontWeight: '700' }]}>{format(day, 'd')}</Text>
               {(dayTasks.length > 0 || mealPlans.some(m => m.planned_date === key)) && (
                 <View style={styles.dotRow}>
-                  {dayTasks.slice(0, 2).map((t, i) => (
-                    <View key={i} style={[styles.taskDotCal, { backgroundColor: t.completed_at ? colors.textMuted : PRIORITY_COLORS[t.priority as Priority] || colors.brand }, isSelected && { backgroundColor: 'rgba(255,255,255,0.8)' }]} />
+                  {dayTasks.slice(0, 3).map((t, i) => (
+                    <View key={i} style={[styles.taskBarCal, { backgroundColor: t.completed_at ? colors.textMuted : catColor(t.category) }, isSelected && { backgroundColor: 'rgba(255,255,255,0.85)' }]} />
                   ))}
                   {mealPlans.some(m => m.planned_date === key) && (
-                    <View style={[styles.taskDotCal, { backgroundColor: colors.accent }, isSelected && { backgroundColor: 'rgba(255,255,255,0.8)' }]} />
+                    <View style={[styles.taskBarCal, { backgroundColor: '#FF6B35' }, isSelected && { backgroundColor: 'rgba(255,255,255,0.85)' }]} />
                   )}
                 </View>
               )}
@@ -1020,8 +1029,9 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   weekDayNumToday: { backgroundColor: colors.brandPale },
   weekDayNumSelected: { backgroundColor: colors.brand },
   weekDayNum: { ...typography.sm, color: colors.text, fontWeight: '700' },
-  weekEmojiStack: { alignItems: 'center', gap: 1 },
-  weekTaskEmoji: { fontSize: 19, lineHeight: 24 },
+  weekEmojiStack: { alignItems: 'center', gap: 2 },
+  weekEmojiPill: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 3, paddingVertical: 1, alignItems: 'center', minWidth: 26 },
+  weekTaskEmoji: { fontSize: 17, lineHeight: 22 },
   weekMoreBadge: { backgroundColor: colors.border, borderRadius: radius.full, paddingHorizontal: 5, paddingVertical: 1, marginTop: 2 },
   weekMoreText: { ...typography.xs, color: colors.textSecondary, fontWeight: '700' },
   weekdayRow: { flexDirection: 'row', marginBottom: spacing.sm },
@@ -1031,8 +1041,9 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   dayCellSelected: { backgroundColor: colors.brand },
   dayCellToday: { backgroundColor: colors.brandPale },
   dayNumber: { ...typography.sm, color: colors.text, fontWeight: '500' },
-  dotRow: { flexDirection: 'row', gap: 2, marginTop: 2 },
+  dotRow: { flexDirection: 'row', gap: 2, marginTop: 3 },
   taskDotCal: { width: 5, height: 5, borderRadius: 3 },
+  taskBarCal: { width: 7, height: 4, borderRadius: 2 },
   yearNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.sm, gap: spacing.lg },
   yearNavBtn: { padding: spacing.sm },
   yearNavArrow: { fontSize: 22, color: colors.brand, fontWeight: '600', lineHeight: 24 },
