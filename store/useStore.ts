@@ -86,6 +86,10 @@ interface AppState {
   loadMessages: () => Promise<void>;
   sendMessage: (text: string) => Promise<void>;
 
+  // 📅 Google Calendar sync
+  importGoogleEvents: (events: any[]) => Promise<number>;
+  exportTasksToGoogle: (token: string) => Promise<number>;
+
   tasks: Task[];
   setTasks: (tasks: Task[]) => void;
   completeTask: (taskId: string) => Promise<{ points: number; isHousehold: boolean }>;
@@ -470,6 +474,47 @@ export const useStore = create<AppState>((set, get) => ({
       .insert({ household_id: household.id, member_id: currentMember?.id, text: text.trim() })
       .select().single();
     if (data) set(s => (s.messages.some(m => m.id === (data as any).id) ? {} as any : { messages: [...s.messages, data as HouseholdMessage] }));
+  },
+
+  importGoogleEvents: async (events) => {
+    const { household, tasks } = get();
+    if (!household) return 0;
+    const existing = new Set(tasks.map(t => (t as any).google_event_id).filter(Boolean));
+    let count = 0;
+    for (const e of events) {
+      if (!e?.id || existing.has(e.id)) continue;
+      const startDate = e.start?.date || e.start?.dateTime;
+      if (!startDate) continue;
+      const allDay = !!e.start?.date;
+      const due_date = allDay ? e.start.date : String(e.start.dateTime).slice(0, 10);
+      const due_time = allDay ? null : String(e.start.dateTime).slice(11, 16);
+      const { data } = await supabase.from('tasks').insert({
+        household_id: household.id,
+        title: e.summary || 'Termin',
+        description: e.description || null,
+        category: 'Sonstiges', priority: 'normal', points: 10,
+        due_date, due_time, google_event_id: e.id,
+      }).select().single();
+      if (data) { set(s => ({ tasks: [...s.tasks, data] })); count++; }
+    }
+    return count;
+  },
+  exportTasksToGoogle: async (token) => {
+    const { createEvent } = await import('../lib/googleCalendar');
+    const { tasks } = get();
+    const toExport = tasks.filter(t => t.due_date && !t.completed_at && !(t as any).google_event_id);
+    let count = 0;
+    for (const t of toExport) {
+      try {
+        const ev = await createEvent(token, { summary: t.title, description: t.description, date: t.due_date!, time: (t as any).due_time });
+        if (ev?.id) {
+          await supabase.from('tasks').update({ google_event_id: ev.id }).eq('id', t.id);
+          set(s => ({ tasks: s.tasks.map(x => x.id === t.id ? { ...x, google_event_id: ev.id } as Task : x) }));
+          count++;
+        }
+      } catch { /* skip individual failures */ }
+    }
+    return count;
   },
 
   tasks: [],

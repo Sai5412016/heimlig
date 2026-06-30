@@ -14,6 +14,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { de } from 'date-fns/locale';
 import NotesModal from '../../components/NotesModal';
+import GoogleCalendarModal from '../../components/GoogleCalendarModal';
 
 // ─── AVATAR ───────────────────────────────────────────────────
 function Avatar({ name, color, size = 48 }: { name: string; color: string; size?: number }) {
@@ -197,6 +198,7 @@ export default function HouseholdScreen() {
   const [showEditName, setShowEditName] = useState(false);
   const [showChangePw, setShowChangePw] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [showGCal, setShowGCal] = useState(false);
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [weekScores, setWeekScores] = useState<Record<string, number>>({});
 
@@ -463,6 +465,11 @@ export default function HouseholdScreen() {
           <Text style={styles.settingsBtnText}>📒 Notizen & Infos</Text>
         </TouchableOpacity>
 
+        {/* Google Calendar */}
+        <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowGCal(true)}>
+          <Text style={styles.settingsBtnText}>📅 Google Kalender verbinden</Text>
+        </TouchableOpacity>
+
         {/* Change password */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowChangePw(true)}>
           <Text style={styles.settingsBtnText}>🔑 Passwort ändern</Text>
@@ -488,6 +495,7 @@ export default function HouseholdScreen() {
       </ScrollView>
 
       <NotesModal visible={showNotes} onClose={() => setShowNotes(false)} />
+      <GoogleCalendarModal visible={showGCal} onClose={() => setShowGCal(false)} />
       <InviteModal
         visible={showInvite}
         onClose={() => setShowInvite(false)}

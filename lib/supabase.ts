@@ -88,6 +88,7 @@ export interface Task {
   recurrence_day?: number;
   recurrence_interval?: number;
   due_time?: string;
+  google_event_id?: string;
   points: number;
   created_at: string;
 }
