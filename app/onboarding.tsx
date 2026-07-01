@@ -11,7 +11,7 @@ import { colors, spacing, radius, typography, shadow, AVATAR_COLORS } from '../c
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 
-type Step = 'welcome' | 'type' | 'auth' | 'name';
+type Step = 'welcome' | 'type' | 'auth' | 'verify' | 'name';
 type HouseholdType = 'couple' | 'wg' | 'family' | 'solo';
 
 const HOUSEHOLD_TYPES: { key: HouseholdType; emoji: string; label: string; sub: string }[] = [
@@ -50,12 +50,21 @@ export default function OnboardingScreen() {
         if (error) throw error;
         await loadExistingHousehold(data.user.id);
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+        // SECURITY: do NOT sign in right after signUp — that let anyone register with a
+        // stranger's email and land in a live session before ever proving they own it.
+        // If Supabase's "Confirm email" is on, signUp returns no session and the user
+        // must click the verification link first.
+        const { error, data } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: 'https://heimlig.vercel.app' },
+        });
         if (error) throw error;
-        // Immediately sign in so session is guaranteed
-        const { error: loginError, data: loginData } = await supabase.auth.signInWithPassword({ email, password });
-        if (loginError) throw loginError;
-        if (loginData.user) setSignedUpUserId(loginData.user.id);
+        if (!data.session) {
+          setStep('verify');
+          return;
+        }
+        if (data.user) setSignedUpUserId(data.user.id);
         setStep('name');
       }
     } catch (e: any) {
@@ -72,7 +81,7 @@ export default function OnboardingScreen() {
     setErrorMsg(null);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: 'https://heimlig.vercel.app',
+        redirectTo: 'https://heimlig.vercel.app/reset-password',
       });
       if (error) throw error;
       Alert.alert('E-Mail gesendet 📧', `Wir haben dir an ${email} einen Link zum Zurücksetzen deines Passworts geschickt. Schau auch im Spam-Ordner.`);
@@ -279,6 +288,24 @@ export default function OnboardingScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+
+  // ─── VERIFY EMAIL ─────────────────────────────────────────
+  if (step === 'verify') return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.stepContent}>
+        <Text style={styles.stepTitle}>Fast geschafft 📧</Text>
+        <Text style={styles.stepSub}>
+          Wir haben dir einen Bestätigungslink an {email} geschickt. Klick den Link in der Mail, dann kannst du dich hier einloggen.
+        </Text>
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={() => { setIsLogin(true); setErrorMsg(null); setStep('auth'); }}
+        >
+          <Text style={styles.primaryBtnText}>Zum Login →</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 

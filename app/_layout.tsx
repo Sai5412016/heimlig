@@ -12,9 +12,11 @@ import { checkForUpdate } from '../lib/appUpdate';
 import WhatsNewModal from '../components/WhatsNewModal';
 
 // Pull a join code out of an incoming deep link, e.g. heimlig://join/AB12CD34
+// Bounded length: input hygiene against malformed/oversized deep links (the code itself
+// only ever reaches a parameterized RPC lookup, so this isn't an open-redirect concern).
 function extractJoinCode(url: string | null): string | null {
   if (!url) return null;
-  const m = url.match(/join\/([A-Za-z0-9]+)/);
+  const m = url.match(/join\/([A-Za-z0-9]{4,12})/);
   return m ? m[1] : null;
 }
 
@@ -38,6 +40,17 @@ export default function RootLayout() {
   useEffect(() => {
     // Small delay to let router initialize
     const timer = setTimeout(async () => {
+      // The password-reset link lands here with recovery tokens still unconsumed in the
+      // URL (detectSessionInUrl is off). Let app/reset-password.tsx own that flow instead
+      // of racing it with the normal "no session -> /onboarding" redirect below.
+      if (Platform.OS === 'web') {
+        // @ts-ignore - window only exists on web
+        const { pathname, hash } = window.location;
+        if (pathname.startsWith('/reset-password') || hash.includes('type=recovery')) {
+          setReady(true);
+          return;
+        }
+      }
       const initialUrl = await Linking.getInitialURL();
       checkSession(extractJoinCode(initialUrl));
     }, 500);
@@ -60,15 +73,17 @@ export default function RootLayout() {
       const dm = await AsyncStorage.getItem('@heimlig/darkMode');
       if (dm === '1') setDarkMode(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
+      // getUser() re-verifies against the Auth server instead of trusting local storage,
+      // so a revoked/expired session doesn't leave the app thinking it's still logged in.
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (!session?.user) {
+      if (!user) {
         setReady(true);
         router.replace('/onboarding');
         return;
       }
 
-      const userId = session.user.id;
+      const userId = user.id;
       setUserId(userId);
 
       const memberships = await loadMyHouseholds();
@@ -108,6 +123,7 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="join/[code]" />
+        <Stack.Screen name="reset-password" />
       </Stack>
       <WhatsNewModal />
     </GestureHandlerRootView>

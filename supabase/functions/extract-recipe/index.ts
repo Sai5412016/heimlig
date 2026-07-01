@@ -1,6 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 const BASICS = ['salz', 'pfeffer', 'wasser', 'öl', 'olivenöl', 'zucker', 'mehl', 'butter', 'backpulver', 'natron', 'hefe', 'essig', 'senf'];
 
@@ -20,10 +23,81 @@ function decodeEntities(s: string): string {
     .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)));
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// ─── CORS: allowlist, not a wildcard ───────────────────────────
+const ALLOWED_ORIGINS = new Set([
+  'https://heimlig.vercel.app',
+  'http://localhost:8081',
+  'http://localhost:19006',
+]);
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || '';
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : 'https://heimlig.vercel.app',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  };
+}
+
+// ─── SSRF guard for the "import by URL" path ───────────────────
+// Blocks the common, cheap attack: pointing the fetcher at loopback/private/link-local
+// addresses (incl. the cloud metadata IP) or literal internal hostnames. This is defense
+// against the easy exploitation path (direct IP + redirect chains), not a full DNS-rebinding
+// proof — that would need per-connection IP pinning, which isn't practical with plain fetch().
+const BLOCKED_HOST_PATTERNS = [
+  /^127\./, /^10\./, /^192\.168\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^169\.254\./, // link-local + cloud metadata (169.254.169.254)
+  /^0\.0\.0\.0$/, /^0\./,
+  /^::1$/, /^fc00:/i, /^fe80:/i, /^fd[0-9a-f]{2}:/i,
+];
+const BLOCKED_HOSTNAMES = new Set(['localhost', 'metadata', 'metadata.google.internal']);
+
+function assertSafeUrl(rawUrl: string): URL {
+  const u = new URL(rawUrl);
+  if (!['http:', 'https:'].includes(u.protocol)) throw new Error('unsupported protocol');
+  const host = u.hostname.toLowerCase();
+  if (BLOCKED_HOSTNAMES.has(host) || host.endsWith('.local')) throw new Error('blocked host');
+  if (BLOCKED_HOST_PATTERNS.some(rx => rx.test(host))) throw new Error('blocked host');
+  return u;
+}
+
+const MAX_BODY_BYTES = 2_000_000; // 2 MB cap regardless of what Content-Length claims
+
+async function safeFetchText(rawUrl: string): Promise<string> {
+  assertSafeUrl(rawUrl);
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 8000);
+  try {
+    const res = await fetch(rawUrl, {
+      redirect: 'error', // don't silently follow a redirect into a blocked target
+      signal: ac.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'de,en;q=0.5',
+      },
+    });
+    if (!res.ok || !res.body) throw new Error(`upstream ${res.status}`);
+
+    // Read with a hard byte cap so a malicious/huge response can't exhaust memory.
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_BODY_BYTES) { reader.cancel(); throw new Error('response too large'); }
+      chunks.push(value);
+    }
+    const buf = new Uint8Array(total);
+    let offset = 0;
+    for (const c of chunks) { buf.set(c, offset); offset += c.byteLength; }
+    return new TextDecoder().decode(buf);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 const INSTRUCTION = `Extrahiere die Zutaten aus diesem Rezept und gib sie als JSON zurück.
 
@@ -43,9 +117,28 @@ Format:
 }`;
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const cors = corsHeaders(req);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
+    // ── Auth: verify_jwt should already gate this at the platform level (keep it on when
+    // deploying — see CONTEXT.md), but check explicitly here too as defense in depth. ──
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    if (!token) return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } });
+
+    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: authHeader } } });
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+
+    // ── Rate limit: max 30 calls/hour per user, atomic increment via rl_hit() RPC ──
+    const { data: allowed, error: rlError } = await authClient.rpc('rl_hit', { p_bucket: 'extract-recipe', p_limit: 30 });
+    if (!rlError && allowed === false) {
+      return new Response(JSON.stringify({ error: 'Zu viele Anfragen, bitte später erneut versuchen.' }), { status: 429, headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+
     const { url, text, imageBase64, imageMediaType } = await req.json();
 
     let recipeContent = text || '';
@@ -56,16 +149,7 @@ serve(async (req) => {
         // Extract the first http(s) URL from whatever was pasted.
         const urlMatch = String(url).match(/https?:\/\/[^\s]+/);
         const cleanUrl = urlMatch ? urlMatch[0] : url;
-        const res = await fetch(cleanUrl, {
-          headers: {
-            // Use a real desktop browser UA — some sites (e.g. Cookidoo) serve an empty
-            // JS shell to bots like Googlebot but full HTML (incl. JSON-LD) to browsers.
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'de,en;q=0.5',
-          }
-        });
-        const html = await res.text();
+        const html = await safeFetchText(cleanUrl);
 
         // Try JSON-LD structured data first (Schema.org Recipe - used by Chefkoch, Cookidoo etc.)
         const jsonLdMatches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
@@ -135,12 +219,12 @@ serve(async (req) => {
     }));
 
     return new Response(JSON.stringify({ name: parsed.name, ingredients }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...cors, 'Content-Type': 'application/json' },
     });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }
 });
