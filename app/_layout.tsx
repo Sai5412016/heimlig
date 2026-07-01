@@ -124,6 +124,8 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="join/[code]" />
         <Stack.Screen name="reset-password" />
+        <Stack.Screen name="impressum" />
+        <Stack.Screen name="datenschutz" />
       </Stack>
       <WhatsNewModal />
     </GestureHandlerRootView>

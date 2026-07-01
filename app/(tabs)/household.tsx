@@ -5,6 +5,7 @@ import {
   Alert, Share, Modal, Pressable, TextInput, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 import { colors, spacing, radius, typography, shadow, AVATAR_COLORS, type ColorPalette } from '../../constants/theme';
@@ -190,6 +191,7 @@ function EditModal({ visible, title, label, initialValue, secure, placeholder, s
 
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function HouseholdScreen() {
+  const router = useRouter();
   const { colors, isDark } = useTheme();
   const { household, currentMember, members, setMembers, setHousehold, tasks, transactions,
     myHouseholds, loadMyHouseholds, switchHousehold, leaveHousehold, toggleDarkMode } = useStore();
@@ -480,6 +482,14 @@ export default function HouseholdScreen() {
         {/* Change password */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowChangePw(true)}>
           <Text style={styles.settingsBtnText}>🔑 Passwort ändern</Text>
+        </TouchableOpacity>
+
+        {/* Legal */}
+        <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push('/impressum')}>
+          <Text style={styles.settingsBtnText}>📄 Impressum</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push('/datenschutz')}>
+          <Text style={styles.settingsBtnText}>🔒 Datenschutz</Text>
         </TouchableOpacity>
 
         {/* Leave household */}

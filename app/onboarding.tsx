@@ -220,6 +220,15 @@ export default function OnboardingScreen() {
             <Text style={styles.secondaryBtnText}>Ich habe schon einen Account</Text>
           </TouchableOpacity>
         </View>
+        <View style={styles.legalRow}>
+          <TouchableOpacity onPress={() => router.push('/impressum')}>
+            <Text style={styles.legalLink}>Impressum</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalDivider}>·</Text>
+          <TouchableOpacity onPress={() => router.push('/datenschutz')}>
+            <Text style={styles.legalLink}>Datenschutz</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -386,6 +395,9 @@ const styles = StyleSheet.create({
   primaryBtnText: { ...typography.body, color: colors.textInverse, fontWeight: '700' },
   secondaryBtn: { padding: spacing.md, alignItems: 'center' },
   secondaryBtnText: { ...typography.body, color: 'rgba(255,255,255,0.8)' },
+  legalRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg, gap: spacing.sm },
+  legalLink: { ...typography.xs, color: 'rgba(255,255,255,0.6)', textDecorationLine: 'underline' },
+  legalDivider: { ...typography.xs, color: 'rgba(255,255,255,0.4)' },
   disabled: { opacity: 0.4 },
   stepTitle: { ...typography.h1, color: colors.text, marginBottom: spacing.sm },
   stepSub: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },
