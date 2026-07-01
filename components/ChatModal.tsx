@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Modal, ScrollView, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../hooks/useTheme';
@@ -15,7 +15,7 @@ import { de } from 'date-fns/locale';
 export default function ChatModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { household, currentMember, members, messages, loadMessages, sendMessage } = useStore();
+  const { household, currentMember, members, messages, loadMessages, sendMessage, deleteMessage } = useStore();
   const [text, setText] = useState('');
   const scrollRef = useRef<ScrollView>(null);
 
@@ -46,17 +46,27 @@ export default function ChatModal({ visible, onClose }: { visible: boolean; onCl
     await sendMessage(t);
   };
 
+  const confirmDelete = (id: string, preview: string) => {
+    Alert.alert('Nachricht löschen?', preview.length > 80 ? preview.slice(0, 80) + '…' : preview, [
+      { text: 'Abbrechen', style: 'cancel' },
+      { text: 'Löschen', style: 'destructive', onPress: () => deleteMessage(id) },
+    ]);
+  };
+
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
-          <Text style={styles.topTitle}>💬 Pinnwand</Text>
+          <View>
+            <Text style={styles.topTitle}>💬 Pinnwand</Text>
+            <Text style={styles.topSub}>Lange drücken zum Löschen</Text>
+          </View>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Text style={styles.closeX}>✕</Text>
           </TouchableOpacity>
         </View>
 
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}>
           <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             {messages.length === 0 && (
               <Text style={styles.empty}>Noch keine Nachrichten. Schreibt hier, was alle im Haushalt sehen sollen – Einkaufswünsche, Erinnerungen, kurze Absprachen.</Text>
@@ -67,13 +77,18 @@ export default function ChatModal({ visible, onClose }: { visible: boolean; onCl
               const time = format(parseISO(m.created_at), isToday(parseISO(m.created_at)) ? 'HH:mm' : 'dd.MM. HH:mm', { locale: de });
               return (
                 <View key={m.id} style={[styles.row, mine ? styles.rowMine : styles.rowOther]}>
-                  <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
+                  <TouchableOpacity
+                    style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
+                    onLongPress={() => confirmDelete(m.id, m.text)}
+                    delayLongPress={350}
+                    activeOpacity={0.8}
+                  >
                     {!mine && (
                       <Text style={[styles.author, { color: mem?.avatar_color ?? colors.brand }]}>{mem?.display_name ?? 'Jemand'}</Text>
                     )}
                     <Text style={[styles.msgText, mine && { color: '#fff' }]}>{m.text}</Text>
                     <Text style={[styles.time, mine && { color: 'rgba(255,255,255,0.7)' }]}>{time}</Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               );
             })}
@@ -104,6 +119,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   topTitle: { ...typography.h3, color: colors.text },
+  topSub: { ...typography.xs, color: colors.textMuted, marginTop: 1 },
   closeX: { fontSize: 22, color: colors.textSecondary, fontWeight: '600' },
   scroll: { padding: spacing.md, gap: spacing.xs },
   empty: { ...typography.sm, color: colors.textSecondary, textAlign: 'center', paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },

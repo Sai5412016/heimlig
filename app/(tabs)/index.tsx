@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import ChatModal from '../../components/ChatModal';
+import BirthdayListModal from '../../components/BirthdayListModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function AvatarCircle({ name, color, size = 36 }: { name: string; color: string; size?: number }) {
@@ -71,6 +72,7 @@ export default function DashboardScreen() {
   const { household, currentMember, members, tasks, items, transactions, completeTask, setTasks, setTransactions } = useStore();
   const [refreshing, setRefreshing] = React.useState(false);
   const [showChat, setShowChat] = React.useState(false);
+  const [showBirthdays, setShowBirthdays] = React.useState(false);
 
   // Birthdays live in the calendar + the dedicated widget below — keep them out of "open tasks".
   const openTasks = tasks.filter(t => !t.completed_at && t.category !== 'Geburtstag');
@@ -168,7 +170,7 @@ export default function DashboardScreen() {
 
         {/* Next birthday */}
         {nextBirthday && (
-          <TouchableOpacity style={styles.birthdayCard} activeOpacity={0.85} onPress={() => router.push('/(tabs)/tasks')}>
+          <TouchableOpacity style={styles.birthdayCard} activeOpacity={0.85} onPress={() => setShowBirthdays(true)}>
             <Text style={styles.birthdayEmoji}>🎂</Text>
             <View style={{ flex: 1 }}>
               {nextBirthday.days === 0 ? (
@@ -265,6 +267,7 @@ export default function DashboardScreen() {
       </ScrollView>
 
       <ChatModal visible={showChat} onClose={() => setShowChat(false)} />
+      <BirthdayListModal visible={showBirthdays} onClose={() => setShowBirthdays(false)} tasks={tasks} />
     </SafeAreaView>
   );
 }

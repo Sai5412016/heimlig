@@ -1,6 +1,6 @@
 // components/GoogleCalendarModal.tsx — connect a Google account and sync tasks ⇄ Google Calendar.
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Pressable, Alert, ActivityIndicator, Platform } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { useTheme } from '../hooks/useTheme';
@@ -67,7 +67,11 @@ export default function GoogleCalendarModal({ visible, onClose }: { visible: boo
           <View style={styles.handle} />
           <Text style={styles.title}>📅 Google Kalender</Text>
 
-          {!token ? (
+          {Platform.OS !== 'web' ? (
+            <Text style={styles.body}>
+              Die Google-Kalender-Verbindung funktioniert aktuell nur in der Web-Version von Heimlig (heimlig.vercel.app) — Google lässt die Anmeldung auf Android in der App momentan nicht zu. Eine native Lösung ist in Arbeit.
+            </Text>
+          ) : !token ? (
             <>
               <Text style={styles.body}>Verbinde dein Google-Konto, um Termine zwischen Heimlig und Google Kalender abzugleichen.</Text>
               <TouchableOpacity style={[styles.primaryBtn, !request && { opacity: 0.5 }]} onPress={connect} disabled={!request}>

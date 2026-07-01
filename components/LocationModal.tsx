@@ -11,12 +11,13 @@ import { de } from 'date-fns/locale';
 export default function LocationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { members, currentMember, locations, loadLocations, shareLocation } = useStore();
+  const { members, currentMember, locations, loadLocations, shareLocation, stopSharingLocation } = useStore();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => { if (visible) loadLocations(); }, [visible]);
 
   const locOf = (memberId: string) => locations.find(l => l.member_id === memberId);
+  const myLoc = currentMember ? locOf(currentMember.id) : undefined;
 
   const handleShare = async () => {
     setBusy(true);
@@ -34,6 +35,13 @@ export default function LocationModal({ visible, onClose }: { visible: boolean; 
     } finally { setBusy(false); }
   };
 
+  const handleStop = () => {
+    Alert.alert('Teilen beenden?', 'Dein Standort wird für den Haushalt nicht mehr angezeigt.', [
+      { text: 'Abbrechen', style: 'cancel' },
+      { text: 'Beenden', style: 'destructive', onPress: () => stopSharingLocation() },
+    ]);
+  };
+
   const openMap = (lat: number, lng: number) => Linking.openURL(`https://www.google.com/maps?q=${lat},${lng}`);
 
   return (
@@ -45,8 +53,13 @@ export default function LocationModal({ visible, onClose }: { visible: boolean; 
           <Text style={styles.body}>Teile deinen aktuellen Standort einmalig mit deinem Haushalt. Es läuft kein Hintergrund-Tracking – nur wenn du tippst.</Text>
 
           <TouchableOpacity style={styles.shareBtn} onPress={handleShare} disabled={busy}>
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.shareBtnText}>📍 Meinen Standort teilen</Text>}
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.shareBtnText}>📍 {myLoc ? 'Standort aktualisieren' : 'Meinen Standort teilen'}</Text>}
           </TouchableOpacity>
+          {myLoc && (
+            <TouchableOpacity style={styles.stopBtn} onPress={handleStop} disabled={busy}>
+              <Text style={styles.stopBtnText}>Teilen beenden</Text>
+            </TouchableOpacity>
+          )}
 
           <Text style={styles.sectionLabel}>HAUSHALT</Text>
           <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
@@ -92,6 +105,8 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   body: { ...typography.sm, color: colors.textSecondary, marginBottom: spacing.md },
   shareBtn: { backgroundColor: colors.brand, borderRadius: radius.md, padding: spacing.md, alignItems: 'center' },
   shareBtnText: { ...typography.body, color: '#fff', fontWeight: '700' },
+  stopBtn: { padding: spacing.sm, alignItems: 'center', marginTop: spacing.xs },
+  stopBtnText: { ...typography.sm, color: colors.error, fontWeight: '600' },
   sectionLabel: { ...typography.label, color: colors.textMuted, marginTop: spacing.lg, marginBottom: spacing.sm, textTransform: 'uppercase' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
   avatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },

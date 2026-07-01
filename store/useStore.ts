@@ -4,6 +4,7 @@ import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transact
 import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
 import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { registerPushToken } from '../lib/pushTokens';
 
 export interface SaveRecipeOpts { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }
 export interface PlanRecipeOpts { date: string; mealType: MealType; addToCart: boolean }
@@ -82,6 +83,7 @@ interface AppState {
 
   // 💬 Household message board / pinboard
   messages: HouseholdMessage[];
+  deleteMessage: (id: string) => Promise<void>;
   setMessages: (m: HouseholdMessage[]) => void;
   loadMessages: () => Promise<void>;
   sendMessage: (text: string) => Promise<void>;
@@ -94,6 +96,7 @@ interface AppState {
   locations: MemberLocation[];
   loadLocations: () => Promise<void>;
   shareLocation: (lat: number, lng: number, accuracy?: number) => Promise<void>;
+  stopSharingLocation: () => Promise<void>;
 
   tasks: Task[];
   setTasks: (tasks: Task[]) => void;
@@ -176,6 +179,8 @@ export const useStore = create<AppState>((set, get) => ({
     } else {
       set({ shoppingLists: [], activeListId: null, items: [] });
     }
+
+    registerPushToken(member.id, household.id); // fire-and-forget, best-effort
   },
 
   switchHousehold: async (householdId) => {
@@ -475,10 +480,20 @@ export const useStore = create<AppState>((set, get) => ({
   sendMessage: async (text) => {
     const { household, currentMember } = get();
     if (!household || !text.trim()) return;
+    const trimmed = text.trim();
     const { data } = await supabase.from('household_messages')
-      .insert({ household_id: household.id, member_id: currentMember?.id, text: text.trim() })
+      .insert({ household_id: household.id, member_id: currentMember?.id, text: trimmed })
       .select().single();
     if (data) set(s => (s.messages.some(m => m.id === (data as any).id) ? {} as any : { messages: [...s.messages, data as HouseholdMessage] }));
+
+    // Push-notify the rest of the household, WhatsApp-style. Best-effort, never blocks sending.
+    supabase.functions.invoke('notify-message', {
+      body: { household_id: household.id, sender_member_id: currentMember?.id, sender_name: currentMember?.display_name, text: trimmed },
+    }).catch(() => {});
+  },
+  deleteMessage: async (id) => {
+    set(s => ({ messages: s.messages.filter(m => m.id !== id) }));
+    await supabase.from('household_messages').delete().eq('id', id);
   },
 
   importGoogleEvents: async (events) => {
@@ -517,6 +532,12 @@ export const useStore = create<AppState>((set, get) => ({
     const row = { member_id: currentMember.id, household_id: household.id, lat, lng, accuracy: accuracy ?? null, updated_at: new Date().toISOString() };
     const { data } = await supabase.from('member_locations').upsert(row, { onConflict: 'member_id' }).select().single();
     if (data) set(s => ({ locations: [...s.locations.filter(l => l.member_id !== currentMember.id), data as MemberLocation] }));
+  },
+  stopSharingLocation: async () => {
+    const { currentMember } = get();
+    if (!currentMember) return;
+    set(s => ({ locations: s.locations.filter(l => l.member_id !== currentMember.id) }));
+    await supabase.from('member_locations').delete().eq('member_id', currentMember.id);
   },
 
   exportTasksToGoogle: async (token) => {
