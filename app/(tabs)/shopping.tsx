@@ -12,8 +12,9 @@ const hapticImpact = (style: Haptics.ImpactFeedbackStyle) => { if (Platform.OS !
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 import { colors, spacing, radius, typography, shadow, SHOPPING_CATEGORIES, CATEGORY_COLORS, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
-import { supabase, ShoppingItem, RecipeIngredient } from '../../lib/supabase';
+import { ShoppingItem, RecipeIngredient } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
+import { fetchShoppingItems, subscribeToShoppingItems } from '../../repositories/shoppingRepository';
 import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
 import ProductScanner from '../../components/ProductScanner';
 import { searchGroceries, categoryForItem, normalizeKey } from '../../lib/groceries';
@@ -647,13 +648,8 @@ export default function ShoppingScreen() {
 
   const loadItems = useCallback(async () => {
     if (!activeListId) return;
-    const { data } = await supabase
-      .from('shopping_items')
-      .select('*')
-      .eq('list_id', activeListId)
-      .order('checked', { ascending: true })
-      .order('sort_order', { ascending: true });
-    if (data) setItems(data);
+    const data = await fetchShoppingItems(activeListId);
+    setItems(data);
   }, [activeListId]);
 
   useEffect(() => {
@@ -661,17 +657,8 @@ export default function ShoppingScreen() {
 
     // Realtime subscription
     if (!activeListId) return;
-    const channel = supabase
-      .channel(`shopping_items:${activeListId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'shopping_items',
-        filter: `list_id=eq.${activeListId}`,
-      }, () => loadItems())
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    const unsubscribe = subscribeToShoppingItems(activeListId, () => loadItems());
+    return unsubscribe;
   }, [activeListId]);
 
   const onRefresh = async () => {

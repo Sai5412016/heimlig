@@ -5,6 +5,7 @@ import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
 import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerPushToken } from '../lib/pushTokens';
+import * as shoppingRepo from '../repositories/shoppingRepository';
 
 export interface SaveRecipeOpts { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }
 export interface PlanRecipeOpts { date: string; mealType: MealType; addToCart: boolean }
@@ -186,18 +187,15 @@ export const useStore = create<AppState>((set, get) => ({
     const { data: allMembers } = await supabase.from('members').select('*').eq('household_id', household.id);
     if (allMembers) set({ members: allMembers });
 
-    let { data: lists } = await supabase.from('shopping_lists').select('*').eq('household_id', household.id);
-    if (!lists || lists.length === 0) {
-      const { data: newList } = await supabase
-        .from('shopping_lists')
-        .insert({ household_id: household.id, name: 'Einkaufsliste', emoji: '🛒', created_by: member.id })
-        .select().single();
+    let lists = await shoppingRepo.fetchShoppingLists(household.id);
+    if (lists.length === 0) {
+      const newList = await shoppingRepo.createShoppingList(household.id, member.id, 'Einkaufsliste', '🛒');
       if (newList) lists = [newList];
     }
-    if (lists && lists.length > 0) {
+    if (lists.length > 0) {
       set({ shoppingLists: lists, activeListId: lists[0].id });
-      const { data: items } = await supabase.from('shopping_items').select('*').eq('list_id', lists[0].id);
-      set({ items: items || [] });
+      const items = await shoppingRepo.fetchShoppingItemsUnordered(lists[0].id);
+      set({ items });
     } else {
       set({ shoppingLists: [], activeListId: null, items: [] });
     }
@@ -241,19 +239,14 @@ export const useStore = create<AppState>((set, get) => ({
   switchList: async (id) => {
     if (get().activeListId === id) return;
     set({ activeListId: id, items: [] });
-    const { data } = await supabase
-      .from('shopping_items').select('*').eq('list_id', id)
-      .order('checked', { ascending: true }).order('sort_order', { ascending: true });
-    set({ items: data || [] });
+    const items = await shoppingRepo.fetchShoppingItems(id);
+    set({ items });
   },
 
   createShoppingList: async (name, emoji) => {
     const { household, currentMember, shoppingLists } = get();
     if (!household || !currentMember) return;
-    const { data } = await supabase
-      .from('shopping_lists')
-      .insert({ household_id: household.id, name, emoji, created_by: currentMember.id })
-      .select().single();
+    const data = await shoppingRepo.createShoppingList(household.id, currentMember.id, name, emoji);
     if (data) {
       set({ shoppingLists: [...shoppingLists, data], activeListId: data.id, items: [] });
     }
@@ -262,16 +255,13 @@ export const useStore = create<AppState>((set, get) => ({
   deleteShoppingList: async (id) => {
     const { shoppingLists, activeListId } = get();
     if (shoppingLists.length <= 1) return;
-    await supabase.from('shopping_items').delete().eq('list_id', id);
-    await supabase.from('shopping_lists').delete().eq('id', id);
+    await shoppingRepo.deleteShoppingList(id);
     const newLists = shoppingLists.filter(l => l.id !== id);
     if (activeListId === id) {
       const next = newLists[0];
       set({ shoppingLists: newLists, activeListId: next.id, items: [] });
-      const { data } = await supabase
-        .from('shopping_items').select('*').eq('list_id', next.id)
-        .order('checked', { ascending: true }).order('sort_order', { ascending: true });
-      set({ items: data || [] });
+      const items = await shoppingRepo.fetchShoppingItems(next.id);
+      set({ items });
     } else {
       set({ shoppingLists: newLists });
     }
@@ -282,10 +272,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (!item) return;
     const checked = !item.checked;
     set(s => ({ items: s.items.map(i => i.id === itemId ? { ...i, checked } : i) }));
-    await supabase
-      .from('shopping_items')
-      .update({ checked, checked_at: checked ? new Date().toISOString() : null })
-      .eq('id', itemId);
+    await shoppingRepo.toggleShoppingItem(itemId, checked);
   },
 
   addItem: async (listId, name, quantity, category = 'Sonstiges', mealPlanId, brand) => {
@@ -300,14 +287,13 @@ export const useStore = create<AppState>((set, get) => ({
     if (existing) {
       const mergedQuantity = mergeQuantities(existing.quantity, quantity) ?? null;
       set(s => ({ items: s.items.map(it => it.id === existing.id ? { ...it, quantity: mergedQuantity ?? undefined } : it) }));
-      await supabase.from('shopping_items').update({ quantity: mergedQuantity }).eq('id', existing.id);
+      await shoppingRepo.updateShoppingItemQuantity(existing.id, mergedQuantity);
       return;
     }
 
-    const { data } = await supabase
-      .from('shopping_items')
-      .insert({ list_id: listId, name, quantity, category, brand: brand || null, added_by: currentMember?.id, meal_plan_id: mealPlanId })
-      .select().single();
+    const data = await shoppingRepo.insertShoppingItem({
+      list_id: listId, name, quantity, category, brand: brand || null, added_by: currentMember?.id, meal_plan_id: mealPlanId,
+    });
     if (data) set(s => ({ items: [...s.items, data] }));
 
     // Learn this item for the household (powers autocomplete & frequent suggestions)
@@ -325,7 +311,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   deleteItem: async (itemId) => {
     set(s => ({ items: s.items.filter(i => i.id !== itemId) }));
-    await supabase.from('shopping_items').delete().eq('id', itemId);
+    await shoppingRepo.deleteShoppingItem(itemId);
   },
 
   itemCatalog: [],
