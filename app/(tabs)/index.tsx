@@ -7,6 +7,7 @@ import { colors, spacing, radius, typography, shadow, type ColorPalette } from '
 import { useTheme } from '../../hooks/useTheme';
 import { useStore } from '../../store/useStore';
 import { supabase } from '../../lib/supabase';
+import { fetchRecentTransactions } from '../../repositories/budgetRepository';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import ChatModal from '../../components/ChatModal';
@@ -110,12 +111,12 @@ export default function DashboardScreen() {
 
   const loadData = async () => {
     if (!household) return;
-    const [tasksRes, txRes] = await Promise.all([
+    const [tasksRes, recentTx] = await Promise.all([
       supabase.from('tasks').select('*').eq('household_id', household.id).is('completed_at', null).order('due_date'),
-      supabase.from('transactions').select('*').eq('household_id', household.id).order('transaction_date', { ascending: false }).limit(50),
+      fetchRecentTransactions(household.id, 50),
     ]);
     if (tasksRes.data) setTasks(tasksRes.data);
-    if (txRes.data) setTransactions(txRes.data);
+    if (recentTx) setTransactions(recentTx);
   };
 
   useEffect(() => { loadData(); }, [household]);

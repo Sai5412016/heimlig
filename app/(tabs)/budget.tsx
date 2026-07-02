@@ -25,8 +25,9 @@ function advanceDate(dateStr: string, unit: string, n: number): string {
 import { de } from 'date-fns/locale';
 import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
-import { supabase, Transaction } from '../../lib/supabase';
+import { Transaction } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
+import * as budgetRepo from '../../repositories/budgetRepository';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { buildTransactionsCsv, exportCsv, parseTransactionsCsv, memberIdByName } from '../../lib/dataIO';
@@ -299,12 +300,8 @@ export default function BudgetScreen() {
   const generateRecurring = useCallback(async () => {
     if (!household) return;
     const today = format(new Date(), 'yyyy-MM-dd');
-    const { data: templates } = await supabase
-      .from('transactions').select('*')
-      .eq('household_id', household.id)
-      .not('recurrence', 'is', null)
-      .lte('recurrence_next', today);
-    if (!templates || templates.length === 0) return;
+    const templates = await budgetRepo.fetchDueRecurringTemplates(household.id, today);
+    if (templates.length === 0) return;
 
     for (const t of templates) {
       let next = t.recurrence_next as string;
@@ -319,15 +316,15 @@ export default function BudgetScreen() {
         next = advanceDate(next, t.recurrence, t.recurrence_interval || 1);
         guard++;
       }
-      if (inserts.length) await supabase.from('transactions').insert(inserts);
-      await supabase.from('transactions').update({ recurrence_next: next }).eq('id', t.id);
+      await budgetRepo.insertTransactions(inserts);
+      await budgetRepo.updateRecurrenceNext(t.id, next);
     }
   }, [household]);
 
   const loadTransactions = useCallback(async () => {
     if (!household) return;
     await generateRecurring();
-    const { data } = await supabase.from('transactions').select('*').eq('household_id', household.id).order('transaction_date', { ascending: false });
+    const data = await budgetRepo.fetchTransactions(household.id);
     if (data) setTransactions(data);
   }, [household, generateRecurring]);
 
@@ -360,14 +357,14 @@ export default function BudgetScreen() {
 
   const handleAddTransaction = async (txData: Partial<Transaction>) => {
     if (!household) return;
-    const { data } = await supabase.from('transactions').insert({ ...txData, household_id: household.id }).select().single();
+    const data = await budgetRepo.insertTransaction({ ...txData, household_id: household.id });
     if (data) { setTransactions([data, ...transactions]); hapticNotification(Haptics.NotificationFeedbackType.Success); }
   };
 
   const handleDelete = (id: string) => {
     Alert.alert('Löschen', 'Eintrag wirklich löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: async () => { setTransactions(transactions.filter(t => t.id !== id)); await supabase.from('transactions').delete().eq('id', id); } }
+      { text: 'Löschen', style: 'destructive', onPress: async () => { setTransactions(transactions.filter(t => t.id !== id)); await budgetRepo.deleteTransaction(id); } }
     ]);
   };
 
@@ -407,8 +404,8 @@ export default function BudgetScreen() {
               description: r.description,
               member_id: memberIdByName(members, r.memberName),
             }));
-            const { data, error } = await supabase.from('transactions').insert(payload).select();
-            if (error) { Alert.alert('Fehler', error.message); return; }
+            const { data, error } = await budgetRepo.insertTransactionsChecked(payload);
+            if (error) { Alert.alert('Fehler', error); return; }
             if (data) setTransactions([...data, ...transactions]);
             hapticNotification(Haptics.NotificationFeedbackType.Success);
             Alert.alert('✓ Importiert', `${data?.length ?? rows.length} Einträge wurden hinzugefügt.`);
