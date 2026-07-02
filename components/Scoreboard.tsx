@@ -16,7 +16,7 @@ export async function monthlyScores(householdId: string, members: Member[], mont
   const end = endOfMonth(monthDate).toISOString();
   const { data } = await supabase
     .from('tasks')
-    .select('points, priority, completed_by, completed_at')
+    .select('points, priority, category, completed_by, completed_at')
     .eq('household_id', householdId)
     .not('completed_at', 'is', null)
     .gte('completed_at', start)
@@ -24,7 +24,7 @@ export async function monthlyScores(householdId: string, members: Member[], mont
 
   const byMember: Record<string, { points: number; done: number }> = {};
   (data || []).forEach(t => {
-    if (!t.completed_by) return;
+    if (!t.completed_by || t.category === 'Geburtstag') return;
     const p = taskPoints(t as any);
     const cur = byMember[t.completed_by] || { points: 0, done: 0 };
     byMember[t.completed_by] = { points: cur.points + p, done: cur.done + 1 };

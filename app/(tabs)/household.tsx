@@ -262,7 +262,7 @@ export default function HouseholdScreen() {
     const scores: Record<string, number> = {};
 
     tasks.forEach(t => {
-      if (t.completed_at && t.completed_by) {
+      if (t.completed_at && t.completed_by && t.category !== 'Geburtstag') {
         const completedDate = new Date(t.completed_at);
         if (completedDate >= weekStart && completedDate <= weekEnd) {
           scores[t.completed_by] = (scores[t.completed_by] || 0) + (t.points || 10);
