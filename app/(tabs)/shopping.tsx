@@ -394,8 +394,20 @@ const ITEM_EMOJIS: Record<string, string> = {
   'küchenrolle': '🧻', 'müllbeutel': '🗑️',
 };
 
+// Exact match first; otherwise fall back to the longest known keyword contained in the
+// name (handles real-world names like "Cherry-Tomaten" or "Joghurt, 1,5% Fett").
+function matchByName<T>(name: string, dict: Record<string, T>): T | undefined {
+  const n = name.toLowerCase().trim();
+  if (n in dict) return dict[n];
+  let bestKey: string | undefined;
+  for (const key of Object.keys(dict)) {
+    if (n.includes(key) && (!bestKey || key.length > bestKey.length)) bestKey = key;
+  }
+  return bestKey !== undefined ? dict[bestKey] : undefined;
+}
+
 function getItemEmoji(name: string, category: string): string {
-  return ITEM_EMOJIS[name.toLowerCase().trim()] || CATEGORY_EMOJIS[category] || '🛒';
+  return matchByName(name, ITEM_EMOJIS) || CATEGORY_EMOJIS[category] || '🛒';
 }
 
 const ITEM_COLORS: Record<string, string> = {
@@ -486,7 +498,7 @@ const ITEM_COLORS: Record<string, string> = {
 };
 
 function getItemColor(name: string, category: string): string {
-  return ITEM_COLORS[name.toLowerCase().trim()] || CATEGORY_COLORS[category] || colors.sonstiges;
+  return matchByName(name, ITEM_COLORS) || CATEGORY_COLORS[category] || colors.sonstiges;
 }
 
 const TILE_SIZE = (Dimensions.get('window').width - spacing.lg * 2 - spacing.sm * 2) / 3;

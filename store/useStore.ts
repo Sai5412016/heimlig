@@ -11,6 +11,28 @@ export interface PlanRecipeOpts { date: string; mealType: MealType; addToCart: b
 
 const HOUSEHOLD_CATEGORIES = ['Haushalt', 'Einkauf', 'Wartung', 'Garten'];
 
+// Parse a quantity like "200 g" or "1,5 Stück" into a number + unit
+function parseQuantity(q: string): { num: number; unit: string } | null {
+  const m = q.trim().match(/^([\d.,]+)\s*(.*)$/);
+  if (!m) return null;
+  const num = parseFloat(m[1].replace(',', '.'));
+  if (isNaN(num)) return null;
+  return { num, unit: m[2].trim().toLowerCase() };
+}
+
+// Combine two quantities for the same item: sum when they share a unit, else stack them
+export function mergeQuantities(a?: string | null, b?: string | null): string | undefined {
+  if (!a) return b || undefined;
+  if (!b) return a || undefined;
+  const pa = parseQuantity(a), pb = parseQuantity(b);
+  if (pa && pb && pa.unit === pb.unit) {
+    const sum = Math.round((pa.num + pb.num) * 100) / 100;
+    const sumStr = Number.isInteger(sum) ? String(sum) : String(sum).replace('.', ',');
+    return pa.unit ? `${sumStr} ${pa.unit}` : sumStr;
+  }
+  return `${a} + ${b}`;
+}
+
 interface AppState {
   userId: string | null;
   setUserId: (id: string | null) => void;
@@ -267,7 +289,21 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addItem: async (listId, name, quantity, category = 'Sonstiges', mealPlanId, brand) => {
-    const { currentMember, household } = get();
+    const { currentMember, household, items } = get();
+    const key = name.toLowerCase().trim();
+    const existing = items.find(i =>
+      i.list_id === listId && !i.checked &&
+      i.name.toLowerCase().trim() === key &&
+      (i.brand || null) === (brand || null)
+    );
+
+    if (existing) {
+      const mergedQuantity = mergeQuantities(existing.quantity, quantity) ?? null;
+      set(s => ({ items: s.items.map(it => it.id === existing.id ? { ...it, quantity: mergedQuantity ?? undefined } : it) }));
+      await supabase.from('shopping_items').update({ quantity: mergedQuantity }).eq('id', existing.id);
+      return;
+    }
+
     const { data } = await supabase
       .from('shopping_items')
       .insert({ list_id: listId, name, quantity, category, brand: brand || null, added_by: currentMember?.id, meal_plan_id: mealPlanId })

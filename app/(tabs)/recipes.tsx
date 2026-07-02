@@ -86,12 +86,13 @@ function PlanModal({ recipe, onClose, onConfirm }: {
     if (recipe) { setDate(format(new Date(), 'yyyy-MM-dd')); setMealType('abendessen'); setAddToCart(true); }
   }, [recipe]);
 
-  const quickDates = [
-    { label: 'Heute', value: format(new Date(), 'yyyy-MM-dd') },
-    { label: 'Morgen', value: format(addDays(new Date(), 1), 'yyyy-MM-dd') },
-    { label: format(addDays(new Date(), 2), 'EEE', { locale: de }), value: format(addDays(new Date(), 2), 'yyyy-MM-dd') },
-    { label: format(addDays(new Date(), 3), 'EEE', { locale: de }), value: format(addDays(new Date(), 3), 'yyyy-MM-dd') },
-  ];
+  const quickDates = Array.from({ length: 14 }, (_, i) => {
+    const d = addDays(new Date(), i);
+    return {
+      label: i === 0 ? 'Heute' : i === 1 ? 'Morgen' : format(d, 'EEE dd.MM.', { locale: de }),
+      value: format(d, 'yyyy-MM-dd'),
+    };
+  });
 
   return (
     <Modal visible={!!recipe} transparent animationType="slide" onRequestClose={onClose}>

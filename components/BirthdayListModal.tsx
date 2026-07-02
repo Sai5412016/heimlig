@@ -1,6 +1,6 @@
 // components/BirthdayListModal.tsx — full list of upcoming birthdays within the next year.
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable, Dimensions } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, shadow, type ColorPalette } from '../constants/theme';
 import type { Task } from '../lib/supabase';
@@ -40,7 +40,11 @@ export default function BirthdayListModal({ visible, onClose, tasks }: { visible
           <Text style={styles.title}>🎂 Geburtstage</Text>
           <Text style={styles.subtitle}>Die nächsten 12 Monate</Text>
 
-          <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={{ maxHeight: Dimensions.get('window').height * 0.55 }}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+          >
             {upcoming.length === 0 ? (
               <Text style={styles.empty}>Keine Geburtstage hinterlegt. Leg sie unter Aufgaben mit der Kategorie „Geburtstag" an.</Text>
             ) : (
