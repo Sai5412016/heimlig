@@ -35,7 +35,7 @@ function StatCard({ emoji, label, value, sub, onPress, color = colors.brand }: a
   );
 }
 
-function TaskRow({ task, onComplete }: any) {
+function TaskRow({ task, onPress }: any) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const dueText = task.due_date
@@ -45,14 +45,14 @@ function TaskRow({ task, onComplete }: any) {
     : null;
 
   return (
-    <TouchableOpacity style={styles.taskRow} onPress={() => onComplete(task.id)} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.taskRow} onPress={() => onPress(task)} activeOpacity={0.7}>
       <View style={[styles.taskDot, task.priority === 'high' && { backgroundColor: colors.error }]} />
       <View style={styles.taskContent}>
         <Text style={styles.taskTitle} numberOfLines={1}>{task.title}</Text>
         {dueText && <Text style={styles.taskDue}>{dueText}</Text>}
       </View>
       <View style={styles.taskCheck}>
-        <Text style={styles.taskCheckIcon}>○</Text>
+        <Text style={styles.taskCheckIcon}>›</Text>
       </View>
     </TouchableOpacity>
   );
@@ -69,7 +69,7 @@ export default function DashboardScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const router = useRouter();
-  const { household, currentMember, members, tasks, items, transactions, completeTask, setTasks, setTransactions } = useStore();
+  const { household, currentMember, members, tasks, items, transactions, setTasks, setTransactions } = useStore();
   const [refreshing, setRefreshing] = React.useState(false);
   const [showChat, setShowChat] = React.useState(false);
   const [showBirthdays, setShowBirthdays] = React.useState(false);
@@ -232,7 +232,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
             {openTasks.slice(0, 4).map(task => (
-              <TaskRow key={task.id} task={task} onComplete={completeTask} />
+              <TaskRow key={task.id} task={task} onPress={(t: any) => router.push({ pathname: '/(tabs)/tasks', params: { taskId: t.id } })} />
             ))}
           </View>
         )}

@@ -5,6 +5,7 @@ import {
   Modal, ScrollView, Pressable, KeyboardAvoidingView, Platform, Alert, Animated, Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 const hapticImpact = (style: Haptics.ImpactFeedbackStyle) => { if (Platform.OS !== 'web') Haptics.impactAsync(style); };
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
@@ -665,6 +666,19 @@ export default function TasksScreen() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [monthScores, setMonthScores] = useState<Record<string, number>>({});
+
+  // Deep-link from Home ("Anstehende Aufgaben"): jump to the task's date and open its
+  // detail view, instead of completing it on a single tap. Handled once per taskId.
+  const params = useLocalSearchParams<{ taskId?: string }>();
+  const handledTaskParam = useRef<string | null>(null);
+  useEffect(() => {
+    if (!params.taskId || params.taskId === handledTaskParam.current) return;
+    const found = tasks.find(t => t.id === params.taskId);
+    if (!found) return;
+    handledTaskParam.current = params.taskId;
+    setSelectedTask(found);
+    if (found.due_date) setSelectedDate(parseISO(found.due_date));
+  }, [params.taskId, tasks]);
 
   // Gamification only runs in households with more than one member and when not disabled
   const gamificationOn = household?.gamification_enabled !== false && members.length > 1;
