@@ -18,6 +18,7 @@ import { fetchShoppingItems, subscribeToShoppingItems } from '../../repositories
 import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
 import ProductScanner from '../../components/ProductScanner';
 import { searchGroceries, categoryForItem, normalizeKey } from '../../lib/groceries';
+import { estimateCartTotal } from '../../lib/pricing';
 import { searchBrands, bumpBrand, supermarketKey, type BrandEntry } from '../../lib/brands';
 
 // ─── ADD ITEM MODAL ───────────────────────────────────────────
@@ -637,6 +638,7 @@ export default function ShoppingScreen() {
   const unchecked = useMemo(() => items.filter(i => !i.checked), [items]);
   const checked = useMemo(() => items.filter(i => i.checked), [items]);
   const progress = items.length > 0 ? checked.length / items.length : 0;
+  const costEstimate = useMemo(() => estimateCartTotal(unchecked), [unchecked]);
 
   const groupedItems = useMemo(() => {
     const groups: Record<string, ShoppingItem[]> = {};
@@ -737,6 +739,11 @@ export default function ShoppingScreen() {
               }]} />
             </View>
             <Text style={styles.progressText}>{checked.length} von {items.length} erledigt</Text>
+            {costEstimate.pricedCount > 0 && (
+              <Text style={styles.costEstimateText}>
+                ≈ {costEstimate.total.toFixed(2).replace('.', ',')} €{costEstimate.pricedCount < costEstimate.totalCount ? ` (${costEstimate.pricedCount} von ${costEstimate.totalCount} Artikeln geschätzt)` : ' geschätzt'}
+              </Text>
+            )}
           </View>
         )}
 
@@ -839,6 +846,9 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   },
   progressText: {
     ...typography.xs, color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'right',
+  },
+  costEstimateText: {
+    ...typography.xs, color: colors.textMuted, marginTop: 2, textAlign: 'right', fontStyle: 'italic',
   },
 
   listContent: { paddingBottom: 100, paddingHorizontal: spacing.md },

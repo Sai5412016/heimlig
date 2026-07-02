@@ -34,8 +34,11 @@ export default function BirthdayListModal({ visible, onClose, tasks }: { visible
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.sheet}>
+      <View style={styles.overlay}>
+        {/* Separate backdrop behind the sheet — keeps the ScrollView free of any Pressable
+            ancestor, which on some Android devices blocks the scroll gesture entirely. */}
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} onPress={onClose} />
+        <View style={styles.sheet}>
           <View style={styles.handle} />
           <Text style={styles.title}>🎂 Geburtstage</Text>
           <Text style={styles.subtitle}>Die nächsten 12 Monate</Text>
@@ -43,7 +46,6 @@ export default function BirthdayListModal({ visible, onClose, tasks }: { visible
           <ScrollView
             style={{ flexGrow: 0, flexShrink: 1 }}
             showsVerticalScrollIndicator={false}
-            nestedScrollEnabled
           >
             {upcoming.length === 0 ? (
               <Text style={styles.empty}>Keine Geburtstage hinterlegt. Leg sie unter Aufgaben mit der Kategorie „Geburtstag" an.</Text>
@@ -68,14 +70,14 @@ export default function BirthdayListModal({ visible, onClose, tasks }: { visible
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeBtnText}>Schließen</Text>
           </TouchableOpacity>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
 
 function makeStyles(colors: ColorPalette) { return StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xl, maxHeight: '80%' },
   handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.md },
   title: { ...typography.h2, color: colors.text },

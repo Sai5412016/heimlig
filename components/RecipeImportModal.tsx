@@ -112,8 +112,9 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <Pressable style={[s.overlay, Platform.OS === 'web' && { justifyContent: 'flex-start' }]} onPress={onClose}>
-          <Pressable style={[s.sheet, { maxHeight: Platform.OS === 'web' ? '100%' : '90%' }]}>
+        <View style={[s.overlay, Platform.OS === 'web' && { justifyContent: 'flex-start' }]}>
+          <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} onPress={onClose} />
+          <View style={[s.sheet, { maxHeight: Platform.OS === 'web' ? '100%' : '90%' }]}>
             <View style={s.handle} />
             <Text style={s.title}>🍳 Rezept importieren</Text>
 
@@ -206,8 +207,8 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
                 </TouchableOpacity>
               </ScrollView>
             )}
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -215,7 +216,7 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
 
 function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   flex: { flex: 1 },
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xxl },
   handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   title: { ...typography.h3, color: colors.text, marginBottom: spacing.md },

@@ -56,8 +56,9 @@ export default function BudgetSplitModal({ visible, onClose }: { visible: boolea
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.sheet}>
+      <View style={styles.overlay}>
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} onPress={onClose} />
+        <View style={styles.sheet}>
           <View style={styles.handle} />
           <Text style={styles.title}>💸 Ausgleich</Text>
           <Text style={styles.subtitle}>Alle Ausgaben gleichmäßig geteilt – je nachdem, wer sie eingetragen hat.</Text>
@@ -112,14 +113,14 @@ export default function BudgetSplitModal({ visible, onClose }: { visible: boolea
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeBtnText}>Schließen</Text>
           </TouchableOpacity>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
 
 function makeStyles(colors: ColorPalette) { return StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xl },
   handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.md },
   title: { ...typography.h2, color: colors.text },
