@@ -55,6 +55,7 @@ export interface NewShoppingItem {
   brand?: string | null;
   added_by?: string;
   meal_plan_id?: string;
+  recipe_id?: string;
 }
 
 export async function insertShoppingItem(item: NewShoppingItem): Promise<ShoppingItem | null> {
@@ -64,6 +65,12 @@ export async function insertShoppingItem(item: NewShoppingItem): Promise<Shoppin
 
 export async function deleteShoppingItem(id: string): Promise<void> {
   await supabase.from('shopping_items').delete().eq('id', id);
+}
+
+// Remove all not-yet-bought items that were added because of a given recipe — used when
+// the user decides not to cook it after all and wants those ingredients out of the cart.
+export async function deleteUncheckedItemsByRecipe(recipeId: string): Promise<void> {
+  await supabase.from('shopping_items').delete().eq('recipe_id', recipeId).eq('checked', false);
 }
 
 // Realtime subscription for a list's items. Returns an unsubscribe function.

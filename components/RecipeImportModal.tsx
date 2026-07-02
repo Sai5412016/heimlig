@@ -85,9 +85,13 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
     setIngredients(prev => prev.map(i => ({ ...i, include: !allOn })));
   };
 
+  // Users often paste a whole share text ("Schau dir … https://…") — save only the actual
+  // link, otherwise Linking.openURL() later fails silently on the surrounding text.
+  const extractUrl = (raw: string): string | undefined => raw.match(/https?:\/\/\S+/)?.[0];
+
   const handleAdd = () => {
     onAdd(ingredients, recipeName, {
-      sourceUrl: inputMode === 'url' && input.trim() ? input.trim() : undefined,
+      sourceUrl: inputMode === 'url' && input.trim() ? extractUrl(input.trim()) : undefined,
       date: planEnabled && planDate ? planDate : undefined,
       mealType: planEnabled ? mealType : undefined,
       addToCart,

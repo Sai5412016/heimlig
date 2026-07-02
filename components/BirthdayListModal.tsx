@@ -1,6 +1,6 @@
 // components/BirthdayListModal.tsx — full list of upcoming birthdays within the next year.
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import type { Task } from '../lib/supabase';
@@ -41,7 +41,7 @@ export default function BirthdayListModal({ visible, onClose, tasks }: { visible
           <Text style={styles.subtitle}>Die nächsten 12 Monate</Text>
 
           <ScrollView
-            style={{ maxHeight: Dimensions.get('window').height * 0.55 }}
+            style={{ flexGrow: 0, flexShrink: 1 }}
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled
           >
@@ -76,7 +76,7 @@ export default function BirthdayListModal({ visible, onClose, tasks }: { visible
 
 function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xl },
+  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xl, maxHeight: '80%' },
   handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.md },
   title: { ...typography.h2, color: colors.text },
   subtitle: { ...typography.sm, color: colors.textSecondary, marginBottom: spacing.md },

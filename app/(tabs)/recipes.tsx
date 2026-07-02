@@ -140,7 +140,7 @@ function PlanModal({ recipe, onClose, onConfirm }: {
 export default function RecipesScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { household, recipes, loadRecipes, toggleRecipeFavorite, setRecipeCategory, deleteRecipe, saveRecipe, planRecipe } = useStore();
+  const { household, recipes, items, loadRecipes, toggleRecipeFavorite, setRecipeCategory, deleteRecipe, saveRecipe, planRecipe, removeRecipeIngredientsFromCart } = useStore();
   const [showImport, setShowImport] = useState(false);
   const [planTarget, setPlanTarget] = useState<Recipe | null>(null);
   const [catTarget, setCatTarget] = useState<Recipe | null>(null);
@@ -188,8 +188,27 @@ export default function RecipesScreen() {
     ]);
   };
 
+  // "Doch nicht kochen" — pull this recipe's not-yet-bought ingredients back out of the cart.
+  const confirmRemoveFromCart = (recipe: Recipe, count: number) => {
+    Alert.alert(
+      'Zutaten aus dem Einkauf entfernen?',
+      `${count} Zutat${count === 1 ? '' : 'en'} von "${recipe.name}" aus dem Einkaufskorb entfernen? Bereits abgehakte Artikel bleiben erhalten.`,
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Entfernen', style: 'destructive', onPress: async () => {
+            const removed = await removeRecipeIngredientsFromCart(recipe.id);
+            hapticNotification(Haptics.NotificationFeedbackType.Success);
+            if (removed > 0) Alert.alert('✓ Entfernt', `${removed} Zutat${removed === 1 ? '' : 'en'} aus dem Einkaufskorb entfernt.`);
+          }
+        },
+      ]
+    );
+  };
+
   const renderItem = ({ item }: { item: Recipe }) => {
     const count = (item.ingredients || []).length;
+    const cartCount = items.filter(i => i.recipe_id === item.id && !i.checked).length;
     return (
       <View style={styles.card}>
         <TouchableOpacity onPress={() => toggleRecipeFavorite(item.id)} style={styles.favBtn}>
@@ -207,6 +226,11 @@ export default function RecipesScreen() {
         {item.source_url && (
           <TouchableOpacity style={styles.iconBtn} onPress={() => Linking.openURL(item.source_url!)}>
             <Text style={styles.iconBtnText}>🔗</Text>
+          </TouchableOpacity>
+        )}
+        {cartCount > 0 && (
+          <TouchableOpacity style={styles.iconBtn} onPress={() => confirmRemoveFromCart(item, cartCount)}>
+            <Text style={styles.iconBtnText}>🛒✕</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity style={styles.iconBtn} onPress={() => setPlanTarget(item)}>

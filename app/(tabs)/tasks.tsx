@@ -865,7 +865,7 @@ export default function TasksScreen() {
               <Text style={styles.viewToggleText}>📅</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'month' && styles.viewToggleBtnActive]} onPress={() => { setViewMode('month'); setSelectedDate(null); }}>
-              <Text style={styles.viewToggleText}>🗓️</Text>
+              <Text style={styles.viewToggleText}>📆</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]} onPress={() => setViewMode('list')}>
               <Text style={styles.viewToggleText}>☰</Text>

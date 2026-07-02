@@ -67,6 +67,7 @@ export interface ShoppingItem {
   checked_at?: string;
   added_by?: string;
   meal_plan_id?: string;
+  recipe_id?: string;
   sort_order: number;
   created_at: string;
 }

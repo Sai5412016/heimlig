@@ -63,8 +63,9 @@ interface AppState {
   createShoppingList: (name: string, emoji: string) => Promise<void>;
   deleteShoppingList: (id: string) => Promise<void>;
   toggleItem: (itemId: string) => Promise<void>;
-  addItem: (listId: string, name: string, quantity?: string, category?: string, mealPlanId?: string, brand?: string) => Promise<void>;
+  addItem: (listId: string, name: string, quantity?: string, category?: string, mealPlanId?: string, brand?: string, recipeId?: string) => Promise<void>;
   deleteItem: (itemId: string) => Promise<void>;
+  removeRecipeIngredientsFromCart: (recipeId: string) => Promise<number>;
 
   // 🛒 Learned item catalog (personalized autocomplete / frequent items)
   itemCatalog: { name: string; name_key: string; category: string; count: number }[];
@@ -275,7 +276,7 @@ export const useStore = create<AppState>((set, get) => ({
     await shoppingRepo.toggleShoppingItem(itemId, checked);
   },
 
-  addItem: async (listId, name, quantity, category = 'Sonstiges', mealPlanId, brand) => {
+  addItem: async (listId, name, quantity, category = 'Sonstiges', mealPlanId, brand, recipeId) => {
     const { currentMember, household, items } = get();
     const key = name.toLowerCase().trim();
     const existing = items.find(i =>
@@ -292,7 +293,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     const data = await shoppingRepo.insertShoppingItem({
-      list_id: listId, name, quantity, category, brand: brand || null, added_by: currentMember?.id, meal_plan_id: mealPlanId,
+      list_id: listId, name, quantity, category, brand: brand || null, added_by: currentMember?.id, meal_plan_id: mealPlanId, recipe_id: recipeId,
     });
     if (data) set(s => ({ items: [...s.items, data] }));
 
@@ -312,6 +313,16 @@ export const useStore = create<AppState>((set, get) => ({
   deleteItem: async (itemId) => {
     set(s => ({ items: s.items.filter(i => i.id !== itemId) }));
     await shoppingRepo.deleteShoppingItem(itemId);
+  },
+
+  // Used when the user decides not to cook a recipe after all: pulls its not-yet-bought
+  // ingredients back out of the cart. Already-checked (bought) items are left alone.
+  removeRecipeIngredientsFromCart: async (recipeId) => {
+    const removed = get().items.filter(i => i.recipe_id === recipeId && !i.checked);
+    if (removed.length === 0) return 0;
+    set(s => ({ items: s.items.filter(i => !(i.recipe_id === recipeId && !i.checked)) }));
+    await shoppingRepo.deleteUncheckedItemsByRecipe(recipeId);
+    return removed.length;
   },
 
   itemCatalog: [],
@@ -781,7 +792,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     if (addToCart && activeListId) {
-      for (const ing of toAdd) await addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlanId);
+      for (const ing of toAdd) await addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlanId, undefined, recipe?.id);
     }
     return { added: addToCart ? toAdd.length : 0, planned: !!(date && mealType) };
   },
@@ -803,7 +814,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     const toAdd = (recipe.ingredients || []).filter(i => i.include);
     if (addToCart && activeListId) {
-      for (const ing of toAdd) await addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlan?.id);
+      for (const ing of toAdd) await addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlan?.id, undefined, recipe.id);
     }
     return { added: addToCart ? toAdd.length : 0 };
   },
