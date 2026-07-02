@@ -92,6 +92,9 @@ export interface Task {
   google_event_id?: string;
   points: number;
   created_at: string;
+  attachment_path?: string;
+  attachment_name?: string;
+  location_url?: string;
 }
 
 export interface Transaction {

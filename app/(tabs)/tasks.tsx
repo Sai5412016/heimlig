@@ -24,8 +24,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Scoreboard, { monthlyScores } from '../../components/Scoreboard';
 import RewardsModal from '../../components/RewardsModal';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import { parseICS } from '../../lib/ics';
+import { uploadTaskAttachment, deleteTaskAttachment, getTaskAttachmentUrl, type PickedFile } from '../../lib/taskAttachments';
 
 type ViewMode = 'week' | 'month' | 'list';
 type Priority = 'low' | 'normal' | 'high';
@@ -124,11 +126,12 @@ function TimePickerDropdown({ value, onChange }: { value: string; onChange: (t: 
 }
 
 // ─── ADD TASK MODAL ───────────────────────────────────────────
-function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, editTask }: {
+function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, editTask, householdId }: {
   visible: boolean; onClose: () => void;
   onSave: (task: Partial<Task> & { due_time?: string; notify?: boolean }) => void;
   members: any[]; preselectedDate?: Date | null;
   editTask?: (Task & { due_time?: string }) | null;
+  householdId?: string;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -144,6 +147,9 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
   const [recurrenceInterval, setRecurrenceInterval] = useState(1);
   const [rotation, setRotation] = useState<string[]>([]);
   const [notify, setNotify] = useState(true);
+  const [attachment, setAttachment] = useState<{ path: string; name: string } | null>(null);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const [locationUrl, setLocationUrl] = useState('');
 
   useEffect(() => {
     if (!visible) {
@@ -151,6 +157,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       setPriority('normal'); setAssignedTo(null); setDueDate('');
       setDueTime(getCurrentTime()); setUseTime(false);
       setRecurrence(null); setRecurrenceInterval(1); setRotation([]); setNotify(true);
+      setAttachment(null); setLocationUrl('');
       return;
     }
     if (editTask) {
@@ -167,10 +174,40 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       setRecurrenceInterval(editTask.recurrence_interval || 1);
       setRotation(editTask.rotation || []);
       setNotify(true);
+      setAttachment(editTask.attachment_path ? { path: editTask.attachment_path, name: editTask.attachment_name || 'Anhang' } : null);
+      setLocationUrl(editTask.location_url || '');
     } else if (preselectedDate) {
       setDueDate(format(preselectedDate, 'yyyy-MM-dd'));
     }
   }, [visible, preselectedDate, editTask]);
+
+  const pickPhoto = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+    if (res.canceled || !res.assets?.[0]) return;
+    const asset = res.assets[0];
+    await handleUploadAttachment({ uri: asset.uri, name: asset.fileName || `Foto_${Date.now()}.jpg`, mimeType: asset.mimeType || 'image/jpeg' });
+  };
+
+  const pickDocument = async () => {
+    const res = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+    if (res.canceled || !res.assets?.[0]) return;
+    const asset = res.assets[0];
+    await handleUploadAttachment({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType || undefined });
+  };
+
+  const handleUploadAttachment = async (file: PickedFile) => {
+    if (!householdId) return;
+    setAttachmentUploading(true);
+    const result = await uploadTaskAttachment(householdId, file);
+    setAttachmentUploading(false);
+    if (result) setAttachment(result);
+    else Alert.alert('Fehler', 'Datei konnte nicht hochgeladen werden.');
+  };
+
+  const removeAttachment = () => {
+    if (attachment) deleteTaskAttachment(attachment.path);
+    setAttachment(null);
+  };
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -189,15 +226,19 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       recurrence_interval: recurrence ? recurrenceInterval : undefined,
       points: priority === 'high' ? 20 : priority === 'normal' ? 10 : 5,
       notify,
+      attachment_path: attachment?.path || null,
+      attachment_name: attachment?.name || null,
+      location_url: locationUrl.trim() || null,
     } as any);
     onClose();
   };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={[styles.modalOverlay, Platform.OS === 'web' && { justifyContent: 'flex-start' }]} onPress={onClose}>
+      <View style={[styles.modalOverlay, Platform.OS === 'web' && { justifyContent: 'flex-start' }]}>
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} onPress={onClose} />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={Platform.OS === 'web' ? { width: '100%', flex: 1 } : undefined}>
-          <Pressable style={[styles.modalSheet, Platform.OS === 'web' && { maxHeight: '100%' }]}>
+          <View style={[styles.modalSheet, Platform.OS === 'web' && { maxHeight: '100%' }]}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>{editTask ? 'Aufgabe bearbeiten' : 'Neue Aufgabe'}</Text>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -243,6 +284,38 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
                     </Text>
                   </View>
                 </TouchableOpacity>
+              )}
+
+              {/* Standort-Link */}
+              <Text style={styles.fieldLabel}>STANDORT (OPTIONAL)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Google-Maps-Link einfügen"
+                placeholderTextColor={colors.textMuted}
+                value={locationUrl}
+                onChangeText={setLocationUrl}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+
+              {/* Anhang */}
+              <Text style={styles.fieldLabel}>ANHANG (OPTIONAL)</Text>
+              {attachment ? (
+                <View style={styles.attachmentRow}>
+                  <Text style={styles.attachmentRowText} numberOfLines={1}>📎 {attachment.name}</Text>
+                  <TouchableOpacity onPress={removeAttachment} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={styles.attachmentRemove}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.chipRow}>
+                  <TouchableOpacity style={[styles.chip, { flex: 1 }]} onPress={pickPhoto} disabled={attachmentUploading}>
+                    <Text style={styles.chipText}>📷 Foto</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.chip, { flex: 1 }]} onPress={pickDocument} disabled={attachmentUploading}>
+                    <Text style={styles.chipText}>{attachmentUploading ? 'Lädt hoch…' : '📄 Dokument'}</Text>
+                  </TouchableOpacity>
+                </View>
               )}
 
               {/* Priorität */}
@@ -344,9 +417,9 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
               </TouchableOpacity>
               <View style={{ height: 20 }} />
             </ScrollView>
-          </Pressable>
+          </View>
         </KeyboardAvoidingView>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -416,6 +489,8 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
               <Text style={[styles.assignBadgeText, { color: assignedMember.avatar_color }]}>{assignedMember.display_name[0]}</Text>
             </View>
           )}
+          {task.location_url && <Text style={styles.taskMetaIcon}>📍</Text>}
+          {task.attachment_path && <Text style={styles.taskMetaIcon}>📎</Text>}
         </View>
       </TouchableOpacity>
       <TouchableOpacity style={styles.deleteTaskBtn} onPress={() => onDelete(task.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -446,10 +521,18 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit 
         : RECURRENCE_OPTIONS.find(r => r.key === task.recurrence)?.label)
     : null;
 
+  const handleOpenAttachment = async () => {
+    if (!task.attachment_path) return;
+    const url = await getTaskAttachmentUrl(task.attachment_path);
+    if (url) Linking.openURL(url);
+    else Alert.alert('Fehler', 'Anhang konnte nicht geladen werden.');
+  };
+
   return (
     <Modal visible={!!task} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={styles.modalSheet}>
+      <View style={styles.modalOverlay}>
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} onPress={onClose} />
+        <View style={styles.modalSheet}>
           <View style={styles.modalHandle} />
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.detailTitle}>{task.title}</Text>
@@ -465,6 +548,17 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit 
             )}
             <View style={styles.detailRow}><Text style={styles.detailLabel}>👤 Zugewiesen</Text><Text style={styles.detailValue}>{assignedMember ? assignedMember.display_name : 'Alle'}</Text></View>
 
+            {task.location_url && (
+              <TouchableOpacity style={styles.attachmentBtn} onPress={() => Linking.openURL(task.location_url!)}>
+                <Text style={styles.attachmentBtnText}>📍 Standort öffnen</Text>
+              </TouchableOpacity>
+            )}
+            {task.attachment_path && (
+              <TouchableOpacity style={styles.attachmentBtn} onPress={handleOpenAttachment}>
+                <Text style={styles.attachmentBtnText} numberOfLines={1}>📎 {task.attachment_name || 'Anhang'} öffnen</Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity style={styles.saveBtn} onPress={() => { onComplete(task.id); onClose(); }}>
               <Text style={styles.saveBtnText}>{isCompleted ? 'Als offen markieren' : 'Erledigt ✓'}</Text>
             </TouchableOpacity>
@@ -475,8 +569,8 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit 
               <Text style={styles.detailDeleteText}>Löschen</Text>
             </TouchableOpacity>
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
@@ -824,9 +918,16 @@ export default function TasksScreen() {
   };
 
   const handleDelete = (id: string) => {
+    const task = tasks.find(t => t.id === id);
     Alert.alert('Löschen', 'Aufgabe wirklich löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: async () => { setTasks(tasks.filter(t => t.id !== id)); await supabase.from('tasks').delete().eq('id', id); } }
+      {
+        text: 'Löschen', style: 'destructive', onPress: async () => {
+          setTasks(tasks.filter(t => t.id !== id));
+          await supabase.from('tasks').delete().eq('id', id);
+          if (task?.attachment_path) deleteTaskAttachment(task.attachment_path);
+        }
+      }
     ]);
   };
 
@@ -1021,6 +1122,7 @@ export default function TasksScreen() {
         members={members}
         preselectedDate={selectedDate}
         editTask={editingTask}
+        householdId={household?.id}
       />
     </SafeAreaView>
   );
@@ -1103,6 +1205,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   pointsBadgeText: { fontSize: 10, color: '#D97706', fontWeight: '800' },
   taskDesc: { ...typography.xs, color: colors.textSecondary, marginTop: 2 },
   taskMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 6 },
+  taskMetaIcon: { fontSize: 12 },
   taskCatEmoji: { fontSize: 13 },
   taskCatLabel: { ...typography.xs, color: colors.textSecondary },
   dueBadge: { backgroundColor: '#F0FDF4', borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
@@ -1124,7 +1227,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   fabText: { color: '#fff', fontSize: 28, lineHeight: 30, fontWeight: '300' },
   pointsToast: { position: 'absolute', bottom: 100, alignSelf: 'center', backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, ...shadow.lg },
   pointsToastText: { color: '#fff', fontWeight: '800', fontSize: 18 },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xxl, maxHeight: '92%' },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   modalTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
@@ -1159,6 +1262,11 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   detailValue: { ...typography.body, color: colors.text, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: spacing.md },
   detailEditBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
   detailEditText: { ...typography.body, color: colors.text, fontWeight: '600' },
+  attachmentBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.sm, borderRadius: radius.md, backgroundColor: colors.brandPale },
+  attachmentBtnText: { ...typography.body, color: colors.brand, fontWeight: '700' },
+  attachmentRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border },
+  attachmentRowText: { ...typography.body, color: colors.text, flex: 1, marginRight: spacing.sm },
+  attachmentRemove: { ...typography.body, color: colors.textMuted, fontWeight: '700' },
   detailDeleteBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.xs },
   detailDeleteText: { ...typography.body, color: colors.error, fontWeight: '600' },
   chipRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
