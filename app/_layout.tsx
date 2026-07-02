@@ -2,12 +2,13 @@
 import { useEffect, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
-import { Platform, Dimensions } from 'react-native';
+import { Platform, Dimensions, View, ActivityIndicator } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import { useTheme } from '../hooks/useTheme';
 import { checkForUpdate } from '../lib/appUpdate';
 import WhatsNewModal from '../components/WhatsNewModal';
 
@@ -23,6 +24,7 @@ function extractJoinCode(url: string | null): string | null {
 export default function RootLayout() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const { colors } = useTheme();
   const { setUserId, loadMyHouseholds, activateHousehold, setDarkMode } = useStore();
 
   // Lock phones to portrait, but let large screens (tablets/foldables) rotate freely.
@@ -127,6 +129,13 @@ export default function RootLayout() {
         <Stack.Screen name="impressum" />
         <Stack.Screen name="datenschutz" />
       </Stack>
+      {!ready && (
+        <View
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}
+        >
+          <ActivityIndicator size="large" color={colors.brand} />
+        </View>
+      )}
       <WhatsNewModal />
     </GestureHandlerRootView>
   );
