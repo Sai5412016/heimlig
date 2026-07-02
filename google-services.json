@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "217647730942",
+    "project_id": "heimlig-a465b",
+    "storage_bucket": "heimlig-a465b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:217647730942:android:4554b3a75ae06152c715af",
+        "android_client_info": {
+          "package_name": "com.fledderman.heimlig"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtBf5LnHbepoAFM7R6ckJCQ-NsRrTIpmY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
