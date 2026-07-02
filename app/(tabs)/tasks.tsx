@@ -59,24 +59,22 @@ const catColor = (cat?: string) => CATEGORY_COLORS[cat || ''] || '#9AB5A0';
 const HOUSEHOLD_CATEGORIES = ['Haushalt', 'Einkauf', 'Wartung', 'Garten'];
 
 // ─── TIME SLOTS ───────────────────────────────────────────────
-const TIME_SLOTS = Array.from({ length: 49 }, (_, i) => {
-  const h = Math.floor(i / 2);
-  const m = i % 2 === 0 ? '00' : '30';
-  return `${String(h).padStart(2, '0')}:${m}`;
-});
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 
-function getCurrentTimeSlot(): string {
+function getCurrentTime(): string {
   const now = new Date();
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = now.getMinutes() < 30 ? '00' : '30';
-  return `${h}:${m}`;
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
 // ─── TIME PICKER DROPDOWN ─────────────────────────────────────
+// Two scrollable columns (Stunde/Minute) so times can be set to the exact minute,
+// not just in fixed steps.
 function TimePickerDropdown({ value, onChange }: { value: string; onChange: (t: string) => void }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [open, setOpen] = useState(false);
+  const [h, m] = value.split(':');
 
   return (
     <View style={styles.timePickerWrap}>
@@ -91,20 +89,34 @@ function TimePickerDropdown({ value, onChange }: { value: string; onChange: (t: 
 
       {open && (
         <View style={styles.timeDropdown}>
-          <ScrollView style={{ maxHeight: 220 }} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-            {TIME_SLOTS.map(slot => (
-              <TouchableOpacity
-                key={slot}
-                style={[styles.timeDropdownItem, value === slot && styles.timeDropdownItemActive]}
-                onPress={() => { onChange(slot); setOpen(false); }}
-              >
-                <Text style={[styles.timeDropdownText, value === slot && { color: '#fff', fontWeight: '700' }]}>
-                  {slot}
-                </Text>
-                {value === slot && <Text style={{ color: '#fff' }}>✓</Text>}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <View style={{ flexDirection: 'row' }}>
+            <ScrollView style={styles.timeDropdownCol} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+              {HOURS.map(hh => (
+                <TouchableOpacity
+                  key={hh}
+                  style={[styles.timeDropdownItem, h === hh && styles.timeDropdownItemActive]}
+                  onPress={() => onChange(`${hh}:${m}`)}
+                >
+                  <Text style={[styles.timeDropdownText, h === hh && { color: '#fff', fontWeight: '700' }]}>{hh}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <View style={styles.timeDropdownDivider} />
+            <ScrollView style={styles.timeDropdownCol} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+              {MINUTES.map(mm => (
+                <TouchableOpacity
+                  key={mm}
+                  style={[styles.timeDropdownItem, m === mm && styles.timeDropdownItemActive]}
+                  onPress={() => onChange(`${h}:${mm}`)}
+                >
+                  <Text style={[styles.timeDropdownText, m === mm && { color: '#fff', fontWeight: '700' }]}>{mm}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+          <TouchableOpacity style={styles.timeDropdownDone} onPress={() => setOpen(false)}>
+            <Text style={styles.timeDropdownDoneText}>Fertig ✓</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -126,7 +138,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
   const [priority, setPriority] = useState<Priority>('normal');
   const [assignedTo, setAssignedTo] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState(preselectedDate ? format(preselectedDate, 'yyyy-MM-dd') : '');
-  const [dueTime, setDueTime] = useState(getCurrentTimeSlot());
+  const [dueTime, setDueTime] = useState(getCurrentTime());
   const [useTime, setUseTime] = useState(false);
   const [recurrence, setRecurrence] = useState<string | null>(null);
   const [recurrenceInterval, setRecurrenceInterval] = useState(1);
@@ -137,7 +149,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
     if (!visible) {
       setTitle(''); setDescription(''); setCategory('Haushalt');
       setPriority('normal'); setAssignedTo(null); setDueDate('');
-      setDueTime(getCurrentTimeSlot()); setUseTime(false);
+      setDueTime(getCurrentTime()); setUseTime(false);
       setRecurrence(null); setRecurrenceInterval(1); setRotation([]); setNotify(true);
       return;
     }
@@ -150,7 +162,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       setAssignedTo(editTask.assigned_to || null);
       setDueDate(editTask.due_date || '');
       setUseTime(!!editTask.due_time);
-      setDueTime(editTask.due_time || getCurrentTimeSlot());
+      setDueTime(editTask.due_time || getCurrentTime());
       setRecurrence(editTask.recurrence || null);
       setRecurrenceInterval(editTask.recurrence_interval || 1);
       setRotation(editTask.rotation || []);
@@ -1126,9 +1138,13 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   timePickerValue: { ...typography.body, color: colors.text, fontWeight: '600' },
   timePickerArrow: { color: colors.brand, fontWeight: '700' },
   timeDropdown: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.brand, marginTop: 4, ...shadow.md, overflow: 'hidden' },
-  timeDropdownItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  timeDropdownCol: { flex: 1, maxHeight: 220 },
+  timeDropdownDivider: { width: 1, backgroundColor: colors.borderLight },
+  timeDropdownItem: { alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   timeDropdownItemActive: { backgroundColor: colors.brand },
   timeDropdownText: { ...typography.body, color: colors.text },
+  timeDropdownDone: { padding: spacing.sm, alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.borderLight },
+  timeDropdownDoneText: { ...typography.sm, color: colors.brand, fontWeight: '700' },
   notifyToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, marginBottom: spacing.md, backgroundColor: colors.surface },
   notifyToggleActive: { borderColor: colors.brand, backgroundColor: colors.brandPale },
   notifyToggleEmoji: { fontSize: 24 },
