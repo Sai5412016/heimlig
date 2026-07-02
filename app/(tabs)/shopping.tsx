@@ -19,74 +19,6 @@ import ProductScanner from '../../components/ProductScanner';
 import { searchGroceries, categoryForItem, normalizeKey } from '../../lib/groceries';
 import { searchBrands, bumpBrand, supermarketKey, type BrandEntry } from '../../lib/brands';
 
-// ─── ITEM CARD ────────────────────────────────────────────────
-const ItemCard = React.memo(({ item, onToggle, onDelete, memberName }: {
-  item: ShoppingItem;
-  onToggle: (id: string) => void;
-  onDelete: (id: string) => void;
-  memberName?: string;
-}) => {
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  const scale = useRef(new Animated.Value(1)).current;
-  const opacity = useRef(new Animated.Value(item.checked ? 0.5 : 1)).current;
-
-  const handleToggle = () => {
-    hapticImpact(item.checked ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium);
-    Animated.parallel([
-      Animated.sequence([
-        Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, speed: 50 }),
-        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20 }),
-      ]),
-      Animated.timing(opacity, {
-        toValue: item.checked ? 1 : 0.5,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    onToggle(item.id);
-  };
-
-  const catColor = CATEGORY_COLORS[item.category] || colors.sonstiges;
-
-  return (
-    <Animated.View style={[styles.itemCard, { transform: [{ scale }], opacity }]}>
-      <TouchableOpacity style={styles.itemCheckbox} onPress={handleToggle} activeOpacity={0.7}>
-        <View style={[styles.checkbox, item.checked && styles.checkboxChecked]}>
-          {item.checked && <Text style={styles.checkmark}>✓</Text>}
-        </View>
-      </TouchableOpacity>
-
-      <View style={styles.itemContent}>
-        <Text style={[styles.itemName, item.checked && styles.itemNameChecked]}>
-          {item.name}
-        </Text>
-        <View style={styles.itemMeta}>
-          {item.brand && (
-            <Text style={styles.itemBrand}>🏷️ {item.brand}</Text>
-          )}
-          {item.quantity && (
-            <Text style={styles.itemQuantity}>{item.quantity}</Text>
-          )}
-          <View style={[styles.categoryDot, { backgroundColor: catColor }]} />
-          <Text style={[styles.itemCategory, { color: catColor }]}>{item.category}</Text>
-        </View>
-      </View>
-
-      <TouchableOpacity
-        style={styles.deleteBtn}
-        onPress={() => {
-          hapticImpact(Haptics.ImpactFeedbackStyle.Light);
-          onDelete(item.id);
-        }}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <Text style={styles.deleteBtnText}>×</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-});
-
 // ─── ADD ITEM MODAL ───────────────────────────────────────────
 const AddItemModal = ({ visible, onClose, onAdd, supermarket }: {
   visible: boolean;
@@ -697,8 +629,8 @@ export default function ShoppingScreen() {
   useEffect(() => { loadItemCatalog(); }, [household?.id]);
 
   const activeList = shoppingLists.find(l => l.id === activeListId);
-  const unchecked = items.filter(i => !i.checked);
-  const checked = items.filter(i => i.checked);
+  const unchecked = useMemo(() => items.filter(i => !i.checked), [items]);
+  const checked = useMemo(() => items.filter(i => i.checked), [items]);
   const progress = items.length > 0 ? checked.length / items.length : 0;
 
   const groupedItems = useMemo(() => {
@@ -783,51 +715,6 @@ export default function ShoppingScreen() {
   useEffect(() => {
     Animated.timing(progressAnim, { toValue: progress, duration: 400, useNativeDriver: false }).start();
   }, [progress]);
-
-  const renderItem = ({ item }: { item: ShoppingItem }) => (
-    <ItemCard item={item} onToggle={toggleItem} onDelete={deleteItem} />
-  );
-
-  const ListHeader = () => (
-    <View>
-      {/* Progress */}
-      {items.length > 0 && (
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <Animated.View style={[styles.progressFill, {
-              width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] })
-            }]} />
-          </View>
-          <Text style={styles.progressText}>
-            {checked.length} von {items.length} erledigt
-          </Text>
-        </View>
-      )}
-
-      {unchecked.length > 0 && (
-        <Text style={styles.sectionLabel}>ZU KAUFEN ({unchecked.length})</Text>
-      )}
-    </View>
-  );
-
-  const CheckedHeader = () => (
-    checked.length > 0 ? (
-      <View style={styles.checkedHeader}>
-        <TouchableOpacity onPress={() => setShowChecked(v => !v)} style={styles.checkedToggle}>
-          <Text style={styles.checkedHeaderText}>✓ Erledigt ({checked.length})</Text>
-          <Text style={styles.checkedToggleIcon}>{showChecked ? '▲' : '▼'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleClearChecked}>
-          <Text style={styles.clearCheckedText}>Löschen</Text>
-        </TouchableOpacity>
-      </View>
-    ) : null
-  );
-
-  const listData = [
-    ...unchecked,
-    ...(showChecked ? checked : []),
-  ];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
