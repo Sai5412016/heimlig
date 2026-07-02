@@ -1,7 +1,7 @@
 // components/Scoreboard.tsx — monthly household scoreboard with fun titles
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
-import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../constants/theme';
+import { colors, spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { supabase, Member } from '../lib/supabase';
 import { taskPoints, titleForPoints } from '../lib/gamification';

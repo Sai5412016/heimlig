@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable, Dimensions } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
-import { spacing, radius, typography, shadow, type ColorPalette } from '../constants/theme';
+import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import type { Task } from '../lib/supabase';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';

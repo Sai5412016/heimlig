@@ -4,7 +4,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable, Alert } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
-import { spacing, radius, typography, shadow, type ColorPalette } from '../constants/theme';
+import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
 
 const eur = (n: number) => `€${n.toFixed(2).replace('.', ',')}`;

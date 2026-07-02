@@ -4,7 +4,7 @@ import {
   View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, TextInput, Pressable, Alert,
 } from 'react-native';
 import { useTheme } from '../hooks/useTheme';
-import { spacing, radius, typography, shadow, type ColorPalette } from '../constants/theme';
+import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import type { Reward } from '../lib/supabase';
 

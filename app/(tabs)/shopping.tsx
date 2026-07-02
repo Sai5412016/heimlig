@@ -12,9 +12,7 @@ const hapticImpact = (style: Haptics.ImpactFeedbackStyle) => { if (Platform.OS !
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 import { colors, spacing, radius, typography, shadow, SHOPPING_CATEGORIES, CATEGORY_COLORS, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
-import { supabase, ShoppingItem, RecipeIngredient, MealType } from '../../lib/supabase';
-import { format, addDays } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { supabase, ShoppingItem, RecipeIngredient } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
 import ProductScanner from '../../components/ProductScanner';

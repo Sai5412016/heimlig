@@ -1,5 +1,5 @@
 // app/(tabs)/household.tsx
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Alert, Share, Modal, Pressable, TextInput, Platform, KeyboardAvoidingView
@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
-import { colors, spacing, radius, typography, shadow, AVATAR_COLORS, type ColorPalette } from '../../constants/theme';
+import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { useTheme } from '../../hooks/useTheme';

@@ -1,9 +1,9 @@
 // app/(tabs)/_layout.tsx
 import { Tabs } from 'expo-router';
-import { View, Text, Platform } from 'react-native';
+import { View, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
-import { radius, typography } from '../../constants/theme';
+import { radius } from '../../constants/theme';
 
 function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
   const { colors } = useTheme();

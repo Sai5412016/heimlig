@@ -1,6 +1,4 @@
 // lib/notifications.ts
-import { Platform } from 'react-native';
-
 let Notifications: any = null;
 
 // Only load notifications in real builds, not Expo Go
