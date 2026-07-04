@@ -959,12 +959,14 @@ export default function TasksScreen() {
           <Text style={styles.headerTitle}>📋 Aufgaben</Text>
           <Text style={styles.headerSub}>{openTasks.length} offen{overdueTasks.length > 0 ? ` · ${overdueTasks.length} überfällig` : ''}</Text>
         </View>
-        <View style={styles.headerRight}>
-          {gamificationOn && (
-            <TouchableOpacity style={[styles.scoreBadge, isLeading && styles.scoreBadgeLeading]} onPress={() => setShowScoreboard(true)}>
-              <Text style={styles.scoreBadgeText}>{isLeading ? '👑' : '🏆'} {myScore}</Text>
-            </TouchableOpacity>
-          )}
+        {gamificationOn && (
+          <TouchableOpacity style={[styles.scoreBadge, isLeading && styles.scoreBadgeLeading]} onPress={() => setShowScoreboard(true)}>
+            <Text style={styles.scoreBadgeText}>{isLeading ? '👑' : '🏆'} {myScore}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      <View style={styles.toolbarRow}>
+        <View style={styles.toolbarLeft}>
           {gamificationOn && (
             <TouchableOpacity style={styles.importBtn} onPress={() => setShowRewards(true)}>
               <Text style={styles.viewToggleText}>🎁</Text>
@@ -973,17 +975,17 @@ export default function TasksScreen() {
           <TouchableOpacity style={styles.importBtn} onPress={handleImportIcs}>
             <Text style={styles.viewToggleText}>📥</Text>
           </TouchableOpacity>
-          <View style={styles.viewToggle}>
-            <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'week' && styles.viewToggleBtnActive]} onPress={() => { setViewMode('week'); setSelectedDate(null); }}>
-              <Text style={styles.viewToggleText}>📅</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'month' && styles.viewToggleBtnActive]} onPress={() => { setViewMode('month'); setSelectedDate(null); }}>
-              <Text style={styles.viewToggleText}>📆</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]} onPress={() => setViewMode('list')}>
-              <Text style={styles.viewToggleText}>☰</Text>
-            </TouchableOpacity>
-          </View>
+        </View>
+        <View style={styles.viewToggle}>
+          <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'week' && styles.viewToggleBtnActive]} onPress={() => { setViewMode('week'); setSelectedDate(null); }}>
+            <Text style={styles.viewToggleText}>📅</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'month' && styles.viewToggleBtnActive]} onPress={() => { setViewMode('month'); setSelectedDate(null); }}>
+            <Text style={styles.viewToggleText}>📆</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]} onPress={() => setViewMode('list')}>
+            <Text style={styles.viewToggleText}>☰</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -1133,7 +1135,8 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   headerTitle: { ...typography.h2, color: colors.text },
   headerSub: { ...typography.sm, color: colors.textSecondary, marginTop: 2 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  toolbarRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  toolbarLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   scoreBadge: { backgroundColor: colors.brandPale, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 4 },
   scoreBadgeLeading: { backgroundColor: '#FEF3C7' },
   scoreBadgeText: { ...typography.xs, color: colors.brand, fontWeight: '800' },
