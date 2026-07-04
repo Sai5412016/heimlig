@@ -28,7 +28,7 @@ search:
       search_url: ""
     immowelt:
       enabled: true
-      search_url: ""
+      search_url: "https://www.immowelt.de/classified-search?distributionTypes=Buy,Buy_Auction&energyCertificate=A_PLUS,A,B,C,D&estateTypes=House&locations=AD06DE237&priceMax=700000&projectTypes=Resale&m=homepage_new_search_classified_search_result"
     kleinanzeigen:
       enabled: true
       search_url: ""
