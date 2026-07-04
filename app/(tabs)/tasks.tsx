@@ -468,8 +468,10 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
         </View>
         {task.description ? <Text style={styles.taskDesc} numberOfLines={1}>{task.description}</Text> : null}
         <View style={styles.taskMeta}>
-          <Text style={styles.taskCatEmoji}>{CATEGORY_EMOJIS[task.category] || '📋'}</Text>
-          <Text style={styles.taskCatLabel}>{task.category}</Text>
+          <View style={[styles.taskCatChip, { backgroundColor: catColor(task.category) + '1A' }]}>
+            <Text style={styles.taskCatEmoji}>{CATEGORY_EMOJIS[task.category] || '📋'}</Text>
+            <Text style={[styles.taskCatLabel, { color: catColor(task.category) }]}>{task.category}</Text>
+          </View>
           {dueDateText && (
             <View style={[styles.dueBadge, isOverdue && { backgroundColor: '#FEE2E2' }]}>
               <Text style={[styles.dueBadgeText, isOverdue && { color: colors.error }]}>
@@ -705,17 +707,21 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
           const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
           const isSelected = selectedDate && isSameDay(day, selectedDate);
           const isToday_ = isToday(day);
+          const barColors = [
+            ...dayTasks.map(t => t.completed_at ? colors.textMuted : catColor(t.category)),
+            ...(mealPlans.some(m => m.planned_date === key) ? ['#FF6B35'] : []),
+          ];
+          const visibleBars = barColors.slice(0, 3);
+          const extraBars = barColors.length - visibleBars.length;
           return (
             <TouchableOpacity key={key} style={[styles.dayCell, isSelected && styles.dayCellSelected, isToday_ && !isSelected && styles.dayCellToday]} onPress={() => onDayPress(day)}>
               <Text style={[styles.dayNumber, !isCurrentMonth && { opacity: 0.3 }, isSelected && { color: '#fff' }, isToday_ && !isSelected && { color: colors.brand, fontWeight: '700' }]}>{format(day, 'd')}</Text>
-              {(dayTasks.length > 0 || mealPlans.some(m => m.planned_date === key)) && (
+              {barColors.length > 0 && (
                 <View style={styles.dotRow}>
-                  {dayTasks.slice(0, 3).map((t, i) => (
-                    <View key={i} style={[styles.taskBarCal, { backgroundColor: t.completed_at ? colors.textMuted : catColor(t.category) }, isSelected && { backgroundColor: 'rgba(255,255,255,0.85)' }]} />
+                  {visibleBars.map((c, i) => (
+                    <View key={i} style={[styles.taskBarCal, { backgroundColor: c }, isSelected && { backgroundColor: 'rgba(255,255,255,0.85)' }]} />
                   ))}
-                  {mealPlans.some(m => m.planned_date === key) && (
-                    <View style={[styles.taskBarCal, { backgroundColor: '#FF6B35' }, isSelected && { backgroundColor: 'rgba(255,255,255,0.85)' }]} />
-                  )}
+                  {extraBars > 0 && <Text style={[styles.dayMoreText, isSelected && { color: '#fff' }]}>+{extraBars}</Text>}
                 </View>
               )}
             </TouchableOpacity>
@@ -1172,9 +1178,9 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   dayCellSelected: { backgroundColor: colors.brand },
   dayCellToday: { backgroundColor: colors.brandPale },
   dayNumber: { ...typography.sm, color: colors.text, fontWeight: '500' },
-  dotRow: { flexDirection: 'row', gap: 2, marginTop: 3 },
-  taskDotCal: { width: 5, height: 5, borderRadius: 3 },
-  taskBarCal: { width: 7, height: 4, borderRadius: 2 },
+  dotRow: { width: '100%', alignItems: 'center', marginTop: 4, gap: 2 },
+  taskBarCal: { width: '65%', height: 3, borderRadius: 1.5 },
+  dayMoreText: { fontSize: 8, lineHeight: 10, color: colors.textMuted, fontWeight: '700', marginTop: 1 },
   yearNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.sm, gap: spacing.lg },
   yearNavBtn: { padding: spacing.sm },
   yearNavArrow: { fontSize: 22, color: colors.brand, fontWeight: '600', lineHeight: 24 },
@@ -1209,8 +1215,9 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   taskDesc: { ...typography.xs, color: colors.textSecondary, marginTop: 2 },
   taskMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 6 },
   taskMetaIcon: { fontSize: 12 },
+  taskCatChip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
   taskCatEmoji: { fontSize: 13 },
-  taskCatLabel: { ...typography.xs, color: colors.textSecondary },
+  taskCatLabel: { ...typography.xs, fontWeight: '600' },
   dueBadge: { backgroundColor: '#F0FDF4', borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
   dueBadgeText: { ...typography.xs, color: colors.brand, fontWeight: '600' },
   recurrenceBadge: { backgroundColor: colors.brandPale, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
