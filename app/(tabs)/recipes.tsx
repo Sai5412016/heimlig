@@ -2,8 +2,9 @@
 import React, { useCallback, useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Platform,
-  Alert, Linking, Modal, Pressable, ScrollView,
+  Linking, Modal, Pressable, ScrollView,
 } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';

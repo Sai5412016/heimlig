@@ -1,8 +1,9 @@
 // components/RewardsModal.tsx — reward shop: spend earned points on family-defined rewards.
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, TextInput, Pressable, Alert,
+  View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, TextInput, Pressable,
 } from 'react-native';
+import { Alert } from '../lib/alert';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';

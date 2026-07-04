@@ -2,8 +2,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  Modal, Pressable, ScrollView, KeyboardAvoidingView, Platform, Alert,
+  Modal, Pressable, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { Alert } from '../lib/alert';
 import { colors, spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { supabase, RecipeIngredient, MealType } from '../lib/supabase';

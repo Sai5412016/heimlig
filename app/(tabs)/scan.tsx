@@ -1,8 +1,9 @@
 // app/(tabs)/scan.tsx — "Gesund" tab: scan products (health score + history) and manage the pantry.
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, RefreshControl, TextInput, Modal, Pressable,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, RefreshControl, TextInput, Modal, Pressable,
 } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';

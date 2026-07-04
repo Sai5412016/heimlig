@@ -2,7 +2,8 @@
 // Splits all logged expenses equally among members based on who entered each one, then nets out
 // recorded settlements and suggests the fewest payments to balance everyone.
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable } from 'react-native';
+import { Alert } from '../lib/alert';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';

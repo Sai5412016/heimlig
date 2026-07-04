@@ -2,8 +2,9 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
-  Modal, Pressable, KeyboardAvoidingView, Platform, Alert, Animated
+  Modal, Pressable, KeyboardAvoidingView, Platform, Animated
 } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
@@ -153,6 +154,12 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
                     <Text style={[styles.memberChipText, paidBy === m.id && { color: '#fff' }]}>{m.display_name}</Text>
                   </TouchableOpacity>
                 ))}
+                {members.length > 1 && (
+                  <TouchableOpacity style={[styles.memberChip, paidBy === '' && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setPaidBy('')}>
+                    <Text style={{ fontSize: 14 }}>🤝</Text>
+                    <Text style={[styles.memberChipText, paidBy === '' && { color: '#fff' }]}>Gemeinsam</Text>
+                  </TouchableOpacity>
+                )}
               </ScrollView>
               <Text style={styles.fieldLabel}>WIEDERKEHREND</Text>
               <View style={styles.recurrenceWrap}>
@@ -216,6 +223,7 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
   // Last transaction for this category
   const lastTx = catTx.sort((a, b) => b.transaction_date.localeCompare(a.transaction_date))[0];
   const lastPayer = lastTx ? members.find(m => m.id === lastTx.member_id) : null;
+  const lastPayerLabel = lastTx ? (lastPayer ? lastPayer.display_name : 'Gemeinsam') : null;
 
   return (
     <View style={styles.catBarRow}>
@@ -240,9 +248,9 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
               </View>
             ))}
           </View>
-          {lastPayer && (
+          {lastTx && (
             <Text style={styles.catBarLastPayer}>
-              Zuletzt: {lastPayer.display_name} · {format(parseISO(lastTx!.transaction_date), 'dd. MMM', { locale: de })}
+              Zuletzt: {lastPayerLabel} · {format(parseISO(lastTx.transaction_date), 'dd. MMM', { locale: de })}
             </Text>
           )}
         </View>
@@ -256,6 +264,7 @@ function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: 
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const catColor = CAT_COLORS[tx.category] || colors.brand;
   const payer = members.find(m => m.id === tx.member_id);
+  const showShared = !tx.member_id && members.length > 1;
   return (
     <View style={styles.txRow}>
       <View style={[styles.txCatIcon, { backgroundColor: catColor + '22' }]}>
@@ -271,6 +280,14 @@ function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: 
                 <Text style={styles.txPayerAvatarText}>{payer.display_name[0]}</Text>
               </View>
               <Text style={styles.txPayerName}>{payer.display_name}</Text>
+            </View>
+          )}
+          {showShared && (
+            <View style={styles.txPayerBadge}>
+              <View style={[styles.txPayerAvatar, { backgroundColor: colors.brand }]}>
+                <Text style={styles.txPayerAvatarText}>🤝</Text>
+              </View>
+              <Text style={styles.txPayerName}>Gemeinsam</Text>
             </View>
           )}
         </View>

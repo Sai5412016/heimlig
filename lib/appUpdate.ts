@@ -1,7 +1,8 @@
 // lib/appUpdate.ts — notify users when a newer app version is available
-import { Alert, Linking, Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import * as Application from 'expo-application';
 import { supabase } from './supabase';
+import { Alert } from './alert';
 
 const DEFAULT_STORE_URL = 'https://play.google.com/store/apps/details?id=com.fledderman.heimlig';
 

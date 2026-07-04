@@ -1,6 +1,7 @@
 // components/GoogleCalendarModal.tsx — connect a Google account and sync tasks ⇄ Google Calendar.
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Pressable, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Pressable, ActivityIndicator, Platform } from 'react-native';
+import { Alert } from '../lib/alert';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { useTheme } from '../hooks/useTheme';

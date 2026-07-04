@@ -1,6 +1,7 @@
 // components/LocationModal.tsx — opt-in location sharing within the household (manual, no tracking).
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable, Alert, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable, ActivityIndicator, Linking } from 'react-native';
+import { Alert } from '../lib/alert';
 import * as Location from 'expo-location';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';

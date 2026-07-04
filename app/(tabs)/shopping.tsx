@@ -3,9 +3,10 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { Dimensions } from 'react-native';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  Animated, Platform, KeyboardAvoidingView, Alert, RefreshControl,
+  Animated, Platform, KeyboardAvoidingView, RefreshControl,
   Pressable, Modal, ScrollView
 } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 const hapticImpact = (style: Haptics.ImpactFeedbackStyle) => { if (Platform.OS !== 'web') Haptics.impactAsync(style); };
