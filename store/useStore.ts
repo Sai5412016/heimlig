@@ -12,24 +12,47 @@ export interface PlanRecipeOpts { date: string; mealType: MealType; addToCart: b
 
 const HOUSEHOLD_CATEGORIES = ['Haushalt', 'Einkauf', 'Wartung', 'Garten'];
 
-// Parse a quantity like "200 g" or "1,5 Stück" into a number + unit
+// Parse a quantity like "200 g" or "1,5 Stück" into a number + unit (original casing kept)
 function parseQuantity(q: string): { num: number; unit: string } | null {
   const m = q.trim().match(/^([\d.,]+)\s*(.*)$/);
   if (!m) return null;
   const num = parseFloat(m[1].replace(',', '.'));
   if (isNaN(num)) return null;
-  return { num, unit: m[2].trim().toLowerCase() };
+  return { num, unit: m[2].trim() };
 }
 
-// Combine two quantities for the same item: sum when they share a unit, else stack them
+// Weight/volume units that convert into each other, keyed by lowercased unit -> base unit + factor
+const UNIT_CONVERSIONS: Record<string, { base: 'g' | 'ml'; factor: number }> = {
+  g: { base: 'g', factor: 1 }, gramm: { base: 'g', factor: 1 },
+  kg: { base: 'g', factor: 1000 }, kilogramm: { base: 'g', factor: 1000 },
+  ml: { base: 'ml', factor: 1 }, milliliter: { base: 'ml', factor: 1 },
+  l: { base: 'ml', factor: 1000 }, liter: { base: 'ml', factor: 1000 },
+};
+
+function formatNumber(n: number): string {
+  const r = Math.round(n * 100) / 100;
+  return Number.isInteger(r) ? String(r) : String(r).replace('.', ',');
+}
+
+// Combine two quantities for the same item: sum when units match (or convert between
+// compatible weight/volume units, e.g. "1 kg" + "500 g" → "1,5 kg"), else stack them as text
 export function mergeQuantities(a?: string | null, b?: string | null): string | undefined {
   if (!a) return b || undefined;
   if (!b) return a || undefined;
   const pa = parseQuantity(a), pb = parseQuantity(b);
-  if (pa && pb && pa.unit === pb.unit) {
-    const sum = Math.round((pa.num + pb.num) * 100) / 100;
-    const sumStr = Number.isInteger(sum) ? String(sum) : String(sum).replace('.', ',');
-    return pa.unit ? `${sumStr} ${pa.unit}` : sumStr;
+  if (pa && pb) {
+    const ua = pa.unit.toLowerCase(), ub = pb.unit.toLowerCase();
+    if (ua === ub) {
+      const sumStr = formatNumber(pa.num + pb.num);
+      return pa.unit ? `${sumStr} ${pa.unit}` : sumStr;
+    }
+    const ca = UNIT_CONVERSIONS[ua], cb = UNIT_CONVERSIONS[ub];
+    if (ca && cb && ca.base === cb.base) {
+      const totalBase = pa.num * ca.factor + pb.num * cb.factor;
+      return totalBase >= 1000
+        ? `${formatNumber(totalBase / 1000)} ${ca.base === 'g' ? 'kg' : 'l'}`
+        : `${formatNumber(totalBase)} ${ca.base}`;
+    }
   }
   return `${a} + ${b}`;
 }

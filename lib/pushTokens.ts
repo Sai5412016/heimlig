@@ -8,21 +8,44 @@ import { requestNotificationPermission } from './notifications';
 let Notifications: any = null;
 try { Notifications = require('expo-notifications'); } catch { /* Expo Go / web */ }
 
+// Temporary diagnostic trail: registration failures happen on real devices we have no
+// other visibility into, so each failure stage gets a short row here instead of just
+// vanishing into a silently-caught error.
+async function logPushDebug(memberId: string, householdId: string, stage: string, message?: string) {
+  try {
+    await supabase.from('push_debug').insert({
+      member_id: memberId, household_id: householdId, stage,
+      message: message ? String(message).slice(0, 500) : null,
+    });
+  } catch { /* best-effort — never let the debug log itself break anything */ }
+}
+
 // Register (or refresh) this device's push token for the given member. Silently no-ops
 // on web and inside Expo Go, where remote push tokens aren't available.
 export async function registerPushToken(memberId: string, householdId: string) {
-  if (!Notifications || Platform.OS === 'web') return;
+  if (Platform.OS === 'web') return;
+  if (!Notifications) { logPushDebug(memberId, householdId, 'no_notifications_module'); return; }
+
   try {
     const granted = await requestNotificationPermission();
-    if (!granted) return;
+    if (!granted) { logPushDebug(memberId, householdId, 'permission_denied'); return; }
 
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-    const { data } = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
-    if (!data?.data) return;
+    let tokenData;
+    try {
+      tokenData = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+    } catch (e: any) {
+      logPushDebug(memberId, householdId, 'token_fetch_error', e?.message || String(e));
+      return;
+    }
+    if (!tokenData?.data) { logPushDebug(memberId, householdId, 'empty_token'); return; }
 
-    await supabase.from('push_tokens').upsert(
-      { member_id: memberId, household_id: householdId, token: data.data, platform: Platform.OS, updated_at: new Date().toISOString() },
+    const { error } = await supabase.from('push_tokens').upsert(
+      { member_id: memberId, household_id: householdId, token: tokenData.data, platform: Platform.OS, updated_at: new Date().toISOString() },
       { onConflict: 'member_id' }
     );
-  } catch { /* best-effort — a missing push token just means no notifications */ }
+    if (error) logPushDebug(memberId, householdId, 'upsert_error', error.message);
+  } catch (e: any) {
+    logPushDebug(memberId, householdId, 'unexpected_error', e?.message || String(e));
+  }
 }

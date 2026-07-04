@@ -78,8 +78,12 @@ const AddItemModal = ({ visible, onClose, onAdd, supermarket }: {
       if (!seen.has(k)) { seen.add(k); out.push(g); }
       if (out.length >= 6) break;
     }
-    // Hide a single exact match (nothing to suggest)
-    return out.filter(o => normalizeKey(o.name) !== q).slice(0, 6);
+    // Hide the exact match only if it's the sole candidate (nothing new to suggest);
+    // otherwise keep it, since suppressing it made recognized items like "Sahne" seem
+    // to vanish the moment the user finished typing them, while variants like
+    // "Schlagsahne" stayed visible.
+    if (out.length === 1 && normalizeKey(out[0].name) === q) return [];
+    return out.slice(0, 6);
   }, [name, itemCatalog]);
 
   // Most frequently bought items, shown as quick-add chips when the field is empty
