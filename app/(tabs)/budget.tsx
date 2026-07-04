@@ -213,11 +213,15 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
     Animated.timing(animWidth, { toValue: progress, duration: 600, useNativeDriver: false }).start();
   }, [progress]);
 
-  // Who paid most in this category
+  // Who paid most in this category — "Gemeinsam" (kein member_id) zaehlt zu gleichen Teilen
+  // fuer alle mit, damit z.B. eine gemeinsam bezahlte Miete sich sichtbar auf beide aufteilt.
   const catTx = transactions.filter(t => t.category === label && t.type === 'expense');
+  const sharedShare = members.length > 0
+    ? catTx.filter(t => !t.member_id).reduce((s, t) => s + Number(t.amount), 0) / members.length
+    : 0;
   const memberTotals = members.map(m => ({
     member: m,
-    total: catTx.filter(t => t.member_id === m.id).reduce((s, t) => s + Number(t.amount), 0)
+    total: catTx.filter(t => t.member_id === m.id).reduce((s, t) => s + Number(t.amount), 0) + sharedShare
   })).filter(mt => mt.total > 0).sort((a, b) => b.total - a.total);
 
   // Last transaction for this category
@@ -357,10 +361,16 @@ export default function BudgetScreen() {
     cat, amount: monthTransactions.filter(t => t.category === cat && t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0),
   })).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
 
-  // "Wer ist dran?"
+  // "Wer ist dran?" — gemeinsam bezahlte Ausgaben (kein member_id) zaehlen zu gleichen Teilen
+  // fuer alle mit, statt fuer niemanden - sonst wirkt es so, als haette dafuer keiner bezahlt.
   const memberExpenses: Record<string, number> = {};
   monthTransactions.filter(t => t.type === 'expense').forEach(t => {
-    if (t.member_id) memberExpenses[t.member_id] = (memberExpenses[t.member_id] || 0) + Number(t.amount);
+    if (t.member_id) {
+      memberExpenses[t.member_id] = (memberExpenses[t.member_id] || 0) + Number(t.amount);
+    } else if (members.length > 0) {
+      const share = Number(t.amount) / members.length;
+      members.forEach(m => { memberExpenses[m.id] = (memberExpenses[m.id] || 0) + share; });
+    }
   });
   const whoIsNext = members.length > 1
     ? members.reduce((min, m) => (memberExpenses[m.id] || 0) < (memberExpenses[min.id] || 0) ? m : min, members[0])
