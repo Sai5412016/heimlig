@@ -35,7 +35,7 @@ search:
 
 location:
   center: Augsburg
-  radius: 25 # km
+  radius: 40 # km
 
 price:
   min: 0
