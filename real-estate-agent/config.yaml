@@ -25,7 +25,7 @@ search:
   sources:
     immobilienscout:
       enabled: true
-      search_url: ""
+      search_url: "https://www.immobilienscout24.de/Suche/radius/haus-kaufen?centerofsearchaddress=Landsberg+am+Lech+%28Kreis%29%3B%3B%3B%3B%3BLandsberg+am+Lech%3B&energyefficiencyclasses=a%2Cb%2Cc%2Cd%2Ca_plus&geocoordinates=48.04788%3B10.88248%3B35.0&enteredFrom=result_list"
     immowelt:
       enabled: true
       search_url: "https://www.immowelt.de/classified-search?distributionTypes=Buy,Buy_Auction&energyCertificate=A_PLUS,A,B,C,D&estateTypes=House&locations=AD06DE237&priceMax=700000&projectTypes=Resale&m=homepage_new_search_classified_search_result"
