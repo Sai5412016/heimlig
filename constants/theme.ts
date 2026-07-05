@@ -87,6 +87,26 @@ export type ColorPalette = typeof lightColors;
 // Kept as alias so non-themed code (lib/, store/) still compiles
 export const colors = lightColors;
 
+// 🎨 Optional accent themes — re-skin the brand/accent colors (buttons, active states,
+// checkmarks, FABs) while background/surface/text keep following the Hell/Dunkel toggle.
+// Inspired by current pop-culture vibes, but deliberately named/colored around the mood
+// rather than the trademarked property itself (no logos, no names of real people).
+export interface AppTheme { id: string; label: string; emoji: string; brand: string; brandLight: string; brandDark: string; accent: string }
+
+export const APP_THEMES: AppTheme[] = [
+  { id: 'standard', label: 'Standard', emoji: '🏡', brand: '#2D6A4F', brandLight: '#52B788', brandDark: '#1B4332', accent: '#FF6B35' },
+  { id: 'blocky', label: 'Blocky Grün', emoji: '🟩', brand: '#4C9A2A', brandLight: '#7CC24A', brandDark: '#2E5E18', accent: '#8B5A2B' },
+  { id: 'battle-royale', label: 'Battle Royale Neon', emoji: '🎮', brand: '#8B5CF6', brandLight: '#C4B5FD', brandDark: '#4C1D95', accent: '#22D3EE' },
+  { id: 'red-light', label: 'Rotlicht Arena', emoji: '🦑', brand: '#E0286B', brandLight: '#FF6B9D', brandDark: '#7A1338', accent: '#00C2A8' },
+  { id: 'gothic', label: 'Gothic Akademie', emoji: '🖤', brand: '#5B2A86', brandLight: '#8B5FBF', brandDark: '#2E1245', accent: '#1A1A1A' },
+  { id: 'comic-hero', label: 'Comic Held', emoji: '🦸', brand: '#D62828', brandLight: '#F4A100', brandDark: '#7A1010', accent: '#1D4ED8' },
+  { id: 'cinema', label: 'Abenteuer Kino', emoji: '🎬', brand: '#C9820A', brandLight: '#F2B84B', brandDark: '#6B4408', accent: '#0E7C7B' },
+  { id: 'sparkle-pop', label: 'Glitzer Pop', emoji: '✨', brand: '#E85D9C', brandLight: '#FBC7DE', brandDark: '#8A2B5C', accent: '#B08BE0' },
+  { id: 'moody', label: 'Moody Neon', emoji: '🖤', brand: '#9ACD32', brandLight: '#C6E877', brandDark: '#4F6B14', accent: '#1A1A1A' },
+  { id: 'pitch-gold', label: 'Rasen Gold', emoji: '⚽', brand: '#2E8B3D', brandLight: '#6FCB6F', brandDark: '#154019', accent: '#D4AF37' },
+  { id: 'racing', label: 'Rennsport Rot', emoji: '🏎️', brand: '#C1121F', brandLight: '#E85D4E', brandDark: '#680C13', accent: '#8D99AE' },
+];
+
 export const CATEGORY_COLORS: Record<string, string> = {
   'Lebensmittel':       colors.lebensmittel,
   'Obst & Gemüse':      colors.obst,

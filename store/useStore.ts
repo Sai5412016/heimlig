@@ -174,6 +174,11 @@ interface AppState {
   darkMode: boolean;
   setDarkMode: (v: boolean) => void;
   toggleDarkMode: () => Promise<void>;
+
+  // 🎨 Accent theme (brand/accent color re-skin, see constants/theme.ts APP_THEMES)
+  themeId: string;
+  setThemeId: (id: string) => void;
+  selectTheme: (id: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -852,5 +857,12 @@ export const useStore = create<AppState>((set, get) => ({
     const next = !get().darkMode;
     set({ darkMode: next });
     await AsyncStorage.setItem('@heimlig/darkMode', next ? '1' : '0');
+  },
+
+  themeId: 'standard',
+  setThemeId: (id) => set({ themeId: id }),
+  selectTheme: async (id) => {
+    set({ themeId: id });
+    await AsyncStorage.setItem('@heimlig/themeId', id);
   },
 }));

@@ -25,7 +25,7 @@ export default function RootLayout() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const { colors } = useTheme();
-  const { setUserId, loadMyHouseholds, activateHousehold, setDarkMode } = useStore();
+  const { setUserId, loadMyHouseholds, activateHousehold, setDarkMode, setThemeId } = useStore();
 
   // Lock phones to portrait, but let large screens (tablets/foldables) rotate freely.
   // The static manifest restriction is removed (orientation: default) so Play stops
@@ -74,6 +74,8 @@ export default function RootLayout() {
       // Load persisted theme preference before rendering
       const dm = await AsyncStorage.getItem('@heimlig/darkMode');
       if (dm === '1') setDarkMode(true);
+      const savedThemeId = await AsyncStorage.getItem('@heimlig/themeId');
+      if (savedThemeId) setThemeId(savedThemeId);
 
       // getUser() re-verifies against the Auth server instead of trusting local storage,
       // so a revoked/expired session doesn't leave the app thinking it's still logged in.

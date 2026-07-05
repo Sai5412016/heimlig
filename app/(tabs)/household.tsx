@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
-import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
+import { colors, spacing, radius, typography, shadow, APP_THEMES, type ColorPalette } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { useTheme } from '../../hooks/useTheme';
@@ -195,7 +195,7 @@ export default function HouseholdScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const { household, currentMember, members, setMembers, setHousehold, tasks, transactions,
-    myHouseholds, loadMyHouseholds, switchHousehold, leaveHousehold, toggleDarkMode } = useStore();
+    myHouseholds, loadMyHouseholds, switchHousehold, leaveHousehold, toggleDarkMode, themeId, selectTheme } = useStore();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [showInvite, setShowInvite] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
@@ -458,6 +458,25 @@ export default function HouseholdScreen() {
           </View>
         </TouchableOpacity>
 
+        {/* Accent theme picker */}
+        <View style={styles.settingsBtn}>
+          <Text style={[styles.settingsBtnText, { alignSelf: 'flex-start' }]}>🎨 Design</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.sm, width: '100%' }} contentContainerStyle={{ gap: spacing.sm }}>
+            {APP_THEMES.map(t => (
+              <TouchableOpacity
+                key={t.id}
+                style={[styles.themeChip, themeId === t.id && { borderColor: t.brand, backgroundColor: t.brand + '15' }]}
+                onPress={() => selectTheme(t.id)}
+              >
+                <View style={[styles.themeSwatch, { backgroundColor: t.brand }]}>
+                  <Text style={styles.themeSwatchEmoji}>{t.emoji}</Text>
+                </View>
+                <Text style={[styles.themeChipText, themeId === t.id && { color: t.brand, fontWeight: '700' }]}>{t.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
         {/* Gamification toggle */}
         <TouchableOpacity style={styles.settingsBtn} onPress={handleToggleGamification}>
           <Text style={styles.settingsBtnText}>
@@ -643,6 +662,10 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
 
   settingsBtn: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center', marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   settingsBtnText: { ...typography.body, color: colors.text, fontWeight: '600' },
+  themeChip: { alignItems: 'center', width: 84, paddingVertical: spacing.sm, paddingHorizontal: spacing.xs, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border },
+  themeSwatch: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  themeSwatchEmoji: { fontSize: 18 },
+  themeChipText: { ...typography.xs, color: colors.textSecondary, textAlign: 'center' },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm },
   switchName: { ...typography.body, color: colors.text, fontWeight: '600' },
   switchActive: { ...typography.sm, color: colors.brand, fontWeight: '700' },
