@@ -26,20 +26,23 @@ export async function requestNotificationPermission(): Promise<boolean> {
   } catch { return false; }
 }
 
+// remindTime: "HH:MM" on the due date, chosen by the user (defaults to 5:00 if not given,
+// e.g. for tasks created before this was configurable).
 export async function scheduleTaskNotification(
-  taskId: string, title: string, dueDate: string, dueTime?: string,
+  taskId: string, title: string, dueDate: string, dueTime?: string, remindTime?: string,
 ): Promise<string | null> {
   if (!Notifications) return null;
   try {
     const hasPermission = await requestNotificationPermission();
     if (!hasPermission) return null;
 
+    const [remindHour, remindMinute] = (remindTime || '05:00').split(':').map(Number);
     const due = new Date(dueDate);
     const now = new Date();
-    const morningReminder = new Date(due);
-    morningReminder.setHours(5, 0, 0, 0);
+    const reminder = new Date(due);
+    reminder.setHours(remindHour, remindMinute, 0, 0);
 
-    if (morningReminder > now) {
+    if (reminder > now) {
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: '📋 Aufgabe heute fällig',
@@ -49,7 +52,7 @@ export async function scheduleTaskNotification(
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: morningReminder,
+          date: reminder,
         },
       });
       return id;

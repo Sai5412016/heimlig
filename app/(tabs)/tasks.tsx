@@ -149,6 +149,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
   const [recurrenceInterval, setRecurrenceInterval] = useState(1);
   const [rotation, setRotation] = useState<string[]>([]);
   const [notify, setNotify] = useState(true);
+  const [remindTime, setRemindTime] = useState('05:00');
   const [attachment, setAttachment] = useState<{ path: string; name: string } | null>(null);
   const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [locationUrl, setLocationUrl] = useState('');
@@ -159,6 +160,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       setPriority('normal'); setAssignedTo(null); setDueDate('');
       setDueTime(getCurrentTime()); setUseTime(false);
       setRecurrence(null); setRecurrenceInterval(1); setRotation([]); setNotify(true);
+      setRemindTime('05:00');
       setAttachment(null); setLocationUrl('');
       return;
     }
@@ -176,6 +178,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       setRecurrenceInterval(editTask.recurrence_interval || 1);
       setRotation(editTask.rotation || []);
       setNotify(true);
+      setRemindTime(editTask.remind_time || '05:00');
       setAttachment(editTask.attachment_path ? { path: editTask.attachment_path, name: editTask.attachment_name || 'Anhang' } : null);
       setLocationUrl(editTask.location_url || '');
     } else if (preselectedDate) {
@@ -228,6 +231,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       recurrence_interval: recurrence ? recurrenceInterval : undefined,
       points: priority === 'high' ? 20 : priority === 'normal' ? 10 : 5,
       notify,
+      remind_time: notify ? remindTime : undefined,
       attachment_path: attachment?.path || null,
       attachment_name: attachment?.name || null,
       location_url: locationUrl.trim() || null,
@@ -277,15 +281,18 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
 
               {/* Erinnerung */}
               {dueDate !== '' && (
-                <TouchableOpacity style={[styles.notifyToggle, notify && styles.notifyToggleActive]} onPress={() => setNotify(v => !v)}>
-                  <Text style={styles.notifyToggleEmoji}>{notify ? '🔔' : '🔕'}</Text>
-                  <View>
-                    <Text style={[styles.notifyToggleText, notify && { color: colors.brand }]}>{notify ? 'Erinnerung aktiv' : 'Keine Erinnerung'}</Text>
-                    <Text style={styles.notifyToggleSub}>
-                      {notify ? `5:00 Uhr früh${useTime ? ` + 15 Min. vor ${dueTime}` : ''}` : 'Keine Benachrichtigung'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity style={[styles.notifyToggle, notify && styles.notifyToggleActive]} onPress={() => setNotify(v => !v)}>
+                    <Text style={styles.notifyToggleEmoji}>{notify ? '🔔' : '🔕'}</Text>
+                    <View>
+                      <Text style={[styles.notifyToggleText, notify && { color: colors.brand }]}>{notify ? 'Erinnerung aktiv' : 'Keine Erinnerung'}</Text>
+                      <Text style={styles.notifyToggleSub}>
+                        {notify ? `Um ${remindTime} Uhr am Fälligkeitstag` : 'Keine Benachrichtigung'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  {notify && <TimePickerDropdown value={remindTime} onChange={setRemindTime} />}
+                </>
               )}
 
               {/* Standort-Link */}
@@ -878,7 +885,7 @@ export default function TasksScreen() {
     if (data) {
       setTasks([...tasks, data]);
       hapticNotification(Haptics.NotificationFeedbackType.Success);
-      if (notify && data.due_date) await scheduleTaskNotification(data.id, data.title, data.due_date, due_time);
+      if (notify && data.due_date) await scheduleTaskNotification(data.id, data.title, data.due_date, due_time, data.remind_time);
     }
   };
 
@@ -904,7 +911,7 @@ export default function TasksScreen() {
     if (data) setTasks(tasks.map(t => (t.id === editingTask.id ? data : t)));
     setEditingTask(null);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
-    if (notify && data?.due_date) await scheduleTaskNotification(data.id, data.title, data.due_date, due_time);
+    if (notify && data?.due_date) await scheduleTaskNotification(data.id, data.title, data.due_date, due_time, data.remind_time);
   };
 
   const handleImportIcs = async () => {

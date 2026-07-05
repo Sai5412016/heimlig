@@ -95,6 +95,7 @@ export interface Task {
   attachment_path?: string;
   attachment_name?: string;
   location_url?: string;
+  remind_time?: string;
 }
 
 export interface Transaction {
