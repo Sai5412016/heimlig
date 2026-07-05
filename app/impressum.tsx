@@ -38,7 +38,7 @@ export default function ImpressumScreen() {
 
         <Text style={styles.h2}>Haftungshinweis</Text>
         <Text style={styles.p}>
-          Heimlig ist ein privates Projekt (Alpha-/Testphase). Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich.
+          Heimlig ist ein privates, eigenständig entwickeltes Projekt. Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich.
         </Text>
       </ScrollView>
     </SafeAreaView>
