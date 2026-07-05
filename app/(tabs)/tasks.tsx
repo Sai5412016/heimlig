@@ -5,6 +5,7 @@ import {
   Modal, ScrollView, Pressable, KeyboardAvoidingView, Platform, Animated, Linking
 } from 'react-native';
 import { Alert } from '../../lib/alert';
+import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -437,6 +438,7 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
   const assignedMember = members.find(m => m.id === task.assigned_to);
   const priorityColor = PRIORITY_COLORS[task.priority as Priority] || colors.brand;
   const isHouseholdCat = HOUSEHOLD_CATEGORIES.includes(task.category);
+  const swipeRef = useRef<Swipeable>(null);
 
   const dueDateText = task.due_date
     ? isToday(parseISO(task.due_date)) ? 'Heute'
@@ -444,7 +446,27 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
     : format(parseISO(task.due_date), 'dd. MMM', { locale: de })
     : null;
 
+  // Swipe right → complete (skips the tap-to-confirm dialog, the swipe itself is the deliberate act).
+  // Swipe left → delete (goes through onDelete, which already confirms via Alert).
+  const renderLeftActions = () => (
+    <TouchableOpacity
+      style={[styles.swipeAction, { backgroundColor: '#2D9E57' }]}
+      onPress={() => { swipeRef.current?.close(); hapticImpact(Haptics.ImpactFeedbackStyle.Medium); onComplete(task.id); }}
+    >
+      <Text style={styles.swipeActionText}>{isCompleted ? '↺' : '✓'}</Text>
+    </TouchableOpacity>
+  );
+  const renderRightActions = () => (
+    <TouchableOpacity
+      style={[styles.swipeAction, { backgroundColor: '#E5573F' }]}
+      onPress={() => { swipeRef.current?.close(); onDelete(task.id); }}
+    >
+      <Text style={styles.swipeActionText}>🗑</Text>
+    </TouchableOpacity>
+  );
+
   return (
+    <Swipeable ref={swipeRef} renderLeftActions={renderLeftActions} renderRightActions={renderRightActions} overshootLeft={false} overshootRight={false}>
     <View style={[styles.taskCard, isCompleted && { opacity: 0.5 }]}>
       <View style={[styles.priorityBar, { backgroundColor: priorityColor }]} />
       <TouchableOpacity style={styles.taskCheckbox} onPress={() => {
@@ -500,6 +522,7 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
         <Text style={styles.deleteTaskBtnText}>×</Text>
       </TouchableOpacity>
     </View>
+    </Swipeable>
   );
 }
 
@@ -953,6 +976,8 @@ export default function TasksScreen() {
   });
 
   const openTasks = filteredTasks.filter(t => !t.completed_at);
+  const openTasksWithDate = openTasks.filter(t => t.due_date);
+  const openTasksNoDate = openTasks.filter(t => !t.due_date);
   const completedTasks = filteredTasks.filter(t => !!t.completed_at);
   const overdueTasks = tasks.filter(t => t.due_date && !t.completed_at && isBefore(parseISO(t.due_date), new Date()) && !isToday(parseISO(t.due_date)));
   const myScore = monthScores[currentMember?.id ?? ''] || 0;
@@ -1083,7 +1108,16 @@ export default function TasksScreen() {
               <Text style={styles.emptyBody}>{selectedDate ? 'Tippe auf + Aufgabe.' : 'Genieß den freien Tag. 🌿'}</Text>
             </View>
           )}
-          {openTasks.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} onOpen={setSelectedTask} />)}
+          {selectedDate || openTasksNoDate.length === 0 || openTasksWithDate.length === 0 ? (
+            openTasks.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} onOpen={setSelectedTask} />)
+          ) : (
+            <>
+              <Text style={styles.taskSectionLabel}>Termine ({openTasksWithDate.length})</Text>
+              {openTasksWithDate.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} onOpen={setSelectedTask} />)}
+              <Text style={styles.taskSectionLabel}>Ohne Datum ({openTasksNoDate.length})</Text>
+              {openTasksNoDate.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} onOpen={setSelectedTask} />)}
+            </>
+          )}
           {completedTasks.length > 0 && (
             <>
               <TouchableOpacity style={styles.completedHeader} onPress={() => setShowCompleted(v => !v)}>
@@ -1227,6 +1261,9 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   assignBadgeText: { ...typography.xs, fontWeight: '700' },
   deleteTaskBtn: { padding: spacing.md },
   deleteTaskBtnText: { fontSize: 20, color: colors.textMuted },
+  swipeAction: { justifyContent: 'center', alignItems: 'center', width: 68, marginBottom: spacing.sm, borderRadius: radius.md },
+  swipeActionText: { fontSize: 22, color: '#fff' },
+  taskSectionLabel: { ...typography.label, color: colors.textMuted, textTransform: 'uppercase', paddingHorizontal: spacing.sm, marginTop: spacing.md, marginBottom: spacing.xs },
   completedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, marginTop: spacing.sm },
   completedHeaderText: { ...typography.label, color: colors.textSecondary },
   completedToggle: { ...typography.xs, color: colors.textMuted },
