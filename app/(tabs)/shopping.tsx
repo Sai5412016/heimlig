@@ -4,14 +4,14 @@ import { Dimensions } from 'react-native';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   Animated, Platform, KeyboardAvoidingView, RefreshControl,
-  Pressable, Modal, ScrollView
+  Pressable, Modal, ScrollView, Image
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 const hapticImpact = (style: Haptics.ImpactFeedbackStyle) => { if (Platform.OS !== 'web') Haptics.impactAsync(style); };
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
-import { colors, spacing, radius, typography, shadow, SHOPPING_CATEGORIES, CATEGORY_COLORS, type ColorPalette } from '../../constants/theme';
+import { colors, spacing, radius, typography, shadow, SHOPPING_CATEGORIES, CATEGORY_COLORS, APP_THEMES, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { ShoppingItem, RecipeIngredient } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
@@ -628,7 +628,8 @@ const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () =
 export default function ShoppingScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe, loadItemCatalog } = useStore();
+  const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe, loadItemCatalog, themeId } = useStore();
+  const activeTheme = APP_THEMES.find(t => t.id === themeId);
   const [showModal, setShowModal] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [showListPicker, setShowListPicker] = useState(false);
@@ -770,7 +771,11 @@ export default function ShoppingScreen() {
         {/* Empty state */}
         {items.length === 0 && (
           <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>🛒</Text>
+            {activeTheme?.illustrations?.shoppingEmpty ? (
+              <Image source={activeTheme.illustrations.shoppingEmpty} style={styles.emptyIllustration} resizeMode="contain" />
+            ) : (
+              <Text style={styles.emptyEmoji}>🛒</Text>
+            )}
             <Text style={styles.emptyTitle}>Liste ist leer</Text>
             <Text style={styles.emptyBody}>Füge deinen ersten Artikel hinzu.</Text>
           </View>
@@ -896,6 +901,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
 
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyEmoji: { fontSize: 56, marginBottom: spacing.md },
+  emptyIllustration: { width: 220, height: 150, marginBottom: spacing.md },
   emptyTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.sm },
   emptyBody: { ...typography.body, color: colors.textSecondary },
 

@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  Modal, ScrollView, Pressable, KeyboardAvoidingView, Platform, Animated, Linking
+  Modal, ScrollView, Pressable, KeyboardAvoidingView, Platform, Animated, Linking, Image
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -17,7 +17,7 @@ import {
   subMonths, parseISO, addDays
 } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
+import { colors, spacing, radius, typography, shadow, APP_THEMES, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { supabase, Task, MealPlan, MealType } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
@@ -794,7 +794,8 @@ function PointsToast({ points, visible }: { points: number; visible: boolean }) 
 export default function TasksScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { household, currentMember, members, tasks, setTasks, completeTask, weekScores, loadWeekScores, items, setItems } = useStore();
+  const { household, currentMember, members, tasks, setTasks, completeTask, weekScores, loadWeekScores, items, setItems, themeId } = useStore();
+  const activeTheme = APP_THEMES.find(t => t.id === themeId);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -1110,7 +1111,11 @@ export default function TasksScreen() {
         <View style={styles.taskList}>
           {openTasks.length === 0 && (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyEmoji}>{selectedDate ? '✨' : '🎉'}</Text>
+              {!selectedDate && activeTheme?.illustrations?.tasksEmpty ? (
+                <Image source={activeTheme.illustrations.tasksEmpty} style={styles.emptyIllustration} resizeMode="contain" />
+              ) : (
+                <Text style={styles.emptyEmoji}>{selectedDate ? '✨' : '🎉'}</Text>
+              )}
               <Text style={styles.emptyTitle}>{selectedDate ? 'Kein Plan für diesen Tag' : 'Alles erledigt!'}</Text>
               <Text style={styles.emptyBody}>{selectedDate ? 'Tippe auf + Aufgabe.' : 'Genieß den freien Tag. 🌿'}</Text>
             </View>
@@ -1276,6 +1281,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   completedToggle: { ...typography.xs, color: colors.textMuted },
   emptyState: { alignItems: 'center', paddingTop: 48, paddingBottom: 24 },
   emptyEmoji: { fontSize: 52, marginBottom: spacing.md },
+  emptyIllustration: { width: 240, height: 160, marginBottom: spacing.md },
   emptyTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.sm },
   emptyBody: { ...typography.sm, color: colors.textSecondary, textAlign: 'center' },
   fab: { position: 'absolute', right: spacing.lg, bottom: spacing.xl, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', ...shadow.lg },

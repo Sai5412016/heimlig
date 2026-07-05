@@ -91,10 +91,21 @@ export const colors = lightColors;
 // checkmarks, FABs) while background/surface/text keep following the Hell/Dunkel toggle.
 // Inspired by current pop-culture vibes, but deliberately named/colored around the mood
 // rather than the trademarked property itself (no logos, no names of real people).
-export interface AppTheme { id: string; label: string; emoji: string; brand: string; brandLight: string; brandDark: string; accent: string }
+export interface AppTheme {
+  id: string; label: string; emoji: string; brand: string; brandLight: string; brandDark: string; accent: string;
+  // Optional original-mascot illustrations shown in empty states instead of the default emoji.
+  illustrations?: { shoppingEmpty?: number; tasksEmpty?: number };
+}
 
 export const APP_THEMES: AppTheme[] = [
   { id: 'standard', label: 'Standard', emoji: '🏡', brand: '#2D6A4F', brandLight: '#52B788', brandDark: '#1B4332', accent: '#FF6B35' },
+  {
+    id: 'waldgeist', label: 'Waldgeist', emoji: '🌿', brand: '#6FA377', brandLight: '#A8CBA0', brandDark: '#3A6B42', accent: '#E8A9A0',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/waldgeist/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/waldgeist/tasks-empty.png'),
+    },
+  },
   { id: 'blocky', label: 'Blocky Grün', emoji: '🟩', brand: '#4C9A2A', brandLight: '#7CC24A', brandDark: '#2E5E18', accent: '#8B5A2B' },
   { id: 'battle-royale', label: 'Battle Royale Neon', emoji: '🎮', brand: '#8B5CF6', brandLight: '#C4B5FD', brandDark: '#4C1D95', accent: '#22D3EE' },
   { id: 'red-light', label: 'Rotlicht Arena', emoji: '🦑', brand: '#E0286B', brandLight: '#FF6B9D', brandDark: '#7A1338', accent: '#00C2A8' },
