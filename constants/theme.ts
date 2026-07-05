@@ -105,6 +105,8 @@ export const APP_THEMES: AppTheme[] = [
   { id: 'moody', label: 'Moody Neon', emoji: '🖤', brand: '#9ACD32', brandLight: '#C6E877', brandDark: '#4F6B14', accent: '#1A1A1A' },
   { id: 'pitch-gold', label: 'Rasen Gold', emoji: '⚽', brand: '#2E8B3D', brandLight: '#6FCB6F', brandDark: '#154019', accent: '#D4AF37' },
   { id: 'racing', label: 'Rennsport Rot', emoji: '🏎️', brand: '#C1121F', brandLight: '#E85D4E', brandDark: '#680C13', accent: '#8D99AE' },
+  { id: 'monster-fang', label: 'Taschenmonster Rot-Gelb', emoji: '⚡', brand: '#E3350D', brandLight: '#FF6B4A', brandDark: '#8A1F08', accent: '#FFCB05' },
+  { id: 'witch-purple', label: 'Hexen Lila', emoji: '🧹', brand: '#6B3FA0', brandLight: '#A784D1', brandDark: '#3A2058', accent: '#4CAF50' },
 ];
 
 export const CATEGORY_COLORS: Record<string, string> = {
