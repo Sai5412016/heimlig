@@ -146,7 +146,6 @@ export default function RecipesScreen() {
   const [planTarget, setPlanTarget] = useState<Recipe | null>(null);
   const [catTarget, setCatTarget] = useState<Recipe | null>(null);
   const [filter, setFilter] = useState<string | null>(null);
-  const isPremium = household?.plan_tier !== 'free';
 
   const visibleRecipes = useMemo(
     () => (filter ? recipes.filter(r => r.category === filter) : recipes),
@@ -251,20 +250,12 @@ export default function RecipesScreen() {
           <Text style={styles.headerTitle}>🍳 Rezepte</Text>
           <Text style={styles.headerSub}>{recipes.length} gespeichert</Text>
         </View>
-        {isPremium && (
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowImport(true)}>
-            <Text style={styles.addBtnText}>+ Rezept</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity style={styles.addBtn} onPress={() => setShowImport(true)}>
+          <Text style={styles.addBtnText}>+ Rezept</Text>
+        </TouchableOpacity>
       </View>
 
-      {!isPremium ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyEmoji}>🔒</Text>
-          <Text style={styles.emptyTitle}>Premium-Feature</Text>
-          <Text style={styles.emptyText}>Rezepte verwalten ist im Premium-Plan verfügbar.</Text>
-        </View>
-      ) : recipes.length === 0 ? (
+      {recipes.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🍽️</Text>
           <Text style={styles.emptyTitle}>Noch keine Rezepte</Text>

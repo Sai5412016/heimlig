@@ -635,7 +635,6 @@ export default function ShoppingScreen() {
   const [showScanner, setShowScanner] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showChecked, setShowChecked] = useState(true);
-  const isPremium = household?.plan_tier !== 'free';
 
   useEffect(() => { loadItemCatalog(); }, [household?.id]);
 
@@ -805,11 +804,9 @@ export default function ShoppingScreen() {
         <TouchableOpacity style={styles.fabScan} onPress={() => setShowScanner(true)} activeOpacity={0.85}>
           <Text style={styles.fabScanIcon}>📷</Text>
         </TouchableOpacity>
-        {isPremium && (
-          <TouchableOpacity style={styles.fabRecipe} onPress={() => setShowRecipeModal(true)} activeOpacity={0.85}>
-            <Text style={styles.fabRecipeIcon}>🍳</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity style={styles.fabRecipe} onPress={() => setShowRecipeModal(true)} activeOpacity={0.85}>
+          <Text style={styles.fabRecipeIcon}>🍳</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.fab} onPress={() => setShowModal(true)} activeOpacity={0.85}>
           <Text style={styles.fabIcon}>+</Text>
         </TouchableOpacity>
