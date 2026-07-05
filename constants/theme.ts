@@ -106,6 +106,13 @@ export const APP_THEMES: AppTheme[] = [
       tasksEmpty: require('../assets/themes/waldgeist/tasks-empty.png'),
     },
   },
+  {
+    id: 'inselfreunde', label: 'Inselfreunde', emoji: '🏝️', brand: '#4C9A2A', brandLight: '#F4A65E', brandDark: '#2E5E18', accent: '#FF9F8C',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/inselfreunde/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/inselfreunde/tasks-empty.png'),
+    },
+  },
   { id: 'blocky', label: 'Blocky Grün', emoji: '🟩', brand: '#4C9A2A', brandLight: '#7CC24A', brandDark: '#2E5E18', accent: '#8B5A2B' },
   { id: 'battle-royale', label: 'Battle Royale Neon', emoji: '🎮', brand: '#8B5CF6', brandLight: '#C4B5FD', brandDark: '#4C1D95', accent: '#22D3EE' },
   { id: 'red-light', label: 'Rotlicht Arena', emoji: '🦑', brand: '#E0286B', brandLight: '#FF6B9D', brandDark: '#7A1338', accent: '#00C2A8' },
