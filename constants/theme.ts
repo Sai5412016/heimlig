@@ -141,10 +141,34 @@ export const APP_THEMES: AppTheme[] = [
       tasksEmpty: require('../assets/themes/gothic/tasks-empty.png'),
     },
   },
-  { id: 'comic-hero', label: 'Comic Held', emoji: '🦸', brand: '#D62828', brandLight: '#F4A100', brandDark: '#7A1010', accent: '#1D4ED8' },
-  { id: 'cinema', label: 'Abenteuer Kino', emoji: '🎬', brand: '#C9820A', brandLight: '#F2B84B', brandDark: '#6B4408', accent: '#0E7C7B' },
-  { id: 'sparkle-pop', label: 'Glitzer Pop', emoji: '✨', brand: '#E85D9C', brandLight: '#FBC7DE', brandDark: '#8A2B5C', accent: '#B08BE0' },
-  { id: 'moody', label: 'Moody Neon', emoji: '🖤', brand: '#9ACD32', brandLight: '#C6E877', brandDark: '#4F6B14', accent: '#1A1A1A' },
+  {
+    id: 'comic-hero', label: 'Comic Held', emoji: '🦸', brand: '#D62828', brandLight: '#F4A100', brandDark: '#7A1010', accent: '#1D4ED8',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/comic-hero/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/comic-hero/tasks-empty.png'),
+    },
+  },
+  {
+    id: 'cinema', label: 'Abenteuer Kino', emoji: '🎬', brand: '#C9820A', brandLight: '#F2B84B', brandDark: '#6B4408', accent: '#0E7C7B',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/cinema/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/cinema/tasks-empty.png'),
+    },
+  },
+  {
+    id: 'sparkle-pop', label: 'Glitzer Pop', emoji: '✨', brand: '#E85D9C', brandLight: '#FBC7DE', brandDark: '#8A2B5C', accent: '#B08BE0',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/sparkle-pop/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/sparkle-pop/tasks-empty.png'),
+    },
+  },
+  {
+    id: 'moody', label: 'Moody Neon', emoji: '🖤', brand: '#9ACD32', brandLight: '#C6E877', brandDark: '#4F6B14', accent: '#1A1A1A',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/moody/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/moody/tasks-empty.png'),
+    },
+  },
   { id: 'pitch-gold', label: 'Rasen Gold', emoji: '⚽', brand: '#2E8B3D', brandLight: '#6FCB6F', brandDark: '#154019', accent: '#D4AF37' },
   { id: 'racing', label: 'Rennsport Rot', emoji: '🏎️', brand: '#C1121F', brandLight: '#E85D4E', brandDark: '#680C13', accent: '#8D99AE' },
   { id: 'monster-fang', label: 'Taschenmonster Rot-Gelb', emoji: '⚡', brand: '#E3350D', brandLight: '#FF6B4A', brandDark: '#8A1F08', accent: '#FFCB05' },
