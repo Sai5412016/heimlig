@@ -113,10 +113,34 @@ export const APP_THEMES: AppTheme[] = [
       tasksEmpty: require('../assets/themes/inselfreunde/tasks-empty.png'),
     },
   },
-  { id: 'blocky', label: 'Blocky Grün', emoji: '🟩', brand: '#4C9A2A', brandLight: '#7CC24A', brandDark: '#2E5E18', accent: '#8B5A2B' },
-  { id: 'battle-royale', label: 'Battle Royale Neon', emoji: '🎮', brand: '#8B5CF6', brandLight: '#C4B5FD', brandDark: '#4C1D95', accent: '#22D3EE' },
-  { id: 'red-light', label: 'Rotlicht Arena', emoji: '🦑', brand: '#E0286B', brandLight: '#FF6B9D', brandDark: '#7A1338', accent: '#00C2A8' },
-  { id: 'gothic', label: 'Gothic Akademie', emoji: '🖤', brand: '#5B2A86', brandLight: '#8B5FBF', brandDark: '#2E1245', accent: '#1A1A1A' },
+  {
+    id: 'blocky', label: 'Blocky Grün', emoji: '🟩', brand: '#4C9A2A', brandLight: '#7CC24A', brandDark: '#2E5E18', accent: '#8B5A2B',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/blocky/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/blocky/tasks-empty.png'),
+    },
+  },
+  {
+    id: 'battle-royale', label: 'Battle Royale Neon', emoji: '🎮', brand: '#8B5CF6', brandLight: '#C4B5FD', brandDark: '#4C1D95', accent: '#22D3EE',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/battle-royale/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/battle-royale/tasks-empty.png'),
+    },
+  },
+  {
+    id: 'red-light', label: 'Rotlicht Arena', emoji: '🦑', brand: '#E0286B', brandLight: '#FF6B9D', brandDark: '#7A1338', accent: '#00C2A8',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/red-light/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/red-light/tasks-empty.png'),
+    },
+  },
+  {
+    id: 'gothic', label: 'Gothic Akademie', emoji: '🖤', brand: '#5B2A86', brandLight: '#8B5FBF', brandDark: '#2E1245', accent: '#1A1A1A',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/gothic/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/gothic/tasks-empty.png'),
+    },
+  },
   { id: 'comic-hero', label: 'Comic Held', emoji: '🦸', brand: '#D62828', brandLight: '#F4A100', brandDark: '#7A1010', accent: '#1D4ED8' },
   { id: 'cinema', label: 'Abenteuer Kino', emoji: '🎬', brand: '#C9820A', brandLight: '#F2B84B', brandDark: '#6B4408', accent: '#0E7C7B' },
   { id: 'sparkle-pop', label: 'Glitzer Pop', emoji: '✨', brand: '#E85D9C', brandLight: '#FBC7DE', brandDark: '#8A2B5C', accent: '#B08BE0' },
