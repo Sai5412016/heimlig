@@ -21,7 +21,7 @@ Sie wird über `CLAUDE.md` automatisch in jede Session geladen.
 3. Fertige **AAB** in Play Console → **Geschlossener Test (Alpha)** → „Neuen Release erstellen" → hochladen → veröffentlichen. *(Upload macht Andi manuell – kein API-Zugang.)*
 4. Nach Veröffentlichung: in Supabase `app_config.latest_version_code` auf den neuen versionCode setzen → löst das In-App-„Update verfügbar"-Popup für ältere Nutzer aus.
 - **Web** braucht keinen Build – Push auf `main` reicht (Vercel).
-- Stand zuletzt: **versionCode 22** gebaut; `app_config.latest_version_code` = **21** (auf 22 setzen, sobald 22 veröffentlicht). versionName = `1.0.2`.
+- Stand zuletzt: **versionCode 49** gebaut & veröffentlicht; `app_config.latest_version_code` = **49**. versionName = `1.0.2`.
 
 ## Supabase / Datenbank
 - Schema-Änderungen werden **direkt** angewandt (Supabase-MCP `apply_migration`/`execute_sql` oder SQL-Editor) – **nicht** als lokale Migrations-Dateien getrackt.
@@ -66,8 +66,11 @@ Andi
 ```
 Gruppe: `haushalts-app-heimlig-tester@googlegroups.com`.
 
+## Bereits umgesetzt (nicht mehr offen)
+- ✅ **Mehrere Einkaufslisten pro Geschäft** (DM/Rossmann/Aldi etc.) + umschalten/erstellen/löschen – volle UI in `shopping.tsx` (`ListPickerModal`, „Listen ▾"-Button, „Schnell erstellen"-Chips pro Supermarkt) + Store-Funktionen `switchList`/`createShoppingList`/`deleteShoppingList`.
+- ✅ **Kalender farbiger** – Kategorie-Farben in Aufgabenliste & Monatsansicht (seit versionCode 45).
+- ✅ **12 Akzent-Designs voll illustriert** – eigene Maskottchen + Empty-State-Illustrationen für Einkauf & Aufgaben (seit versionCode 49).
+
 ## Offene Roadmap / Tester-Wünsche
-- 🛒 **Mehrere Einkaufslisten pro Geschäft** (DM/Rossmann/Aldi) + umschalten/sortieren. Backend (`shopping_lists`) kann das schon – es fehlt die UI. (Nächster geplanter Release.)
-- 🎨 **Kalender schöner/farbiger** (Kategorie-Farben, farbige Event-Balken).
 - 📅 **Google-Kalender-Sync (OAuth)** – großer Brocken, braucht Google-Cloud-Projekt/OAuth. *(ICS-Import ist als einfachere Alternative bereits umgesetzt.)*
-- 🏪 Optional: Artikel einem Laden zuordnen + Liste nach Laden filtern (statt Produkt-DB pro Supermarkt).
+- 🏪 Artikel einem Laden zuordnen + Liste automatisch nach Laden filtern (statt nur manueller Listen-Zuordnung beim Hinzufügen).
