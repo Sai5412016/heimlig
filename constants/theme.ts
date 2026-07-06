@@ -169,10 +169,34 @@ export const APP_THEMES: AppTheme[] = [
       tasksEmpty: require('../assets/themes/moody/tasks-empty.png'),
     },
   },
-  { id: 'pitch-gold', label: 'Rasen Gold', emoji: '⚽', brand: '#2E8B3D', brandLight: '#6FCB6F', brandDark: '#154019', accent: '#D4AF37' },
-  { id: 'racing', label: 'Rennsport Rot', emoji: '🏎️', brand: '#C1121F', brandLight: '#E85D4E', brandDark: '#680C13', accent: '#8D99AE' },
-  { id: 'monster-fang', label: 'Taschenmonster Rot-Gelb', emoji: '⚡', brand: '#E3350D', brandLight: '#FF6B4A', brandDark: '#8A1F08', accent: '#FFCB05' },
-  { id: 'witch-purple', label: 'Hexen Lila', emoji: '🧹', brand: '#6B3FA0', brandLight: '#A784D1', brandDark: '#3A2058', accent: '#4CAF50' },
+  {
+    id: 'pitch-gold', label: 'Rasen Gold', emoji: '⚽', brand: '#2E8B3D', brandLight: '#6FCB6F', brandDark: '#154019', accent: '#D4AF37',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/pitch-gold/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/pitch-gold/tasks-empty.png'),
+    },
+  },
+  {
+    id: 'racing', label: 'Rennsport Rot', emoji: '🏎️', brand: '#C1121F', brandLight: '#E85D4E', brandDark: '#680C13', accent: '#8D99AE',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/racing/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/racing/tasks-empty.png'),
+    },
+  },
+  {
+    id: 'monster-fang', label: 'Taschenmonster Rot-Gelb', emoji: '⚡', brand: '#E3350D', brandLight: '#FF6B4A', brandDark: '#8A1F08', accent: '#FFCB05',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/monster-fang/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/monster-fang/tasks-empty.png'),
+    },
+  },
+  {
+    id: 'witch-purple', label: 'Hexen Lila', emoji: '🧹', brand: '#6B3FA0', brandLight: '#A784D1', brandDark: '#3A2058', accent: '#4CAF50',
+    illustrations: {
+      shoppingEmpty: require('../assets/themes/witch-purple/shopping-empty.png'),
+      tasksEmpty: require('../assets/themes/witch-purple/tasks-empty.png'),
+    },
+  },
 ];
 
 export const CATEGORY_COLORS: Record<string, string> = {
