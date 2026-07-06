@@ -24,10 +24,11 @@ import { searchBrands, bumpBrand, supermarketKey, type BrandEntry } from '../../
 import ThemeMotif from '../../components/ThemeMotif';
 
 // ─── ADD ITEM MODAL ───────────────────────────────────────────
-const AddItemModal = ({ visible, onClose, onAdd, supermarket }: {
+const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: {
   visible: boolean;
   onClose: () => void;
   onAdd: (name: string, quantity: string, category: string, brand?: string) => void;
+  onAddElsewhere: (name: string, quantity: string, category: string, supermarketKey: string, brand?: string) => void;
   supermarket: string | null;
 }) => {
   const { colors } = useTheme();
@@ -91,6 +92,16 @@ const AddItemModal = ({ visible, onClose, onAdd, supermarket }: {
   // Most frequently bought items, shown as quick-add chips when the field is empty
   const frequent = useMemo(() => itemCatalog.slice(0, 8), [itemCatalog]);
 
+  // If this item is usually bought at a different supermarket than the active list,
+  // offer to route it there instead of forcing a manual list switch first.
+  const elsewhere = useMemo(() => {
+    const key = normalizeKey(name);
+    if (!key) return null;
+    const entry = itemCatalog.find(c => c.name_key === key);
+    if (!entry?.preferred_supermarket || entry.preferred_supermarket === smKey) return null;
+    return SUPERMARKETS.find(s => s.name.toLowerCase() === entry.preferred_supermarket) ?? null;
+  }, [name, itemCatalog, smKey]);
+
   // Auto-assign category when the typed name matches a known item
   const applyName = (text: string) => {
     setName(text);
@@ -145,6 +156,19 @@ const AddItemModal = ({ visible, onClose, onAdd, supermarket }: {
                 onChangeText={setQuantity}
               />
             </View>
+
+            {/* This item is usually bought elsewhere — offer to route it to that list */}
+            {elsewhere && (
+              <TouchableOpacity
+                style={styles.elsewhereHint}
+                onPress={() => {
+                  onAddElsewhere(name.trim(), quantity.trim(), category, elsewhere.name.toLowerCase(), brand.trim() || undefined);
+                  setName(''); setQuantity(''); setBrand(''); setBrandOptions([]);
+                }}
+              >
+                <Text style={styles.elsewhereHintText}>{elsewhere.emoji} Meist bei {elsewhere.name} — dort hinzufügen</Text>
+              </TouchableOpacity>
+            )}
 
             {/* Type-ahead suggestions */}
             {suggestions.length > 0 && (
@@ -629,7 +653,7 @@ const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () =
 export default function ShoppingScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe, loadItemCatalog, themeId } = useStore();
+  const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe, loadItemCatalog, createShoppingList, switchList, themeId } = useStore();
   const activeTheme = APP_THEMES.find(t => t.id === themeId);
   const [showModal, setShowModal] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
@@ -684,6 +708,20 @@ export default function ShoppingScreen() {
     await addItem(activeListId, name, quantity || undefined, category, undefined, brand);
     setShowModal(false);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleAddElsewhere = async (name: string, quantity: string, category: string, smKey: string, brand?: string) => {
+    const info = SUPERMARKETS.find(s => s.name.toLowerCase() === smKey);
+    if (!info) return;
+    const existing = shoppingLists.find(l => l.name.toLowerCase() === smKey);
+    if (existing) await switchList(existing.id);
+    else await createShoppingList(info.name, info.emoji);
+    const targetId = useStore.getState().activeListId;
+    if (!targetId) return;
+    await addItem(targetId, name, quantity || undefined, category, undefined, brand);
+    setShowModal(false);
+    hapticNotification(Haptics.NotificationFeedbackType.Success);
+    Alert.alert(`${info.emoji} ${info.name}`, `"${name}" wurde zur ${info.name}-Liste hinzugefügt.`);
   };
 
   const handleScanAdd = async (name: string, brand?: string) => {
@@ -821,7 +859,7 @@ export default function ShoppingScreen() {
         </TouchableOpacity>
       </View>
 
-      <AddItemModal visible={showModal} onClose={() => setShowModal(false)} onAdd={handleAdd} supermarket={supermarketKey(activeList?.name) ? (activeList?.name ?? null) : null} />
+      <AddItemModal visible={showModal} onClose={() => setShowModal(false)} onAdd={handleAdd} onAddElsewhere={handleAddElsewhere} supermarket={supermarketKey(activeList?.name) ? (activeList?.name ?? null) : null} />
       <RecipeImportModal visible={showRecipeModal} onClose={() => setShowRecipeModal(false)} onAdd={handleRecipeAdd} />
       <ListPickerModal visible={showListPicker} onClose={() => setShowListPicker(false)} />
       <ProductScanner visible={showScanner} onClose={() => setShowScanner(false)} onAddToList={handleScanAdd} />
@@ -964,6 +1002,8 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   },
   modalTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
   inputRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  elsewhereHint: { backgroundColor: colors.brandPale, borderRadius: radius.md, borderWidth: 1, borderColor: colors.brand, paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md, marginBottom: spacing.md },
+  elsewhereHintText: { ...typography.sm, color: colors.brand, fontWeight: '700' },
   suggestBox: { backgroundColor: colors.background, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md, overflow: 'hidden' },
   suggestRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   suggestName: { ...typography.body, color: colors.text, fontWeight: '600' },

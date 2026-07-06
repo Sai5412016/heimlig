@@ -6,6 +6,7 @@ import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears }
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerPushToken } from '../lib/pushTokens';
 import * as shoppingRepo from '../repositories/shoppingRepository';
+import { supermarketKey } from '../lib/brands';
 
 export interface SaveRecipeOpts { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }
 export interface PlanRecipeOpts { date: string; mealType: MealType; addToCart: boolean }
@@ -91,7 +92,7 @@ interface AppState {
   removeRecipeIngredientsFromCart: (recipeId: string) => Promise<number>;
 
   // 🛒 Learned item catalog (personalized autocomplete / frequent items)
-  itemCatalog: { name: string; name_key: string; category: string; count: number }[];
+  itemCatalog: { name: string; name_key: string; category: string; count: number; preferred_supermarket: string | null }[];
   loadItemCatalog: () => Promise<void>;
 
   // 🥗 Scanned-product health history (shared per household)
@@ -305,7 +306,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addItem: async (listId, name, quantity, category = 'Sonstiges', mealPlanId, brand, recipeId) => {
-    const { currentMember, household, items } = get();
+    const { currentMember, household, items, shoppingLists } = get();
     const key = name.toLowerCase().trim();
     const existing = items.find(i =>
       i.list_id === listId && !i.checked &&
@@ -325,15 +326,18 @@ export const useStore = create<AppState>((set, get) => ({
     });
     if (data) set(s => ({ items: [...s.items, data] }));
 
-    // Learn this item for the household (powers autocomplete & frequent suggestions)
+    // Learn this item for the household (powers autocomplete & frequent suggestions),
+    // remembering which supermarket it was bought at so we can nudge next time.
     if (household && name.trim()) {
-      supabase.rpc('bump_item_catalog', { p_household: household.id, p_name: name.trim(), p_category: category })
+      const list = shoppingLists.find(l => l.id === listId);
+      const smKey = supermarketKey(list?.name);
+      supabase.rpc('bump_item_catalog', { p_household: household.id, p_name: name.trim(), p_category: category, p_supermarket: smKey })
         .then(() => {}, () => {});
       const key = name.toLowerCase().trim();
       set(s => {
         const existing = s.itemCatalog.find(c => c.name_key === key);
-        if (existing) return { itemCatalog: s.itemCatalog.map(c => c.name_key === key ? { ...c, count: c.count + 1, category } : c) };
-        return { itemCatalog: [...s.itemCatalog, { name: name.trim(), name_key: key, category, count: 1 }] };
+        if (existing) return { itemCatalog: s.itemCatalog.map(c => c.name_key === key ? { ...c, count: c.count + 1, category, preferred_supermarket: smKey ?? c.preferred_supermarket } : c) };
+        return { itemCatalog: [...s.itemCatalog, { name: name.trim(), name_key: key, category, count: 1, preferred_supermarket: smKey }] };
       });
     }
   },
@@ -358,7 +362,7 @@ export const useStore = create<AppState>((set, get) => ({
     const { household } = get();
     if (!household) return;
     const { data } = await supabase
-      .from('item_catalog').select('name, name_key, category, count')
+      .from('item_catalog').select('name, name_key, category, count, preferred_supermarket')
       .eq('household_id', household.id)
       .order('count', { ascending: false })
       .limit(500);
