@@ -10,6 +10,7 @@ import { spacing, radius, typography, shadow, type ColorPalette } from '../../co
 import { useTheme } from '../../hooks/useTheme';
 import { useStore } from '../../store/useStore';
 import { categoryForItem } from '../../lib/groceries';
+import ThemeMotif from '../../components/ThemeMotif';
 import ProductScanner from '../../components/ProductScanner';
 import type { PantryItem } from '../../lib/supabase';
 import { format, parseISO, addDays } from 'date-fns';
@@ -174,7 +175,10 @@ export default function ScanScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>🥗 Gesund</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Text style={styles.headerTitle}>🥗 Gesund</Text>
+            <ThemeMotif />
+          </View>
           <Text style={styles.headerSub}>Scannen, bewerten & Vorrat im Blick</Text>
         </View>
       </View>

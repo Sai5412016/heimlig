@@ -21,6 +21,7 @@ import ProductScanner from '../../components/ProductScanner';
 import { searchGroceries, categoryForItem, normalizeKey } from '../../lib/groceries';
 import { estimateCartTotal } from '../../lib/pricing';
 import { searchBrands, bumpBrand, supermarketKey, type BrandEntry } from '../../lib/brands';
+import ThemeMotif from '../../components/ThemeMotif';
 
 // ─── ADD ITEM MODAL ───────────────────────────────────────────
 const AddItemModal = ({ visible, onClose, onAdd, supermarket }: {
@@ -719,7 +720,10 @@ export default function ShoppingScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>{activeList?.emoji ?? '🛒'} {activeList?.name ?? 'Einkaufsliste'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Text style={styles.headerTitle}>{activeList?.emoji ?? '🛒'} {activeList?.name ?? 'Einkaufsliste'}</Text>
+            <ThemeMotif />
+          </View>
           <Text style={styles.headerSub}>
             {household?.name ?? 'Mein Haushalt'}
           </Text>

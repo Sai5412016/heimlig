@@ -13,6 +13,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { Recipe, MealType } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
+import ThemeMotif from '../../components/ThemeMotif';
 import { format, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -247,7 +248,10 @@ export default function RecipesScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>🍳 Rezepte</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Text style={styles.headerTitle}>🍳 Rezepte</Text>
+            <ThemeMotif />
+          </View>
           <Text style={styles.headerSub}>{recipes.length} gespeichert</Text>
         </View>
         <TouchableOpacity style={styles.addBtn} onPress={() => setShowImport(true)}>

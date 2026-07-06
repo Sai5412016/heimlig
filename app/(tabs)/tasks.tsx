@@ -30,6 +30,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import { parseICS } from '../../lib/ics';
 import { uploadTaskAttachment, deleteTaskAttachment, getTaskAttachmentUrl, type PickedFile } from '../../lib/taskAttachments';
+import ThemeMotif from '../../components/ThemeMotif';
 
 type ViewMode = 'week' | 'month' | 'list';
 type Priority = 'low' | 'normal' | 'high';
@@ -996,7 +997,10 @@ export default function TasksScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>📋 Aufgaben</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Text style={styles.headerTitle}>📋 Aufgaben</Text>
+            <ThemeMotif />
+          </View>
           <Text style={styles.headerSub}>{openTasks.length} offen{overdueTasks.length > 0 ? ` · ${overdueTasks.length} überfällig` : ''}</Text>
         </View>
         {gamificationOn && (

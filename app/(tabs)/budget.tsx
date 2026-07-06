@@ -33,6 +33,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { buildTransactionsCsv, exportCsv, parseTransactionsCsv, memberIdByName } from '../../lib/dataIO';
 import BudgetSplitModal from '../../components/BudgetSplitModal';
+import ThemeMotif from '../../components/ThemeMotif';
 
 const CAT_EMOJIS: Record<string, string> = {
   'Lebensmittel': '🛒', 'Miete': '🏠', 'Transport': '🚗',
@@ -447,7 +448,10 @@ export default function BudgetScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>💶 Budget</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <Text style={styles.headerTitle}>💶 Budget</Text>
+          <ThemeMotif />
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
           {members.length > 1 && (
             <TouchableOpacity style={styles.ioBtn} onPress={() => setShowSplit(true)}>

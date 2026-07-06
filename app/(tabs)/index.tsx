@@ -13,6 +13,7 @@ import { de } from 'date-fns/locale';
 import ChatModal from '../../components/ChatModal';
 import BirthdayListModal from '../../components/BirthdayListModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ThemeMotif from '../../components/ThemeMotif';
 
 function AvatarCircle({ name, color, size = 36 }: { name: string; color: string; size?: number }) {
   const { colors } = useTheme();
@@ -153,7 +154,10 @@ export default function DashboardScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{greeting()},</Text>
-            <Text style={styles.name}>{currentMember?.display_name ?? 'Zuhause'} 👋</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Text style={styles.name}>{currentMember?.display_name ?? 'Zuhause'} 👋</Text>
+              <ThemeMotif />
+            </View>
           </View>
           <View style={styles.memberStack}>
             {members.slice(0, 3).map((m, i) => (

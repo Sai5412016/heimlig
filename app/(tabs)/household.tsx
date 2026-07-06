@@ -18,6 +18,7 @@ import { de } from 'date-fns/locale';
 import NotesModal from '../../components/NotesModal';
 import GoogleCalendarModal from '../../components/GoogleCalendarModal';
 import LocationModal from '../../components/LocationModal';
+import ThemeMotif from '../../components/ThemeMotif';
 
 // ─── AVATAR ───────────────────────────────────────────────────
 function Avatar({ name, color, size = 48 }: { name: string; color: string; size?: number }) {
@@ -340,7 +341,10 @@ export default function HouseholdScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity disabled={myHouseholds.length <= 1} onPress={() => setShowSwitcher(true)} activeOpacity={0.7}>
-          <Text style={styles.headerTitle}>👥 Haushalt</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Text style={styles.headerTitle}>👥 Haushalt</Text>
+            <ThemeMotif />
+          </View>
           <Text style={styles.headerSub}>
             {household?.name ?? 'Mein Haushalt'}{myHouseholds.length > 1 ? '  ▾' : ''}
           </Text>
