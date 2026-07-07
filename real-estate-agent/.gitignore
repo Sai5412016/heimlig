@@ -1,7 +1,0 @@
-__pycache__/
-*.pyc
-.venv/
-venv/
-agent.log
-database.sqlite
-.env
