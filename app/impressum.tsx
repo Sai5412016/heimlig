@@ -25,7 +25,7 @@ export default function ImpressumScreen() {
         </Text>
 
         <Text style={styles.h2}>Kontakt</Text>
-        <Text style={styles.p}>E-Mail: Sai5412016@gmail.com</Text>
+        <Text style={styles.p}>E-Mail: heimlig.app@gmail.com</Text>
 
         <Text style={styles.h2}>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</Text>
         <Text style={styles.p}>Andreas Schilling (Anschrift wie oben)</Text>

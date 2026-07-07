@@ -23,7 +23,7 @@ export default function DatenschutzScreen() {
         <View style={styles.section}>
           <Text style={styles.h2}>1. Verantwortlicher</Text>
           <Text style={styles.p}>
-            Andreas Schilling{'\n'}Birkensteig 4, 86845 Großaitingen{'\n'}E-Mail: Sai5412016@gmail.com
+            Andreas Schilling{'\n'}Birkensteig 4, 86845 Großaitingen{'\n'}E-Mail: heimlig.app@gmail.com
           </Text>
         </View>
 
@@ -33,7 +33,8 @@ export default function DatenschutzScreen() {
             • Konto: E-Mail-Adresse, Passwort (verschlüsselt gespeichert){'\n'}
             • Haushaltsdaten: Anzeigename, Avatarfarbe, Haushaltsname, Einkaufslisten, Aufgaben, Budget/Transaktionen, Rezepte, Notizen — sichtbar für die Mitglieder deines Haushalts{'\n'}
             • Optional, nur wenn du es aktivierst: dein Standort (einmalig beim Tippen auf „Standort teilen", kein dauerhaftes Tracking, Freigaben werden automatisch nach einiger Zeit wieder gelöscht){'\n'}
-            • Optional: Fotos von Rezepten, die du zur Zutaten-Erkennung hochlädst
+            • Optional: Fotos von Rezepten, die du zur Zutaten-Erkennung hochlädst{'\n'}
+            • Push-Benachrichtigungen: Wenn du Benachrichtigungen erlaubst, wird ein geräteweites Push-Token gespeichert, damit dich andere Haushaltsmitglieder erreichen können (z. B. bei einer neuen Pinnwand-Nachricht) — auch wenn die App geschlossen ist
           </Text>
         </View>
 
@@ -44,7 +45,8 @@ export default function DatenschutzScreen() {
             • Anthropic (USA) — wenn du ein Rezept per Foto oder Text importierst, wird der Inhalt zur Texterkennung an die Claude-API übermittelt. Dabei findet eine Datenübermittlung in ein Land außerhalb der EU (USA) statt.{'\n\n'}
             • Open Food Facts — beim Scannen eines Produkt-Barcodes wird die Barcode-Nummer an die offene Produktdatenbank Open Food Facts gesendet, um Produktinfos abzurufen. Es werden dabei keine Konto- oder Personendaten übermittelt.{'\n\n'}
             • Google — nur wenn du „Google Kalender verbinden" nutzt: nach deiner ausdrücklichen Anmeldung bei Google werden Kalendertermine zwischen Heimlig und deinem Google-Kalender abgeglichen.{'\n\n'}
-            • Vercel Inc. — Hosting der Web-Version (heimlig.vercel.app).
+            • Vercel Inc. — Hosting der Web-Version (heimlig.vercel.app).{'\n\n'}
+            • Expo (EAS Push Service) — wenn du Push-Benachrichtigungen erlaubst, wird bei neuen Haushalts-Nachrichten der Nachrichtentext, der Absendername und dein Geräte-Push-Token an Expos Push-Zustelldienst übermittelt, um die Benachrichtigung an dein Gerät zuzustellen.
           </Text>
         </View>
 
@@ -72,14 +74,14 @@ export default function DatenschutzScreen() {
         <View style={styles.section}>
           <Text style={styles.h2}>7. Konto & Daten löschen</Text>
           <Text style={styles.p}>
-            Du kannst die Löschung deines Kontos und aller zugehörigen Daten jederzeit per E-Mail an Sai5412016@gmail.com beantragen. Eine Selbstbedienungs-Löschfunktion direkt in der App ist in Vorbereitung.
+            Du kannst die Löschung deines Kontos und aller zugehörigen Daten jederzeit per E-Mail an heimlig.app@gmail.com beantragen. Eine Selbstbedienungs-Löschfunktion direkt in der App ist in Vorbereitung.
           </Text>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.h2}>8. Kontakt</Text>
           <Text style={styles.p}>
-            Bei Fragen zum Datenschutz erreichst du uns unter Sai5412016@gmail.com.
+            Bei Fragen zum Datenschutz erreichst du uns unter heimlig.app@gmail.com.
           </Text>
         </View>
       </ScrollView>
