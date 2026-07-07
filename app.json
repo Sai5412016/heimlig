@@ -57,6 +57,10 @@
           "targetCellHeight": 2,
           "updatePeriodMillis": 1800000
         }]
+      }],
+      ["@sentry/react-native/expo", {
+        "organization": "gut-feeling-labs",
+        "project": "react-native"
       }]
     ],
     "extra": {

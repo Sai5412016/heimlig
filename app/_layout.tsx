@@ -11,6 +11,10 @@ import { useStore } from '../store/useStore';
 import { useTheme } from '../hooks/useTheme';
 import { checkForUpdate } from '../lib/appUpdate';
 import WhatsNewModal from '../components/WhatsNewModal';
+import ErrorFallback from '../components/ErrorFallback';
+import { initSentry, Sentry } from '../lib/sentry';
+
+initSentry();
 
 // Pull a join code out of an incoming deep link, e.g. heimlig://join/AB12CD34
 // Bounded length: input hygiene against malformed/oversized deep links (the code itself
@@ -21,7 +25,7 @@ function extractJoinCode(url: string | null): string | null {
   return m ? m[1] : null;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const { colors } = useTheme();
@@ -116,6 +120,7 @@ export default function RootLayout() {
       else router.replace('/(tabs)');
     } catch (e) {
       console.error(e);
+      Sentry.captureException(e);
       setReady(true);
       router.replace('/onboarding');
     }
@@ -142,3 +147,13 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+function RootLayoutWithBoundary() {
+  return (
+    <Sentry.ErrorBoundary fallback={({ resetError }) => <ErrorFallback resetError={resetError} />}>
+      <RootLayout />
+    </Sentry.ErrorBoundary>
+  );
+}
+
+export default Sentry.wrap(RootLayoutWithBoundary);
