@@ -13,6 +13,7 @@ Sie wird über `CLAUDE.md` automatisch in jede Session geladen.
 - **Supabase** (Postgres + Auth + RLS + Edge Functions). Projekt-Ref: **`eabwlyihcmofkbqtbryz`**.
 - **EAS Build** (Android AAB), Expo-Account **`fledderman`**, App-Package **`com.fledderman.heimlig`**.
 - **Vercel**: Web-PWA, **auto-deploy bei jedem Push auf `main`** (kein manueller Schritt).
+- **Sentry** (`@sentry/react-native`) für Crash-/Error-Reporting. Org `gut-feeling-labs`, Projekt `react-native`. DSN + Init in `lib/sentry.ts`, `ErrorBoundary` mit eigenem Fallback-Screen (`components/ErrorFallback.tsx`) in `app/_layout.tsx`. Kein `SENTRY_AUTH_TOKEN` hinterlegt (also noch kein Source-Map-Upload beim Build) — Stacktraces sind bis dahin nur auf minifizierten Code gemappt.
 - Git: **`Sai5412016/heimlig`**, Branch **`main`**.
 
 ## Release-Flow (Android)
