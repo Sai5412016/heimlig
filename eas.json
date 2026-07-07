@@ -21,8 +21,7 @@
     "production": {
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://eabwlyihcmofkbqtbryz.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_Sdtse7WFsRgPC1t1AwrzPg_cvURF6QV",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_Sdtse7WFsRgPC1t1AwrzPg_cvURF6QV"
       }
     }
   }
