@@ -336,7 +336,7 @@ export default function BudgetScreen() {
           category: t.category, description: t.description, member_id: t.member_id,
           transaction_date: next,
         });
-        next = advanceDate(next, t.recurrence, t.recurrence_interval || 1);
+        next = advanceDate(next, t.recurrence || 'monthly', t.recurrence_interval || 1);
         guard++;
       }
       await budgetRepo.insertTransactions(inserts);
