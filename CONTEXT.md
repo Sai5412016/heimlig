@@ -16,12 +16,14 @@ Sie wird über `CLAUDE.md` automatisch in jede Session geladen.
 - Git: **`Sai5412016/heimlig`**, Branch **`main`**.
 
 ## Release-Flow (Android)
+Heimlig ist **live im Play Store** (offizieller Production-Release, kein geschlossener Alpha-Test mehr). Es gibt eine EAS-GitHub-Integration, die bei Push auf `main` automatisch einen Build auslöst (unabhängig davon, ob `eas build` manuell/per CLI erfolgreich läuft).
 1. `android.versionCode` in `app.json` um 1 erhöhen.
-2. `eas build --platform android --profile production` (läuft in der Cloud; im Web/mobil `EXPO_TOKEN` als Env setzen, damit kein interaktiver Login nötig ist).
-3. Fertige **AAB** in Play Console → **Geschlossener Test (Alpha)** → „Neuen Release erstellen" → hochladen → veröffentlichen. *(Upload macht Andi manuell – kein API-Zugang.)*
+2. `eas build --platform android --profile production` (läuft in der Cloud; im Web/mobil `EXPO_TOKEN` als Env setzen, damit kein interaktiver Login nötig ist). Push auf `main` triggert den Build i.d.R. auch automatisch über die GitHub-Integration.
+3. Fertige **AAB** in Play Console → **Production** → „Neuen Release erstellen" → Versionshinweise (de-DE) eintragen → hochladen → veröffentlichen. *(Upload macht Andi manuell – kein API-Zugang.)*
 4. Nach Veröffentlichung: in Supabase `app_config.latest_version_code` auf den neuen versionCode setzen → löst das In-App-„Update verfügbar"-Popup für ältere Nutzer aus.
 - **Web** braucht keinen Build – Push auf `main` reicht (Vercel).
-- Stand zuletzt: **versionCode 49** gebaut & veröffentlicht; `app_config.latest_version_code` = **49**. versionName = `1.0.2`.
+- Stand zuletzt: **versionCode 50** gebaut & veröffentlicht; `app_config.latest_version_code` = **50**. versionName = `1.0.2`.
+- Keine Tester-Ankündigungsmail mehr nötig (App ist live, keine Google-Group-Benachrichtigung mehr).
 
 ## Supabase / Datenbank
 - Schema-Änderungen werden **direkt** angewandt (Supabase-MCP `apply_migration`/`execute_sql` oder SQL-Editor) – **nicht** als lokale Migrations-Dateien getrackt.
@@ -45,32 +47,14 @@ Sie wird über `CLAUDE.md` automatisch in jede Session geladen.
 - Bekannter, **vorbestehender** tsc-Fehler in `store/useStore.ts` (completeTask `completed_at` null vs undefined) – harmlos, blockiert den Metro-Build nicht.
 - Nach Code-Änderung: `npx tsc --noEmit` über die geänderten Dateien laufen lassen.
 
-## Google-Group-Nachricht (festes Format für jeden Release)
-Plain Text, **kein** Fettdruck, **mit** Betreff-Zeile. Aufbau:
-```
-Betreff: <kurzer Titel mit Emoji>
-
-Hey zusammen,
-
-<ein Satz, was neu ist>
-
-<Emoji> <Kurztitel> — <Beschreibung>.
-
-<Emoji> <Kurztitel> — <Beschreibung>.
-
-Probiert's aus und gebt mir Feedback! Danke fürs Testen 💪
-
-Viele Grüße
-
-Andi
-```
-Gruppe: `haushalts-app-heimlig-tester@googlegroups.com`.
+## Play-Store-Versionshinweise (statt Google-Group-Mail)
+Seit dem Production-Release gibt's **keine Tester-Ankündigungsmail mehr**. Stattdessen kommen die „Was ist neu"-Texte direkt ins `<de-DE>`-Feld bei „Versionshinweise" in der Play Console beim Release erstellen. Kurz, locker, Du-Form, 1-2 Sätze mit Emoji reichen (kein Betreff/Anrede/Signatur nötig, das ist nur für die alte Tester-Mail).
 
 ## Bereits umgesetzt (nicht mehr offen)
 - ✅ **Mehrere Einkaufslisten pro Geschäft** (DM/Rossmann/Aldi etc.) + umschalten/erstellen/löschen – volle UI in `shopping.tsx` (`ListPickerModal`, „Listen ▾"-Button, „Schnell erstellen"-Chips pro Supermarkt) + Store-Funktionen `switchList`/`createShoppingList`/`deleteShoppingList`.
 - ✅ **Kalender farbiger** – Kategorie-Farben in Aufgabenliste & Monatsansicht (seit versionCode 45).
 - ✅ **12 Akzent-Designs voll illustriert** – eigene Maskottchen + Empty-State-Illustrationen für Einkauf & Aufgaben (seit versionCode 49).
+- ✅ **Artikel einem Laden zuordnen** – `item_catalog.preferred_supermarket` merkt sich, wo ein Artikel meist gekauft wird; Hinweis-Chip „Meist bei X — dort hinzufügen" im Add-Item-Sheet routet den Artikel automatisch in die passende Laden-Liste (seit versionCode 50).
 
 ## Offene Roadmap / Tester-Wünsche
 - 📅 **Google-Kalender-Sync (OAuth)** – großer Brocken, braucht Google-Cloud-Projekt/OAuth. *(ICS-Import ist als einfachere Alternative bereits umgesetzt.)*
-- 🏪 Artikel einem Laden zuordnen + Liste automatisch nach Laden filtern (statt nur manueller Listen-Zuordnung beim Hinzufügen).
