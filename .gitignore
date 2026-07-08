@@ -40,3 +40,6 @@ yarn-error.*
 /ios
 /android
 .claude/settings.local.json
+
+# graphify — regenerated at session start, not source of truth
+graphify-out/

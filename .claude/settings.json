@@ -1,5 +1,17 @@
 {
   "enabledPlugins": {
     "expo@claude-plugins-official": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v graphify >/dev/null 2>&1 && graphify update . >/tmp/graphify-update.log 2>&1; exit 0'"
+          }
+        ]
+      }
+    ]
   }
 }
