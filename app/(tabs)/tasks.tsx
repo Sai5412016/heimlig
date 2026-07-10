@@ -31,6 +31,7 @@ import { File } from 'expo-file-system';
 import { parseICS, type IcsEvent } from '../../lib/ics';
 import { uploadTaskAttachment, deleteTaskAttachment, getTaskAttachmentUrl, type PickedFile } from '../../lib/taskAttachments';
 import { mapTimeTreeEvents, type RawTimeTreeEvent } from '../../lib/timetreeEvents';
+import { holidayName } from '../../lib/holidays';
 import ThemeMotif from '../../components/ThemeMotif';
 import TimeTreeWebViewModal from '../../components/TimeTreeWebViewModal';
 
@@ -763,6 +764,7 @@ function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
           const hasMeal = mealPlans.some(m => m.planned_date === key);
           const isSelected = selectedDate && isSameDay(day, selectedDate);
           const isToday_ = isToday(day);
+          const holiday = holidayName(key);
 
           const MAX_EMOJIS = 3;
           const allEvents: { emoji: string; color: string }[] = [
@@ -779,7 +781,7 @@ function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
               onPress={() => onDayPress(day)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.weekDayName, isToday_ && { color: colors.brand }]}>
+              <Text style={[styles.weekDayName, isToday_ && { color: colors.brand }, !isToday_ && holiday && { color: '#EF4444' }]}>
                 {format(day, 'EEE', { locale: de }).slice(0, 2).toUpperCase()}
               </Text>
               <View style={[
@@ -790,11 +792,15 @@ function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
                 <Text style={[
                   styles.weekDayNum,
                   isToday_ && !isSelected && { color: colors.brand },
+                  !isToday_ && !isSelected && holiday && { color: '#EF4444' },
                   isSelected && { color: '#fff' },
                 ]}>
                   {format(day, 'd')}
                 </Text>
               </View>
+              {holiday && (
+                <Text style={styles.weekHolidayLabel} numberOfLines={2}>{holiday}</Text>
+              )}
               <View style={styles.weekEmojiStack}>
                 {visibleEvents.map((ev, i) => (
                   <View key={i} style={[styles.weekEmojiPill, { backgroundColor: ev.color + '26', borderColor: ev.color }]}>
@@ -852,6 +858,7 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
           const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
           const isSelected = selectedDate && isSameDay(day, selectedDate);
           const isToday_ = isToday(day);
+          const holiday = holidayName(key);
           const barColors = [
             ...dayTasks.map(t => t.completed_at ? colors.textMuted : catColor(t.category)),
             ...(mealPlans.some(m => m.planned_date === key) ? ['#FF6B35'] : []),
@@ -860,7 +867,7 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
           const extraBars = barColors.length - visibleBars.length;
           return (
             <TouchableOpacity key={key} style={[styles.dayCell, isSelected && styles.dayCellSelected, isToday_ && !isSelected && styles.dayCellToday]} onPress={() => onDayPress(day)}>
-              <Text style={[styles.dayNumber, !isCurrentMonth && { opacity: 0.3 }, isSelected && { color: '#fff' }, isToday_ && !isSelected && { color: colors.brand, fontWeight: '700' }]}>{format(day, 'd')}</Text>
+              <Text style={[styles.dayNumber, !isCurrentMonth && { opacity: 0.3 }, !isToday_ && !isSelected && holiday && { color: '#EF4444' }, isSelected && { color: '#fff' }, isToday_ && !isSelected && { color: colors.brand, fontWeight: '700' }]}>{format(day, 'd')}</Text>
               {barColors.length > 0 && (
                 <View style={styles.dotRow}>
                   {visibleBars.map((c, i) => (
@@ -1316,7 +1323,12 @@ export default function TasksScreen() {
 
         {selectedDate && (
           <View style={styles.selectedDateHeader}>
-            <Text style={styles.selectedDateText}>{isToday(selectedDate) ? 'Heute' : format(selectedDate, 'EEEE, dd. MMMM', { locale: de })}</Text>
+            <View>
+              <Text style={styles.selectedDateText}>{isToday(selectedDate) ? 'Heute' : format(selectedDate, 'EEEE, dd. MMMM', { locale: de })}</Text>
+              {holidayName(format(selectedDate, 'yyyy-MM-dd')) && (
+                <Text style={styles.selectedDateHoliday}>🎉 {holidayName(format(selectedDate, 'yyyy-MM-dd'))}</Text>
+              )}
+            </View>
             <TouchableOpacity onPress={() => setShowModal(true)}>
               <Text style={styles.addForDayText}>+ Aufgabe</Text>
             </TouchableOpacity>
@@ -1472,6 +1484,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   weekDayNumToday: { backgroundColor: colors.brandPale },
   weekDayNumSelected: { backgroundColor: colors.brand },
   weekDayNum: { ...typography.sm, color: colors.text, fontWeight: '700' },
+  weekHolidayLabel: { ...typography.xs, fontSize: 8, color: '#EF4444', textAlign: 'center', marginBottom: 2 },
   weekEmojiStack: { alignItems: 'center', gap: 2 },
   weekEmojiPill: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 3, paddingVertical: 1, alignItems: 'center', minWidth: 26 },
   weekTaskEmoji: { fontSize: 17, lineHeight: 22 },
@@ -1499,6 +1512,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   filterChipTextActive: { color: '#fff' },
   selectedDateHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   selectedDateText: { ...typography.h3, color: colors.text },
+  selectedDateHoliday: { ...typography.xs, color: '#EF4444', marginTop: 2 },
   addForDayText: { ...typography.sm, color: colors.brand, fontWeight: '700' },
   mealPlanSection: { marginHorizontal: spacing.lg, marginBottom: spacing.sm, backgroundColor: '#FFF5F0', borderRadius: radius.md, padding: spacing.md, borderLeftWidth: 3, borderLeftColor: colors.accent },
   mealPlanTitle: { ...typography.label, color: colors.accent, marginBottom: spacing.xs },
