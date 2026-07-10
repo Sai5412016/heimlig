@@ -14,7 +14,7 @@ const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Pla
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameDay, isToday, isBefore, startOfWeek, addMonths,
-  subMonths, parseISO, addDays
+  subMonths, parseISO, addDays, differenceInCalendarDays
 } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { colors, spacing, radius, typography, shadow, APP_THEMES, type ColorPalette } from '../../constants/theme';
@@ -665,6 +665,15 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit,
   const isCompleted = !!task.completed_at;
   const assignedMember = members.find(m => m.id === task.assigned_to);
   const dateText = task.due_date ? format(parseISO(task.due_date), 'EEEE, d. MMMM yyyy', { locale: de }) : '—';
+  const countdownText = (() => {
+    if (!task.due_date || isCompleted) return null;
+    const days = differenceInCalendarDays(parseISO(task.due_date), new Date());
+    if (days === 0) return 'Heute';
+    if (days === 1) return 'Noch 1 Tag';
+    if (days > 1) return `Noch ${days} Tage`;
+    if (days === -1) return 'Vor 1 Tag';
+    return `Vor ${-days} Tagen`;
+  })();
   const recurrenceText = task.recurrence
     ? (task.recurrence_interval && task.recurrence_interval > 1
         ? `Alle ${task.recurrence_interval} ${task.recurrence === 'daily' ? 'Tage' : task.recurrence === 'weekly' ? 'Wochen' : task.recurrence === 'monthly' ? 'Monate' : 'Jahre'}`
@@ -691,6 +700,11 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit,
                 <Text style={{ fontSize: 22, opacity: task.pinned ? 1 : 0.3 }}>📌</Text>
               </TouchableOpacity>
             </View>
+            {countdownText && (
+              <View style={[styles.countdownBadge, countdownText.startsWith('Vor') && styles.countdownBadgeOverdue]}>
+                <Text style={[styles.countdownBadgeText, countdownText.startsWith('Vor') && { color: colors.error }]}>⏳ {countdownText}</Text>
+              </View>
+            )}
             {task.description ? <Text style={styles.detailDesc}>{task.description}</Text> : null}
 
             <View style={styles.detailRow}><Text style={styles.detailLabel}>📂 Kategorie</Text><Text style={styles.detailValue}>{CATEGORY_EMOJIS[task.category] || '📋'} {task.category}</Text></View>
@@ -1610,6 +1624,9 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   rotationHint: { ...typography.xs, color: colors.textSecondary, marginBottom: spacing.sm, marginTop: -spacing.xs },
   detailTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
   detailDesc: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.lg },
+  countdownBadge: { alignSelf: 'flex-start', backgroundColor: colors.brandPale, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, marginBottom: spacing.md },
+  countdownBadgeOverdue: { backgroundColor: '#FEE2E2' },
+  countdownBadgeText: { ...typography.sm, color: colors.brand, fontWeight: '700' },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   detailLabel: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
   detailValue: { ...typography.body, color: colors.text, fontWeight: '600', flexShrink: 1, textAlign: 'right', marginLeft: spacing.md },
