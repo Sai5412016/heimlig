@@ -13,14 +13,14 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "TODO_set_after_eas_init",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "TODO_set_after_eas_init"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fgcbtsfddbbqmlggudor.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_b6RdJ4yeSu7lzWMN5TNsxw_P3j3ivNL"
       }
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "TODO_set_after_eas_init",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "TODO_set_after_eas_init"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fgcbtsfddbbqmlggudor.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_b6RdJ4yeSu7lzWMN5TNsxw_P3j3ivNL"
       }
     }
   }
