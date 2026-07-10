@@ -30,7 +30,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import { parseICS, type IcsEvent } from '../../lib/ics';
 import { uploadTaskAttachment, deleteTaskAttachment, getTaskAttachmentUrl, type PickedFile } from '../../lib/taskAttachments';
+import { mapTimeTreeEvents, type RawTimeTreeEvent } from '../../lib/timetreeEvents';
 import ThemeMotif from '../../components/ThemeMotif';
+import TimeTreeWebViewModal from '../../components/TimeTreeWebViewModal';
 
 type ViewMode = 'week' | 'month' | 'list';
 type Priority = 'low' | 'normal' | 'high';
@@ -538,80 +540,6 @@ function TimeTreeQuickstartModal({ visible, onClose, onSave }: {
               )}
               <View style={{ height: 20 }} />
             </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </View>
-    </Modal>
-  );
-}
-
-// ─── TIMETREE DIRECT IMPORT (gated: households.timetree_import_enabled) ────
-// Uses TimeTree's unofficial web API (see supabase/functions/timetree-import) since there's
-// no official export. Only shown for households explicitly flagged in the database — this
-// isn't offered broadly because it means handling a third party's real credentials.
-function TimeTreeLoginModal({ visible, onClose, onImport }: {
-  visible: boolean;
-  onClose: () => void;
-  onImport: (email: string, password: string) => Promise<void>;
-}) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!visible) { setEmail(''); setPassword(''); setLoading(false); }
-  }, [visible]);
-
-  const handleImport = async () => {
-    if (!email.trim() || !password) return;
-    setLoading(true);
-    try {
-      await onImport(email.trim(), password);
-    } finally {
-      setPassword(''); // never keep the password in memory longer than the request
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.modalOverlay, Platform.OS === 'web' && { justifyContent: 'flex-start' }]}>
-        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} onPress={onClose} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={Platform.OS === 'web' ? { width: '100%', flex: 1 } : undefined}>
-          <View style={[styles.modalSheet, Platform.OS === 'web' && { maxHeight: '100%' }]}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>🔗 Mit TimeTree verbinden</Text>
-            <Text style={[styles.fieldLabel, { textTransform: 'none', marginBottom: spacing.md }]}>
-              Deine TimeTree-Zugangsdaten werden nur für diesen einen Import verwendet, nirgends gespeichert
-              und laufen über TimeTrees inoffizielle Schnittstelle — kann jederzeit aufhören zu funktionieren.
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="TimeTree-E-Mail"
-              placeholderTextColor={colors.textMuted}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="TimeTree-Passwort"
-              placeholderTextColor={colors.textMuted}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-            <TouchableOpacity
-              style={[styles.saveBtn, (!email.trim() || !password || loading) && { opacity: 0.4 }]}
-              onPress={handleImport}
-              disabled={!email.trim() || !password || loading}
-            >
-              <Text style={styles.saveBtnText}>{loading ? 'Importiere …' : 'Termine importieren'}</Text>
-            </TouchableOpacity>
-            <View style={{ height: 20 }} />
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -1212,22 +1140,9 @@ export default function TasksScreen() {
     Alert.alert('✓ Übernommen', `${data?.length ?? fresh.length} Termine wurden angelegt.${skippedNote}`);
   };
 
-  const handleTimeTreeImport = async (email: string, password: string) => {
+  const handleTimeTreeEvents = async (raw: RawTimeTreeEvent[]) => {
     if (!household || !currentMember) return;
-    const { data, error } = await supabase.functions.invoke('timetree-import', {
-      body: { household_id: household.id, email, password },
-    });
-    if (error) {
-      let message = 'TimeTree-Import fehlgeschlagen.';
-      try {
-        const body = await (error as any).context?.json?.();
-        if (body?.error) message = body.error;
-      } catch { /* keep generic message */ }
-      Alert.alert('Fehler', message);
-      return;
-    }
-
-    const parsed: IcsEvent[] = data?.events || [];
+    const parsed: IcsEvent[] = mapTimeTreeEvents(raw);
     if (parsed.length === 0) {
       setShowTimeTreeLogin(false);
       Alert.alert('Keine Termine', 'In deinem TimeTree-Kalender wurden keine Termine gefunden.');
@@ -1342,7 +1257,7 @@ export default function TasksScreen() {
           <TouchableOpacity style={styles.importBtn} onPress={() => setShowQuickstart(true)}>
             <Text style={styles.viewToggleText}>🔄</Text>
           </TouchableOpacity>
-          {household?.timetree_import_enabled && (
+          {household?.timetree_import_enabled && Platform.OS !== 'web' && (
             <TouchableOpacity style={styles.importBtn} onPress={() => setShowTimeTreeLogin(true)}>
               <Text style={styles.viewToggleText}>🔗</Text>
             </TouchableOpacity>
@@ -1516,11 +1431,11 @@ export default function TasksScreen() {
         onClose={() => setShowQuickstart(false)}
         onSave={handleQuickstartSave}
       />
-      {household?.timetree_import_enabled && (
-        <TimeTreeLoginModal
+      {household?.timetree_import_enabled && Platform.OS !== 'web' && (
+        <TimeTreeWebViewModal
           visible={showTimeTreeLogin}
           onClose={() => setShowTimeTreeLogin(false)}
-          onImport={handleTimeTreeImport}
+          onEvents={handleTimeTreeEvents}
         />
       )}
     </SafeAreaView>
