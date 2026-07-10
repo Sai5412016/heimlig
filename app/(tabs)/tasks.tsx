@@ -604,6 +604,7 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
       </TouchableOpacity>
       <TouchableOpacity style={styles.taskInfo} activeOpacity={0.6} onPress={() => onOpen?.(task)}>
         <View style={styles.taskTitleRow}>
+          {task.pinned && !isCompleted && <Text style={styles.pinIcon}>📌</Text>}
           <Text style={[styles.taskTitle, isCompleted && { textDecorationLine: 'line-through', color: colors.textMuted }]}>{task.title}</Text>
           {showPoints && isHouseholdCat && !isCompleted && (
             <View style={styles.pointsBadge}>
@@ -649,13 +650,14 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
 }
 
 // ─── TASK DETAIL MODAL ────────────────────────────────────────
-function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit }: {
+function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit, onTogglePin }: {
   task: (Task & { due_time?: string }) | null;
   members: any[];
   onClose: () => void;
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
+  onTogglePin: (id: string) => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -683,7 +685,12 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit 
         <View style={styles.modalSheet}>
           <View style={styles.modalHandle} />
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.detailTitle}>{task.title}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <Text style={[styles.detailTitle, { flex: 1 }]}>{task.title}</Text>
+              <TouchableOpacity onPress={() => onTogglePin(task.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={{ fontSize: 22, opacity: task.pinned ? 1 : 0.3 }}>📌</Text>
+              </TouchableOpacity>
+            </View>
             {task.description ? <Text style={styles.detailDesc}>{task.description}</Text> : null}
 
             <View style={styles.detailRow}><Text style={styles.detailLabel}>📂 Kategorie</Text><Text style={styles.detailValue}>{CATEGORY_EMOJIS[task.category] || '📋'} {task.category}</Text></View>
@@ -1198,6 +1205,15 @@ export default function TasksScreen() {
     Alert.alert('✓ Importiert', `${inserted?.length ?? events.length} Termine aus TimeTree übernommen.${skippedNote}`);
   };
 
+  const handleTogglePin = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const pinned = !task.pinned;
+    setTasks(tasks.map(t => t.id === id ? { ...t, pinned } : t));
+    setSelectedTask(sel => sel && sel.id === id ? { ...sel, pinned } : sel);
+    await supabase.from('tasks').update({ pinned }).eq('id', id);
+  };
+
   const handleDelete = (id: string) => {
     const task = tasks.find(t => t.id === id);
     Alert.alert('Löschen', 'Aufgabe wirklich löschen?', [
@@ -1227,8 +1243,9 @@ export default function TasksScreen() {
   });
 
   const openTasks = filteredTasks.filter(t => !t.completed_at);
-  const openTasksWithDate = openTasks.filter(t => t.due_date);
-  const openTasksNoDate = openTasks.filter(t => !t.due_date);
+  const byPinnedFirst = (a: Task, b: Task) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
+  const openTasksWithDate = openTasks.filter(t => t.due_date).sort(byPinnedFirst);
+  const openTasksNoDate = openTasks.filter(t => !t.due_date).sort(byPinnedFirst);
   const completedTasks = filteredTasks.filter(t => !!t.completed_at);
   const overdueTasks = tasks.filter(t => t.due_date && !t.completed_at && isBefore(parseISO(t.due_date), new Date()) && !isToday(parseISO(t.due_date)));
   const myScore = monthScores[currentMember?.id ?? ''] || 0;
@@ -1415,6 +1432,7 @@ export default function TasksScreen() {
         onComplete={handleComplete}
         onDelete={handleDelete}
         onEdit={(t) => { setSelectedTask(null); setEditingTask(t); }}
+        onTogglePin={handleTogglePin}
       />
 
       {gamificationOn && household && (
@@ -1530,6 +1548,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   taskInfo: { flex: 1, paddingVertical: spacing.md, paddingRight: spacing.sm },
   taskTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   taskTitle: { ...typography.body, color: colors.text, fontWeight: '500', flex: 1 },
+  pinIcon: { fontSize: 13, marginRight: 2 },
   pointsBadge: { backgroundColor: '#FEF3C7', borderRadius: radius.full, paddingHorizontal: 6, paddingVertical: 2 },
   pointsBadgeText: { fontSize: 10, color: '#D97706', fontWeight: '800' },
   taskDesc: { ...typography.xs, color: colors.textSecondary, marginTop: 2 },

@@ -97,6 +97,7 @@ export interface Task {
   attachment_name?: string;
   location_url?: string;
   remind_time?: string;
+  pinned?: boolean;
 }
 
 export interface Transaction {
