@@ -65,6 +65,7 @@ TimeTree hat **keine offizielle Export-/Sync-API** (offiziell bestätigt von Tim
 - ✅ **Kalender farbiger** – Kategorie-Farben in Aufgabenliste & Monatsansicht (seit versionCode 45).
 - ✅ **12 Akzent-Designs voll illustriert** – eigene Maskottchen + Empty-State-Illustrationen für Einkauf & Aufgaben (seit versionCode 49).
 - ✅ **Artikel einem Laden zuordnen** – `item_catalog.preferred_supermarket` merkt sich, wo ein Artikel meist gekauft wird; Hinweis-Chip „Meist bei X — dort hinzufügen" im Add-Item-Sheet routet den Artikel automatisch in die passende Laden-Liste (seit versionCode 50).
+- ✅ **TimeTree-Feature-Parität** (Session Juli 2026, „Heimlig soll TimeTree überbieten"): WebView-TimeTree-Import (Google-Login), Feiertage im Kalender (`lib/holidays.ts`), Termine anpinnen (`tasks.pinned`), Countdown-Badge im Termin-Detail, Tages-Digest-Push (`send_daily_digest()` via pg_cron), Checklisten in Terminen (`task_checklist_items`), KI-Termin aus Foto (`extract-event` Edge Function), gemeinsame Stundenansicht (👥-View-Mode, `MemberDayView`). Alles in `app/(tabs)/tasks.tsx` + `app/(tabs)/household.tsx`.
 
 ## Offene Roadmap / Tester-Wünsche
 - 📅 **Google-Kalender-Sync (OAuth)** – großer Brocken, braucht Google-Cloud-Projekt/OAuth. *(ICS-Import ist als einfachere Alternative bereits umgesetzt.)*
