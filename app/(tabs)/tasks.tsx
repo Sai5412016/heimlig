@@ -649,6 +649,80 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
   );
 }
 
+// ─── CHECKLIST (sub-items within a task/event) ─────────────────
+interface ChecklistItem { id: string; text: string; done: boolean; sort_order: number }
+
+function ChecklistSection({ taskId }: { taskId: string }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const [items, setItems] = useState<ChecklistItem[]>([]);
+  const [newText, setNewText] = useState('');
+
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('task_checklist_items').select('*').eq('task_id', taskId).order('sort_order');
+    setItems((data as ChecklistItem[]) || []);
+  }, [taskId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const addItem = async () => {
+    const text = newText.trim();
+    if (!text) return;
+    setNewText('');
+    const { data } = await supabase.from('task_checklist_items')
+      .insert({ task_id: taskId, text, sort_order: items.length }).select().single();
+    if (data) setItems(prev => [...prev, data as ChecklistItem]);
+  };
+
+  const toggleItem = async (id: string) => {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    const done = !item.done;
+    setItems(prev => prev.map(i => i.id === id ? { ...i, done } : i));
+    await supabase.from('task_checklist_items').update({ done }).eq('id', id);
+  };
+
+  const deleteItem = async (id: string) => {
+    setItems(prev => prev.filter(i => i.id !== id));
+    await supabase.from('task_checklist_items').delete().eq('id', id);
+  };
+
+  const doneCount = items.filter(i => i.done).length;
+
+  return (
+    <View style={{ marginBottom: spacing.lg }}>
+      <Text style={styles.detailLabel}>✅ Checkliste{items.length > 0 ? ` (${doneCount}/${items.length})` : ''}</Text>
+      {items.map(item => (
+        <View key={item.id} style={styles.checklistRow}>
+          <TouchableOpacity style={styles.checklistCheckRow} onPress={() => toggleItem(item.id)}>
+            <View style={[styles.checklistCheckbox, item.done && { backgroundColor: colors.brand, borderColor: colors.brand }]}>
+              {item.done && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <Text style={[styles.checklistText, item.done && { textDecorationLine: 'line-through', color: colors.textMuted }]}>{item.text}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => deleteItem(item.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={{ color: colors.textMuted, fontSize: 16 }}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+      <View style={styles.checklistAddRow}>
+        <TextInput
+          style={[styles.input, { flex: 1 }]}
+          placeholder="Punkt hinzufügen…"
+          placeholderTextColor={colors.textMuted}
+          value={newText}
+          onChangeText={setNewText}
+          onSubmitEditing={addItem}
+          returnKeyType="done"
+        />
+        <TouchableOpacity onPress={addItem} style={styles.checklistAddBtn} disabled={!newText.trim()}>
+          <Text style={styles.checklistAddBtnText}>+</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 // ─── TASK DETAIL MODAL ────────────────────────────────────────
 function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit, onTogglePin }: {
   task: (Task & { due_time?: string }) | null;
@@ -706,6 +780,8 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit,
               </View>
             )}
             {task.description ? <Text style={styles.detailDesc}>{task.description}</Text> : null}
+
+            <ChecklistSection taskId={task.id} />
 
             <View style={styles.detailRow}><Text style={styles.detailLabel}>📂 Kategorie</Text><Text style={styles.detailValue}>{CATEGORY_EMOJIS[task.category] || '📋'} {task.category}</Text></View>
             <View style={styles.detailRow}><Text style={styles.detailLabel}>📅 Datum</Text><Text style={styles.detailValue}>{dateText}</Text></View>
@@ -1559,6 +1635,13 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   taskCheckbox: { padding: spacing.md },
   checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   checkmark: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  checklistRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs },
+  checklistCheckRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
+  checklistCheckbox: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  checklistText: { ...typography.body, color: colors.text, flexShrink: 1 },
+  checklistAddRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, alignItems: 'center' },
+  checklistAddBtn: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
+  checklistAddBtnText: { color: '#fff', fontSize: 20, fontWeight: '700' },
   taskInfo: { flex: 1, paddingVertical: spacing.md, paddingRight: spacing.sm },
   taskTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   taskTitle: { ...typography.body, color: colors.text, fontWeight: '500', flex: 1 },
