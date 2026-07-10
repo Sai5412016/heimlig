@@ -28,7 +28,7 @@ import RewardsModal from '../../components/RewardsModal';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
-import { parseICS } from '../../lib/ics';
+import { parseICS, type IcsEvent } from '../../lib/ics';
 import { uploadTaskAttachment, deleteTaskAttachment, getTaskAttachmentUrl, type PickedFile } from '../../lib/taskAttachments';
 import ThemeMotif from '../../components/ThemeMotif';
 
@@ -916,14 +916,43 @@ export default function TasksScreen() {
     if (notify && data?.due_date) await scheduleTaskNotification(data.id, data.title, data.due_date, due_time, data.remind_time);
   };
 
+  // A recurring event's "date" is just its next upcoming occurrence, which shifts depending
+  // on when you happen to (re-)import — so recurring events are matched by title+recurrence,
+  // one-off events by title+date+time, to catch re-imports of the same .ics as duplicates.
+  const isDuplicateTask = (candidate: IcsEvent): boolean => {
+    const title = candidate.title.toLowerCase().trim();
+    return tasks.some(t => {
+      if (t.title.toLowerCase().trim() !== title) return false;
+      if (candidate.recurrence) return t.recurrence === candidate.recurrence;
+      return t.due_date === candidate.date && (t.due_time || null) === (candidate.time || null);
+    });
+  };
+
   const handleImportIcs = async () => {
     try {
       const res = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
       if (res.canceled || !res.assets?.[0]) return;
       const content = await new File(res.assets[0].uri).text();
-      const events = parseICS(content);
-      if (events.length === 0) { Alert.alert('Keine Termine', 'In der Datei wurden keine Termine gefunden. Erwartet wird eine .ics-Datei (z.B. Export aus Google Kalender).'); return; }
-      Alert.alert('Kalender importieren', `${events.length} Termine aus der Datei in den Heimlig-Kalender übernehmen?`, [
+      const parsed = parseICS(content);
+      if (parsed.length === 0) { Alert.alert('Keine Termine', 'In der Datei wurden keine Termine gefunden. Erwartet wird eine .ics-Datei (z.B. Export aus Google Kalender).'); return; }
+
+      const seen = new Set<string>();
+      const events = parsed.filter(e => {
+        if (isDuplicateTask(e)) return false;
+        const key = `${e.title.toLowerCase().trim()}|${e.recurrence || e.date}|${e.time || ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      const skipped = parsed.length - events.length;
+
+      if (events.length === 0) {
+        Alert.alert('Schon importiert', `Alle ${parsed.length} Termine aus der Datei sind bereits im Kalender vorhanden — nichts Neues zu importieren.`);
+        return;
+      }
+
+      const skippedNote = skipped > 0 ? ` (${skipped} bereits vorhanden, werden übersprungen)` : '';
+      Alert.alert('Kalender importieren', `${events.length} neue Termine aus der Datei in den Heimlig-Kalender übernehmen?${skippedNote}`, [
         { text: 'Abbrechen', style: 'cancel' },
         { text: 'Importieren', onPress: async () => {
             if (!household || !currentMember) return;
