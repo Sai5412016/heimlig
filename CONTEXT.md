@@ -31,6 +31,7 @@ Heimlig ist **live im Play Store** (offizieller Production-Release, kein geschlo
 - Wichtige Tabellen: `households`, `members`, `shopping_lists`, `shopping_items`, `tasks`, `transactions`, `recipes`, `meal_plans`, `member_scores`, `item_catalog`, `app_config`.
 - RLS nutzt `is_household_member(household_id)`. SECURITY-DEFINER-RPCs: `create_household_for_user`, `join_household_by_code`, `bump_item_catalog`.
 - Edge Function `extract-recipe` (Rezept-Extraktion aus URL/Text/Bild via Claude). `ANTHROPIC_API_KEY` ist ein Supabase-Secret. Deploy via `npx supabase functions deploy extract-recipe --project-ref eabwlyihcmofkbqtbryz` (verify_jwt an lassen!).
+- **Tages-Digest-Push**: `pg_cron` (stündlich) + `pg_net` rufen `send_daily_digest()` auf — reine Postgres-Funktion (kein Edge-Function-Umweg, kein Service-Role-Key nötig). Die Funktion selbst gated auf „aktuelle Uhrzeit in Europe/Berlin == 8 Uhr" (self-gating löst das DST-Problem, da der Cron in UTC läuft). Sendet nur an Haushalte mit `households.digest_enabled = true` und nur wenn an dem Tag offene Termine anstehen. Direkt an Expos Push-Endpunkt, gleiche Token-Quelle (`push_tokens`) wie die `notify-message`-Funktion.
 - Edge Function `timetree-import` (siehe „TimeTree-Wechsel" unten) – nutzt TimeTrees inoffizielle API, kein Secret nötig (Nutzer gibt eigene TimeTree-Zugangsdaten pro Aufruf ein, wird nicht gespeichert).
 - Tester-Haushalte stehen auf `plan_tier = 'premium'` (Freunde, zahlen nicht).
 

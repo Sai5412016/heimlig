@@ -33,6 +33,7 @@ export interface Household {
   plan_tier: PlanTier;
   gamification_enabled?: boolean;
   timetree_import_enabled?: boolean;
+  digest_enabled?: boolean;
   created_at: string;
 }
 
