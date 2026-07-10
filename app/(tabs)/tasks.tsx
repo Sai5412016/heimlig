@@ -434,6 +434,117 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
   );
 }
 
+// ─── QUICKSTART (manual switch from TimeTree / other apps) ────
+// TimeTree has no export API, so instead of asking new users to jump through a technical
+// hoop (third-party tool, their TimeTree password), this lets them rebuild the handful of
+// recurring events that actually matter — usually done in well under two minutes.
+export interface QuickstartEntry { title: string; date: string; recurrence: string | null }
+
+function TimeTreeQuickstartModal({ visible, onClose, onSave }: {
+  visible: boolean;
+  onClose: () => void;
+  onSave: (entries: QuickstartEntry[]) => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState('');
+  const [recurrence, setRecurrence] = useState<string | null>(null);
+  const [queue, setQueue] = useState<QuickstartEntry[]>([]);
+  const titleRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (!visible) { setTitle(''); setDate(''); setRecurrence(null); setQueue([]); }
+  }, [visible]);
+
+  const addToQueue = () => {
+    if (!title.trim()) return;
+    setQueue(q => [...q, { title: title.trim(), date, recurrence }]);
+    setTitle('');
+    hapticImpact(Haptics.ImpactFeedbackStyle.Light);
+    titleRef.current?.focus();
+  };
+
+  const removeFromQueue = (i: number) => setQueue(q => q.filter((_, idx) => idx !== i));
+
+  const finish = () => {
+    if (queue.length === 0) return;
+    onSave(queue);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={[styles.modalOverlay, Platform.OS === 'web' && { justifyContent: 'flex-start' }]}>
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} onPress={onClose} />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={Platform.OS === 'web' ? { width: '100%', flex: 1 } : undefined}>
+          <View style={[styles.modalSheet, Platform.OS === 'web' && { maxHeight: '100%' }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>🔄 Schnellstart von TimeTree & Co.</Text>
+            <Text style={[styles.fieldLabel, { textTransform: 'none', marginBottom: spacing.md }]}>
+              TimeTree lässt sich leider nicht direkt exportieren. Trag stattdessen kurz deine wichtigsten
+              wiederkehrenden Termine ein (Geburtstage, „Mülltonne raus" usw.) — meist unter 2 Minuten.
+            </Text>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <TextInput
+                ref={titleRef}
+                style={styles.input}
+                placeholder="z.B. Geburtstag Mama, Müll raus, …"
+                placeholderTextColor={colors.textMuted}
+                value={title}
+                onChangeText={setTitle}
+                returnKeyType="done"
+                onSubmitEditing={addToQueue}
+              />
+              <Text style={styles.fieldLabel}>DATUM (ERSTER/NÄCHSTER TERMIN)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="JJJJ-MM-TT"
+                placeholderTextColor={colors.textMuted}
+                value={date}
+                onChangeText={setDate}
+              />
+              <Text style={styles.fieldLabel}>WIEDERHOLUNG</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md }}>
+                {RECURRENCE_OPTIONS.map(r => (
+                  <TouchableOpacity key={String(r.key)} style={[styles.chip, recurrence === r.key && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setRecurrence(r.key)}>
+                    <Text style={[styles.chipText, recurrence === r.key && { color: '#fff' }]}>{r.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity style={[styles.saveBtn, !title.trim() && { opacity: 0.4 }]} onPress={addToQueue} disabled={!title.trim()}>
+                <Text style={styles.saveBtnText}>+ Zur Liste hinzufügen</Text>
+              </TouchableOpacity>
+
+              {queue.length > 0 && (
+                <>
+                  <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>BEREIT ZUM ÜBERNEHMEN ({queue.length})</Text>
+                  {queue.map((e, i) => (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ ...typography.body, color: colors.text, fontWeight: '600' }}>{e.title}</Text>
+                        <Text style={{ ...typography.xs, color: colors.textMuted }}>
+                          {e.date || 'ohne Datum'}{e.recurrence ? ` · ${RECURRENCE_OPTIONS.find(r => r.key === e.recurrence)?.label}` : ''}
+                        </Text>
+                      </View>
+                      <TouchableOpacity onPress={() => removeFromQueue(i)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Text style={{ fontSize: 18, color: colors.textMuted }}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <TouchableOpacity style={[styles.saveBtn, { marginTop: spacing.md }]} onPress={finish}>
+                    <Text style={styles.saveBtnText}>{queue.length} Termine übernehmen ✓</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              <View style={{ height: 20 }} />
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── TASK CARD ────────────────────────────────────────────────
 function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
   task: Task & { due_time?: string }; onComplete: (id: string) => void;
@@ -799,6 +910,7 @@ export default function TasksScreen() {
   const activeTheme = APP_THEMES.find(t => t.id === themeId);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [showModal, setShowModal] = useState(false);
+  const [showQuickstart, setShowQuickstart] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
@@ -918,13 +1030,14 @@ export default function TasksScreen() {
 
   // A recurring event's "date" is just its next upcoming occurrence, which shifts depending
   // on when you happen to (re-)import — so recurring events are matched by title+recurrence,
-  // one-off events by title+date+time, to catch re-imports of the same .ics as duplicates.
-  const isDuplicateTask = (candidate: IcsEvent): boolean => {
+  // one-off events by title+date+time, to catch re-imports of the same .ics (or a repeated
+  // Quickstart entry) as duplicates.
+  const isDuplicateTask = (candidate: { title: string; date?: string; time?: string; recurrence?: string | null }): boolean => {
     const title = candidate.title.toLowerCase().trim();
     return tasks.some(t => {
       if (t.title.toLowerCase().trim() !== title) return false;
       if (candidate.recurrence) return t.recurrence === candidate.recurrence;
-      return t.due_date === candidate.date && (t.due_time || null) === (candidate.time || null);
+      return (t.due_date || null) === (candidate.date || null) && (t.due_time || null) === (candidate.time || null);
     });
   };
 
@@ -983,6 +1096,45 @@ export default function TasksScreen() {
     } catch (e: any) {
       Alert.alert('Fehler', e?.message ?? 'Import fehlgeschlagen.');
     }
+  };
+
+  const handleQuickstartSave = async (entries: QuickstartEntry[]) => {
+    if (!household || !currentMember) return;
+    const seen = new Set<string>();
+    const fresh = entries.filter(e => {
+      if (isDuplicateTask(e)) return false;
+      const key = `${e.title.toLowerCase().trim()}|${e.recurrence || e.date}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    const skipped = entries.length - fresh.length;
+    if (fresh.length === 0) {
+      setShowQuickstart(false);
+      Alert.alert('Schon vorhanden', 'Alle eingegebenen Termine gibt es bereits im Kalender.');
+      return;
+    }
+    const rows = fresh.map(e => {
+      const isBirthday = /geburtstag|glückwunsch/i.test(e.title);
+      return {
+        household_id: household.id,
+        title: e.title,
+        category: isBirthday ? 'Geburtstag' : 'Sonstiges',
+        priority: 'normal',
+        points: 10,
+        due_date: e.date || null,
+        recurrence: e.recurrence || null,
+        recurrence_interval: e.recurrence ? 1 : null,
+        created_by: currentMember.id,
+      };
+    });
+    const { data, error } = await supabase.from('tasks').insert(rows).select();
+    if (error) { Alert.alert('Fehler', error.message); return; }
+    if (data) setTasks([...tasks, ...data]);
+    setShowQuickstart(false);
+    hapticNotification(Haptics.NotificationFeedbackType.Success);
+    const skippedNote = skipped > 0 ? ` (${skipped} gab es schon)` : '';
+    Alert.alert('✓ Übernommen', `${data?.length ?? fresh.length} Termine wurden angelegt.${skippedNote}`);
   };
 
   const handleDelete = (id: string) => {
@@ -1047,6 +1199,9 @@ export default function TasksScreen() {
           )}
           <TouchableOpacity style={styles.importBtn} onPress={handleImportIcs}>
             <Text style={styles.viewToggleText}>📥</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.importBtn} onPress={() => setShowQuickstart(true)}>
+            <Text style={styles.viewToggleText}>🔄</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.viewToggle}>
@@ -1211,6 +1366,11 @@ export default function TasksScreen() {
         preselectedDate={selectedDate}
         editTask={editingTask}
         householdId={household?.id}
+      />
+      <TimeTreeQuickstartModal
+        visible={showQuickstart}
+        onClose={() => setShowQuickstart(false)}
+        onSave={handleQuickstartSave}
       />
     </SafeAreaView>
   );
