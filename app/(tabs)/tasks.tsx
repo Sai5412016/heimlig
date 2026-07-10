@@ -35,7 +35,7 @@ import { holidayName } from '../../lib/holidays';
 import ThemeMotif from '../../components/ThemeMotif';
 import TimeTreeWebViewModal from '../../components/TimeTreeWebViewModal';
 
-type ViewMode = 'week' | 'month' | 'list';
+type ViewMode = 'week' | 'month' | 'list' | 'day';
 type Priority = 'low' | 'normal' | 'high';
 
 const PRIORITY_COLORS: Record<Priority, string> = {
@@ -990,6 +990,92 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
   );
 }
 
+// ─── MEMBER DAY VIEW (shared hourly view, one column per person) ──
+// Answers "who's free when" at a glance — only timed, per-person-assigned tasks show up
+// here (unassigned/all-day items stay in the other views, this one is about availability).
+const DAY_START_HOUR = 7;
+const DAY_END_HOUR = 22;
+const HOUR_HEIGHT = 52;
+const MEMBER_COL_WIDTH = 132;
+
+function MemberDayView({ tasks, members, date, onDateChange }: {
+  tasks: Task[]; members: any[]; date: Date; onDateChange: (d: Date) => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const dateKey = format(date, 'yyyy-MM-dd');
+  const hours = Array.from({ length: DAY_END_HOUR - DAY_START_HOUR + 1 }, (_, i) => DAY_START_HOUR + i);
+  const holiday = holidayName(dateKey);
+
+  const tasksByMember: Record<string, Task[]> = {};
+  tasks.forEach(t => {
+    if (!t.assigned_to || !(t as any).due_time || t.due_date !== dateKey || t.completed_at) return;
+    if (!tasksByMember[t.assigned_to]) tasksByMember[t.assigned_to] = [];
+    tasksByMember[t.assigned_to].push(t);
+  });
+
+  const topFor = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    const clamped = Math.max(DAY_START_HOUR, Math.min(DAY_END_HOUR, h));
+    return (clamped - DAY_START_HOUR) * HOUR_HEIGHT + (h >= DAY_START_HOUR && h <= DAY_END_HOUR ? (m / 60) * HOUR_HEIGHT : 0);
+  };
+
+  return (
+    <View style={styles.calendarContainer}>
+      <View style={styles.monthNav}>
+        <TouchableOpacity onPress={() => onDateChange(addDays(date, -1))} style={styles.monthNavBtn}><Text style={styles.monthNavIcon}>‹</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => onDateChange(new Date())}>
+          <Text style={styles.monthTitle}>{isToday(date) ? 'Heute' : format(date, 'EEEE, d. MMM', { locale: de })}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => onDateChange(addDays(date, 1))} style={styles.monthNavBtn}><Text style={styles.monthNavIcon}>›</Text></TouchableOpacity>
+      </View>
+      {holiday && <Text style={[styles.weekHolidayLabel, { fontSize: 12, marginBottom: spacing.sm }]}>🎉 {holiday}</Text>}
+
+      {members.length === 0 ? (
+        <Text style={styles.emptyBody}>Keine Haushaltsmitglieder.</Text>
+      ) : (
+        <View style={{ flexDirection: 'row' }}>
+          <View style={{ width: 34 }}>
+            <View style={{ height: 44 }} />
+            {hours.map(h => (
+              <View key={h} style={{ height: HOUR_HEIGHT }}>
+                <Text style={styles.dayViewHourLabel}>{h}:00</Text>
+              </View>
+            ))}
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View>
+              <View style={{ flexDirection: 'row', height: 44 }}>
+                {members.map(m => (
+                  <View key={m.id} style={[styles.dayViewMemberHeader, { width: MEMBER_COL_WIDTH }]}>
+                    <View style={[styles.dayViewAvatar, { backgroundColor: m.avatar_color || colors.brand }]}>
+                      <Text style={styles.dayViewAvatarText}>{(m.display_name || '?').charAt(0).toUpperCase()}</Text>
+                    </View>
+                    <Text style={styles.dayViewMemberName} numberOfLines={1}>{m.display_name}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={{ flexDirection: 'row', height: hours.length * HOUR_HEIGHT }}>
+                {members.map(m => (
+                  <View key={m.id} style={[styles.dayViewCol, { width: MEMBER_COL_WIDTH }]}>
+                    {hours.map(h => <View key={h} style={[styles.dayViewHourLine, { top: (h - DAY_START_HOUR) * HOUR_HEIGHT }]} />)}
+                    {(tasksByMember[m.id] || []).map(t => (
+                      <View key={t.id} style={[styles.dayViewBlock, { top: topFor((t as any).due_time), backgroundColor: catColor(t.category) }]}>
+                        <Text style={styles.dayViewBlockTime}>{(t as any).due_time}</Text>
+                        <Text style={styles.dayViewBlockTitle} numberOfLines={2}>{t.title}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ─── POINTS TOAST ─────────────────────────────────────────────
 function PointsToast({ points, visible }: { points: number; visible: boolean }) {
   const { colors } = useTheme();
@@ -1024,6 +1110,7 @@ export default function TasksScreen() {
   const { household, currentMember, members, tasks, setTasks, completeTask, weekScores, loadWeekScores, items, setItems, themeId } = useStore();
   const activeTheme = APP_THEMES.find(t => t.id === themeId);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
+  const [dayViewDate, setDayViewDate] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
   const [photoPrefill, setPhotoPrefill] = useState<{ title?: string; description?: string; due_date?: string; due_time?: string; location_url?: string } | null>(null);
   const [extractingPhoto, setExtractingPhoto] = useState(false);
@@ -1434,6 +1521,11 @@ export default function TasksScreen() {
           <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]} onPress={() => setViewMode('list')}>
             <Text style={styles.viewToggleText}>☰</Text>
           </TouchableOpacity>
+          {members.length > 1 && (
+            <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'day' && styles.viewToggleBtnActive]} onPress={() => { setDayViewDate(selectedDate || new Date()); setViewMode('day'); }}>
+              <Text style={styles.viewToggleText}>👥</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -1450,8 +1542,11 @@ export default function TasksScreen() {
         {viewMode === 'month' && (
           <CalendarView tasks={tasks} selectedDate={selectedDate} mealPlans={mealPlans} onDayPress={(day) => setSelectedDate(isSameDay(day, selectedDate || new Date(-1)) ? null : day)} />
         )}
+        {viewMode === 'day' && (
+          <MemberDayView tasks={tasks} members={members} date={dayViewDate} onDateChange={setDayViewDate} />
+        )}
 
-        {availableYears.length > 1 && !selectedDate && (
+        {viewMode !== 'day' && availableYears.length > 1 && !selectedDate && (
           <View style={styles.yearNav}>
             <TouchableOpacity onPress={() => { const i = availableYears.indexOf(selectedYear); if (i > 0) setSelectedYear(availableYears[i - 1]); }} style={styles.yearNavBtn}>
               <Text style={styles.yearNavArrow}>‹</Text>
@@ -1463,6 +1558,8 @@ export default function TasksScreen() {
           </View>
         )}
 
+        {viewMode !== 'day' && (
+        <>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
           <TouchableOpacity style={[styles.filterChip, !filterCategory && styles.filterChipActive]} onPress={() => setFilterCategory(null)}>
             <Text style={[styles.filterChipText, !filterCategory && styles.filterChipTextActive]}>Alle</Text>
@@ -1553,6 +1650,8 @@ export default function TasksScreen() {
             </>
           )}
         </View>
+        </>
+        )}
         <View style={{ height: 100 }} />
       </ScrollView>
 
@@ -1641,6 +1740,16 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   weekDayNumSelected: { backgroundColor: colors.brand },
   weekDayNum: { ...typography.sm, color: colors.text, fontWeight: '700' },
   weekHolidayLabel: { ...typography.xs, fontSize: 8, color: '#EF4444', textAlign: 'center', marginBottom: 2 },
+  dayViewHourLabel: { ...typography.xs, color: colors.textMuted, marginTop: -6 },
+  dayViewMemberHeader: { alignItems: 'center', justifyContent: 'center', gap: 4 },
+  dayViewAvatar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  dayViewAvatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  dayViewMemberName: { ...typography.xs, color: colors.text, fontWeight: '600' },
+  dayViewCol: { borderLeftWidth: 1, borderLeftColor: colors.borderLight },
+  dayViewHourLine: { position: 'absolute', left: 0, right: 0, borderTopWidth: 1, borderTopColor: colors.borderLight },
+  dayViewBlock: { position: 'absolute', left: 2, right: 2, backgroundColor: colors.brand, borderRadius: radius.sm, padding: 4, minHeight: HOUR_HEIGHT - 6 },
+  dayViewBlockTime: { ...typography.xs, color: '#fff', fontWeight: '700', fontSize: 9 },
+  dayViewBlockTitle: { ...typography.xs, color: '#fff', fontSize: 10 },
   weekEmojiStack: { alignItems: 'center', gap: 2 },
   weekEmojiPill: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 3, paddingVertical: 1, alignItems: 'center', minWidth: 26 },
   weekTaskEmoji: { fontSize: 17, lineHeight: 22 },
