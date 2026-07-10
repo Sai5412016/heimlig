@@ -31,6 +31,7 @@ Heimlig ist **live im Play Store** (offizieller Production-Release, kein geschlo
 - Wichtige Tabellen: `households`, `members`, `shopping_lists`, `shopping_items`, `tasks`, `transactions`, `recipes`, `meal_plans`, `member_scores`, `item_catalog`, `app_config`.
 - RLS nutzt `is_household_member(household_id)`. SECURITY-DEFINER-RPCs: `create_household_for_user`, `join_household_by_code`, `bump_item_catalog`.
 - Edge Function `extract-recipe` (Rezept-Extraktion aus URL/Text/Bild via Claude). `ANTHROPIC_API_KEY` ist ein Supabase-Secret. Deploy via `npx supabase functions deploy extract-recipe --project-ref eabwlyihcmofkbqtbryz` (verify_jwt an lassen!).
+- Edge Function `timetree-import` (siehe „TimeTree-Wechsel" unten) – nutzt TimeTrees inoffizielle API, kein Secret nötig (Nutzer gibt eigene TimeTree-Zugangsdaten pro Aufruf ein, wird nicht gespeichert).
 - Tester-Haushalte stehen auf `plan_tier = 'premium'` (Freunde, zahlen nicht).
 
 ## Wichtige Dateien
@@ -50,6 +51,13 @@ Heimlig ist **live im Play Store** (offizieller Production-Release, kein geschlo
 
 ## Play-Store-Versionshinweise (statt Google-Group-Mail)
 Seit dem Production-Release gibt's **keine Tester-Ankündigungsmail mehr**. Stattdessen kommen die „Was ist neu"-Texte direkt ins `<de-DE>`-Feld bei „Versionshinweise" in der Play Console beim Release erstellen. Kurz, locker, Du-Form, 1-2 Sätze mit Emoji reichen (kein Betreff/Anrede/Signatur nötig, das ist nur für die alte Tester-Mail).
+
+## TimeTree-Wechsel (Onboarding für Umsteiger)
+TimeTree hat **keine offizielle Export-/Sync-API** (offiziell bestätigt von TimeTree Support) — deshalb zwei Wege in `app/(tabs)/tasks.tsx`, beide mit derselben Duplikat-Erkennung (`isDuplicateTask`, matcht wiederkehrende Termine über Titel+Wiederholung, einmalige über Titel+Datum+Zeit):
+- 🔄 **Quickstart** (`TimeTreeQuickstartModal`) – für alle sichtbar. Schnelles manuelles Nacherfassen der wichtigsten wiederkehrenden Termine, kein Login nötig.
+- 🔗 **Direkter TimeTree-Import** (`TimeTreeLoginModal` + Edge Function `timetree-import`) – nur sichtbar wenn `households.timetree_import_enabled = true`. Fragt TimeTree-E-Mail+Passwort ab, loggt sich über TimeTrees inoffizielle, reverse-engineerte Web-API ein (`PUT https://timetreeapp.com/api/v1/auth/email/signin`, danach `/calendars` + `/calendar/{id}/events/sync`), holt alle Termine und importiert sie. Passwort wird nur für den einen Request verwendet, nie gespeichert/geloggt.
+  - **Bewusst nur für ausgewählte Haushalte freigeschaltet** (aktuell: Andis eigener Haushalt „Birkensteig"), weil das inoffizielle TimeTree-Endpunkte nutzt (ToS-Risiko, kann jederzeit brechen). Freischalten: `update households set timetree_import_enabled = true where id = '...'`.
+  - Portiert von [eoleedi/TimeTree-Exporter](https://github.com/eoleedi/TimeTree-Exporter) (Python-Referenzimplementierung).
 
 ## Bereits umgesetzt (nicht mehr offen)
 - ✅ **Mehrere Einkaufslisten pro Geschäft** (DM/Rossmann/Aldi etc.) + umschalten/erstellen/löschen – volle UI in `shopping.tsx` (`ListPickerModal`, „Listen ▾"-Button, „Schnell erstellen"-Chips pro Supermarkt) + Store-Funktionen `switchList`/`createShoppingList`/`deleteShoppingList`.

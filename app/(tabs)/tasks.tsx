@@ -545,6 +545,80 @@ function TimeTreeQuickstartModal({ visible, onClose, onSave }: {
   );
 }
 
+// ─── TIMETREE DIRECT IMPORT (gated: households.timetree_import_enabled) ────
+// Uses TimeTree's unofficial web API (see supabase/functions/timetree-import) since there's
+// no official export. Only shown for households explicitly flagged in the database — this
+// isn't offered broadly because it means handling a third party's real credentials.
+function TimeTreeLoginModal({ visible, onClose, onImport }: {
+  visible: boolean;
+  onClose: () => void;
+  onImport: (email: string, password: string) => Promise<void>;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!visible) { setEmail(''); setPassword(''); setLoading(false); }
+  }, [visible]);
+
+  const handleImport = async () => {
+    if (!email.trim() || !password) return;
+    setLoading(true);
+    try {
+      await onImport(email.trim(), password);
+    } finally {
+      setPassword(''); // never keep the password in memory longer than the request
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={[styles.modalOverlay, Platform.OS === 'web' && { justifyContent: 'flex-start' }]}>
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} onPress={onClose} />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={Platform.OS === 'web' ? { width: '100%', flex: 1 } : undefined}>
+          <View style={[styles.modalSheet, Platform.OS === 'web' && { maxHeight: '100%' }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>🔗 Mit TimeTree verbinden</Text>
+            <Text style={[styles.fieldLabel, { textTransform: 'none', marginBottom: spacing.md }]}>
+              Deine TimeTree-Zugangsdaten werden nur für diesen einen Import verwendet, nirgends gespeichert
+              und laufen über TimeTrees inoffizielle Schnittstelle — kann jederzeit aufhören zu funktionieren.
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="TimeTree-E-Mail"
+              placeholderTextColor={colors.textMuted}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="TimeTree-Passwort"
+              placeholderTextColor={colors.textMuted}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+            <TouchableOpacity
+              style={[styles.saveBtn, (!email.trim() || !password || loading) && { opacity: 0.4 }]}
+              onPress={handleImport}
+              disabled={!email.trim() || !password || loading}
+            >
+              <Text style={styles.saveBtnText}>{loading ? 'Importiere …' : 'Termine importieren'}</Text>
+            </TouchableOpacity>
+            <View style={{ height: 20 }} />
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── TASK CARD ────────────────────────────────────────────────
 function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
   task: Task & { due_time?: string }; onComplete: (id: string) => void;
@@ -911,6 +985,7 @@ export default function TasksScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [showModal, setShowModal] = useState(false);
   const [showQuickstart, setShowQuickstart] = useState(false);
+  const [showTimeTreeLogin, setShowTimeTreeLogin] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
@@ -1137,6 +1212,70 @@ export default function TasksScreen() {
     Alert.alert('✓ Übernommen', `${data?.length ?? fresh.length} Termine wurden angelegt.${skippedNote}`);
   };
 
+  const handleTimeTreeImport = async (email: string, password: string) => {
+    if (!household || !currentMember) return;
+    const { data, error } = await supabase.functions.invoke('timetree-import', {
+      body: { household_id: household.id, email, password },
+    });
+    if (error) {
+      let message = 'TimeTree-Import fehlgeschlagen.';
+      try {
+        const body = await (error as any).context?.json?.();
+        if (body?.error) message = body.error;
+      } catch { /* keep generic message */ }
+      Alert.alert('Fehler', message);
+      return;
+    }
+
+    const parsed: IcsEvent[] = data?.events || [];
+    if (parsed.length === 0) {
+      setShowTimeTreeLogin(false);
+      Alert.alert('Keine Termine', 'In deinem TimeTree-Kalender wurden keine Termine gefunden.');
+      return;
+    }
+
+    const seen = new Set<string>();
+    const events = parsed.filter(e => {
+      if (isDuplicateTask(e)) return false;
+      const key = `${e.title.toLowerCase().trim()}|${e.recurrence || e.date}|${e.time || ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    const skipped = parsed.length - events.length;
+
+    if (events.length === 0) {
+      setShowTimeTreeLogin(false);
+      Alert.alert('Schon importiert', `Alle ${parsed.length} Termine aus TimeTree sind bereits im Kalender vorhanden.`);
+      return;
+    }
+
+    const rows = events.map(e => {
+      const isBirthday = /geburtstag|glückwunsch/i.test(e.title);
+      const desc = [e.location, e.description].filter(Boolean).join(' · ').slice(0, 300) || undefined;
+      return {
+        household_id: household.id,
+        title: e.title,
+        description: desc,
+        category: isBirthday ? 'Geburtstag' : 'Sonstiges',
+        priority: 'normal',
+        points: 10,
+        due_date: e.date,
+        due_time: e.time || null,
+        recurrence: e.recurrence || null,
+        recurrence_interval: e.recurrence ? 1 : null,
+        created_by: currentMember.id,
+      };
+    });
+    const { data: inserted, error: insertError } = await supabase.from('tasks').insert(rows).select();
+    if (insertError) { Alert.alert('Fehler', insertError.message); return; }
+    if (inserted) setTasks([...tasks, ...inserted]);
+    setShowTimeTreeLogin(false);
+    hapticNotification(Haptics.NotificationFeedbackType.Success);
+    const skippedNote = skipped > 0 ? ` (${skipped} bereits vorhanden)` : '';
+    Alert.alert('✓ Importiert', `${inserted?.length ?? events.length} Termine aus TimeTree übernommen.${skippedNote}`);
+  };
+
   const handleDelete = (id: string) => {
     const task = tasks.find(t => t.id === id);
     Alert.alert('Löschen', 'Aufgabe wirklich löschen?', [
@@ -1203,6 +1342,11 @@ export default function TasksScreen() {
           <TouchableOpacity style={styles.importBtn} onPress={() => setShowQuickstart(true)}>
             <Text style={styles.viewToggleText}>🔄</Text>
           </TouchableOpacity>
+          {household?.timetree_import_enabled && (
+            <TouchableOpacity style={styles.importBtn} onPress={() => setShowTimeTreeLogin(true)}>
+              <Text style={styles.viewToggleText}>🔗</Text>
+            </TouchableOpacity>
+          )}
         </View>
         <View style={styles.viewToggle}>
           <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'week' && styles.viewToggleBtnActive]} onPress={() => { setViewMode('week'); setSelectedDate(null); }}>
@@ -1372,6 +1516,13 @@ export default function TasksScreen() {
         onClose={() => setShowQuickstart(false)}
         onSave={handleQuickstartSave}
       />
+      {household?.timetree_import_enabled && (
+        <TimeTreeLoginModal
+          visible={showTimeTreeLogin}
+          onClose={() => setShowTimeTreeLogin(false)}
+          onImport={handleTimeTreeImport}
+        />
+      )}
     </SafeAreaView>
   );
 }
