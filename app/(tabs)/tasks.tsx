@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  Modal, ScrollView, Pressable, KeyboardAvoidingView, Platform, Animated, Linking, Image
+  Modal, ScrollView, Pressable, KeyboardAvoidingView, Platform, Animated, Linking, Image, ActivityIndicator
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -132,12 +132,13 @@ function TimePickerDropdown({ value, onChange }: { value: string; onChange: (t: 
 }
 
 // ─── ADD TASK MODAL ───────────────────────────────────────────
-function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, editTask, householdId }: {
+function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, editTask, householdId, prefill }: {
   visible: boolean; onClose: () => void;
   onSave: (task: Partial<Task> & { due_time?: string; notify?: boolean }) => void;
   members: any[]; preselectedDate?: Date | null;
   editTask?: (Task & { due_time?: string }) | null;
   householdId?: string;
+  prefill?: { title?: string; description?: string; due_date?: string; due_time?: string; location_url?: string } | null;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -185,10 +186,18 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       setRemindTime(editTask.remind_time || '05:00');
       setAttachment(editTask.attachment_path ? { path: editTask.attachment_path, name: editTask.attachment_name || 'Anhang' } : null);
       setLocationUrl(editTask.location_url || '');
+    } else if (prefill) {
+      setTitle(prefill.title || '');
+      setDescription(prefill.description || '');
+      setCategory('Sonstiges');
+      setDueDate(prefill.due_date || (preselectedDate ? format(preselectedDate, 'yyyy-MM-dd') : ''));
+      setUseTime(!!prefill.due_time);
+      setDueTime(prefill.due_time || getCurrentTime());
+      setLocationUrl(prefill.location_url || '');
     } else if (preselectedDate) {
       setDueDate(format(preselectedDate, 'yyyy-MM-dd'));
     }
-  }, [visible, preselectedDate, editTask]);
+  }, [visible, preselectedDate, editTask, prefill]);
 
   const pickPhoto = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
@@ -1016,6 +1025,8 @@ export default function TasksScreen() {
   const activeTheme = APP_THEMES.find(t => t.id === themeId);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [showModal, setShowModal] = useState(false);
+  const [photoPrefill, setPhotoPrefill] = useState<{ title?: string; description?: string; due_date?: string; due_time?: string; location_url?: string } | null>(null);
+  const [extractingPhoto, setExtractingPhoto] = useState(false);
   const [showQuickstart, setShowQuickstart] = useState(false);
   const [showTimeTreeLogin, setShowTimeTreeLogin] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -1244,6 +1255,39 @@ export default function TasksScreen() {
     Alert.alert('✓ Übernommen', `${data?.length ?? fresh.length} Termine wurden angelegt.${skippedNote}`);
   };
 
+  const handlePhotoEvent = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      base64: true,
+      quality: 0.6,
+    });
+    if (res.canceled || !res.assets?.[0]?.base64) return;
+    const asset = res.assets[0];
+    setExtractingPhoto(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('extract-event', {
+        body: { imageBase64: asset.base64, imageMediaType: asset.mimeType || 'image/jpeg' },
+      });
+      if (error || !data) throw error || new Error('no data');
+      if (!data.title) {
+        Alert.alert('Nichts erkannt', 'Aus dem Foto konnten keine Termin-Infos gelesen werden. Du kannst den Termin auch manuell anlegen.');
+        return;
+      }
+      setPhotoPrefill({
+        title: data.title,
+        description: data.description || undefined,
+        due_date: data.date || undefined,
+        due_time: data.time || undefined,
+        location_url: data.location || undefined,
+      });
+      setShowModal(true);
+    } catch {
+      Alert.alert('Fehler', 'Termin konnte nicht aus dem Foto erkannt werden.');
+    } finally {
+      setExtractingPhoto(false);
+    }
+  };
+
   const handleTimeTreeEvents = async (raw: RawTimeTreeEvent[]) => {
     if (!household || !currentMember) return;
     const parsed: IcsEvent[] = mapTimeTreeEvents(raw);
@@ -1371,6 +1415,9 @@ export default function TasksScreen() {
           <TouchableOpacity style={styles.importBtn} onPress={() => setShowQuickstart(true)}>
             <Text style={styles.viewToggleText}>🔄</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.importBtn} onPress={handlePhotoEvent} disabled={extractingPhoto}>
+            {extractingPhoto ? <ActivityIndicator size="small" color={colors.brand} /> : <Text style={styles.viewToggleText}>📷</Text>}
+          </TouchableOpacity>
           {household?.timetree_import_enabled && Platform.OS !== 'web' && (
             <TouchableOpacity style={styles.importBtn} onPress={() => setShowTimeTreeLogin(true)}>
               <Text style={styles.viewToggleText}>🔗</Text>
@@ -1436,7 +1483,7 @@ export default function TasksScreen() {
                 <Text style={styles.selectedDateHoliday}>🎉 {holidayName(format(selectedDate, 'yyyy-MM-dd'))}</Text>
               )}
             </View>
-            <TouchableOpacity onPress={() => setShowModal(true)}>
+            <TouchableOpacity onPress={() => { setPhotoPrefill(null); setShowModal(true); }}>
               <Text style={styles.addForDayText}>+ Aufgabe</Text>
             </TouchableOpacity>
           </View>
@@ -1509,7 +1556,7 @@ export default function TasksScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={() => setShowModal(true)}>
+      <TouchableOpacity style={styles.fab} onPress={() => { setPhotoPrefill(null); setShowModal(true); }}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
@@ -1539,12 +1586,13 @@ export default function TasksScreen() {
 
       <AddTaskModal
         visible={showModal || !!editingTask}
-        onClose={() => { setShowModal(false); setEditingTask(null); }}
+        onClose={() => { setShowModal(false); setEditingTask(null); setPhotoPrefill(null); }}
         onSave={handleSaveTask}
         members={members}
         preselectedDate={selectedDate}
         editTask={editingTask}
         householdId={household?.id}
+        prefill={photoPrefill}
       />
       <TimeTreeQuickstartModal
         visible={showQuickstart}
