@@ -277,3 +277,14 @@ export const AVATAR_COLORS = [
   '#2D6A4F', '#FF6B35', '#3B82F6', '#8B5CF6',
   '#F59E0B', '#EC4899', '#06B6D4', '#10B981',
 ];
+
+// Consistent timing so every micro-interaction (checkbox pulse, success toast, progress
+// bar fill) feels like it belongs to the same app instead of picking a random duration.
+export const motion = {
+  duration: { fast: 150, base: 250, slow: 400 },
+  spring: { useNativeDriver: true, speed: 20, bounciness: 6 },
+};
+
+// Minimum tappable size (Apple HIG / Material both land on ~44dp) — use for icon-only
+// buttons that would otherwise render smaller than their visual glyph suggests.
+export const touchTarget = { min: 44 };

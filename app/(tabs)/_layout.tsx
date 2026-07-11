@@ -1,15 +1,32 @@
 // app/(tabs)/_layout.tsx
+import { useEffect, useRef } from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text } from 'react-native';
+import { View, Text, Animated, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
-import { radius } from '../../constants/theme';
+import { radius, motion } from '../../constants/theme';
 
 function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
   const { colors } = useTheme();
+  const scale = useRef(new Animated.Value(focused ? 1 : 0.92)).current;
+  const bgOpacity = useRef(new Animated.Value(focused ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scale, { toValue: focused ? 1 : 0.92, ...motion.spring }),
+      Animated.timing(bgOpacity, { toValue: focused ? 1 : 0, duration: motion.duration.fast, useNativeDriver: true }),
+    ]).start();
+  }, [focused, scale, bgOpacity]);
+
   return (
-    <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.sm, minWidth: 56, backgroundColor: focused ? colors.brandPale : 'transparent' }}>
-      <Text style={{ fontSize: 20 }}>{emoji}</Text>
+    <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 2, minWidth: 56 }}>
+      <Animated.View
+        style={{ position: 'absolute', top: -2, width: 40, height: 24, borderRadius: radius.sm, backgroundColor: colors.brandPale, opacity: bgOpacity }}
+      />
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Text style={{ fontSize: 20 }}>{emoji}</Text>
+      </Animated.View>
       <Text style={{ fontSize: 8, color: focused ? colors.brand : colors.textMuted, marginTop: 1, fontWeight: focused ? '700' : '600' }}>{label}</Text>
     </View>
   );
@@ -32,6 +49,9 @@ export default function TabLayout() {
           paddingTop: 6,
         },
         tabBarShowLabel: false,
+      }}
+      screenListeners={{
+        tabPress: () => { if (Platform.OS !== 'web') Haptics.selectionAsync(); },
       }}
     >
       <Tabs.Screen name="index" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🏡" label="Home" focused={focused} /> }} />
