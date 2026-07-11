@@ -391,11 +391,11 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
               {recurrence && (
                 <View style={styles.intervalRow}>
                   <Text style={styles.intervalLabel}>Alle</Text>
-                  <TouchableOpacity style={styles.intervalBtn} onPress={() => setRecurrenceInterval(n => Math.max(1, n - 1))}>
+                  <TouchableOpacity style={styles.intervalBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={() => setRecurrenceInterval(n => Math.max(1, n - 1))}>
                     <Text style={styles.intervalBtnText}>−</Text>
                   </TouchableOpacity>
                   <Text style={styles.intervalValue}>{recurrenceInterval}</Text>
-                  <TouchableOpacity style={styles.intervalBtn} onPress={() => setRecurrenceInterval(n => Math.min(99, n + 1))}>
+                  <TouchableOpacity style={styles.intervalBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={() => setRecurrenceInterval(n => Math.min(99, n + 1))}>
                     <Text style={styles.intervalBtnText}>+</Text>
                   </TouchableOpacity>
                   <Text style={styles.intervalLabel}>
@@ -1599,7 +1599,7 @@ export default function TasksScreen() {
                   <TouchableOpacity style={{ flex: 1 }} onPress={() => sourceUrl && Linking.openURL(sourceUrl)} activeOpacity={sourceUrl ? 0.6 : 1}>
                     <Text style={styles.mealPlanName}>{meal.recipe_name}{sourceUrl ? ' 🔗' : ''}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.mealDeleteBtn} onPress={() => {
+                  <TouchableOpacity style={styles.mealDeleteBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => {
                     Alert.alert('Mahlzeit entfernen?', `"${meal.recipe_name}" aus dem Kalender löschen? Die zugehörigen Zutaten werden auch aus dem Einkaufskorb entfernt.`, [
                       { text: 'Abbrechen', style: 'cancel' },
                       { text: 'Löschen', style: 'destructive', onPress: async () => {
@@ -1788,7 +1788,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   mealDeleteBtn: { paddingHorizontal: 8, paddingVertical: 4 },
   mealDeleteText: { color: colors.textMuted, fontSize: 14, fontWeight: '600' },
   taskList: { paddingHorizontal: spacing.md },
-  taskCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, marginBottom: spacing.sm, ...shadow.sm, overflow: 'hidden' },
+  taskCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, marginBottom: spacing.sm, ...shadow.sm, overflow: 'hidden' },
   priorityBar: { width: 4, alignSelf: 'stretch' },
   taskCheckbox: { padding: spacing.md },
   checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
@@ -1836,7 +1836,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   pointsToast: { position: 'absolute', bottom: 100, alignSelf: 'center', backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, ...shadow.lg },
   pointsToastText: { color: '#fff', fontWeight: '800', fontSize: 18 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xxl, maxHeight: '92%' },
+  modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxl, maxHeight: '92%' },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   modalTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
   input: { backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md, ...typography.body, color: colors.text, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md },

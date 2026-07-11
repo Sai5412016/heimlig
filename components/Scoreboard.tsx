@@ -105,7 +105,7 @@ export default function Scoreboard({ visible, onClose, householdId, members, cur
 
 function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xxl, maxHeight: '85%' },
+  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxl, maxHeight: '85%' },
   handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   title: { ...typography.h2, color: colors.text, textAlign: 'center' },
   sub: { ...typography.body, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.lg },

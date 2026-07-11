@@ -174,11 +174,11 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
               {recurrence && (
                 <View style={styles.intervalRow}>
                   <Text style={styles.intervalLabel}>Alle</Text>
-                  <TouchableOpacity style={styles.intervalBtn} onPress={() => setRecurrenceInterval(n => Math.max(1, n - 1))}>
+                  <TouchableOpacity style={styles.intervalBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={() => setRecurrenceInterval(n => Math.max(1, n - 1))}>
                     <Text style={styles.intervalBtnText}>−</Text>
                   </TouchableOpacity>
                   <Text style={styles.intervalValue}>{recurrenceInterval}</Text>
-                  <TouchableOpacity style={styles.intervalBtn} onPress={() => setRecurrenceInterval(n => Math.min(99, n + 1))}>
+                  <TouchableOpacity style={styles.intervalBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={() => setRecurrenceInterval(n => Math.min(99, n + 1))}>
                     <Text style={styles.intervalBtnText}>+</Text>
                   </TouchableOpacity>
                   <Text style={styles.intervalLabel}>
@@ -699,7 +699,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   fab: { position: 'absolute', right: spacing.lg, bottom: spacing.xl, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', ...shadow.lg },
   fabText: { color: '#fff', fontSize: 28, lineHeight: 30, fontWeight: '300' },
   modalOverlay: { flex: 1, justifyContent: Platform.OS === 'web' ? 'flex-start' : 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xxl, maxHeight: Platform.OS === 'web' ? '100%' : '92%' },
+  modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxl, maxHeight: Platform.OS === 'web' ? '100%' : '92%' },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   typeToggle: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   typeBtn: { flex: 1, padding: spacing.md, borderRadius: radius.md, alignItems: 'center', borderWidth: 1.5, borderColor: colors.border },

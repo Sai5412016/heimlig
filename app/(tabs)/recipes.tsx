@@ -212,7 +212,7 @@ export default function RecipesScreen() {
     const cartCount = items.filter(i => i.recipe_id === item.id && !i.checked).length;
     return (
       <View style={styles.card}>
-        <TouchableOpacity onPress={() => toggleRecipeFavorite(item.id)} style={styles.favBtn}>
+        <TouchableOpacity onPress={() => toggleRecipeFavorite(item.id)} style={styles.favBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={styles.favIcon}>{item.is_favorite ? '⭐' : '☆'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.cardBody} onPress={() => setPlanTarget(item)} activeOpacity={0.7}>
@@ -334,7 +334,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
 
   // Modal
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xxl },
+  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxl },
   handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   modalTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.lg },
   sectionLabel: { ...typography.xs, color: colors.textMuted, fontWeight: '700', letterSpacing: 0.5, marginBottom: spacing.sm },

@@ -428,7 +428,7 @@ export default function HouseholdScreen() {
                 </View>
               </View>
               {!isMe && currentMember?.role === 'admin' && (
-                <TouchableOpacity onPress={() => handleRemoveMember(m.id, m.display_name)} style={styles.removeMemberBtn}>
+                <TouchableOpacity onPress={() => handleRemoveMember(m.id, m.display_name)} style={styles.removeMemberBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                   <Text style={styles.removeMemberBtnText}>×</Text>
                 </TouchableOpacity>
               )}
@@ -700,7 +700,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   // Modal
   modalOverlay: { flex: 1, justifyContent: Platform.OS === 'web' ? 'flex-start' : 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
-    backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
     padding: spacing.lg, paddingBottom: spacing.xxl,
     maxHeight: Platform.OS === 'web' ? '100%' : undefined,
   },

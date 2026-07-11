@@ -218,7 +218,7 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
 function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   flex: { flex: 1 },
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xxl },
+  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxl },
   handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   title: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
   tabRow: { flexDirection: 'row', marginBottom: spacing.md, gap: spacing.sm },
