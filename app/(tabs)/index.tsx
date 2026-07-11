@@ -19,12 +19,12 @@ function AvatarCircle({ name, color, size = 36 }: { name: string; color: string;
   const { colors } = useTheme();
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.surface }}>
-      <Text style={{ color: '#fff', fontWeight: '700', fontSize: size * 0.38 }}>{name[0].toUpperCase()}</Text>
+      <Text style={{ color: colors.textInverse, fontWeight: '700', fontSize: size * 0.38 }}>{name[0].toUpperCase()}</Text>
     </View>
   );
 }
 
-function StatCard({ emoji, label, value, sub, onPress, color = colors.brand }: any) {
+function StatCard({ emoji, label, value, sub, trend, onPress, color = colors.brand }: any) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
@@ -33,6 +33,7 @@ function StatCard({ emoji, label, value, sub, onPress, color = colors.brand }: a
       <Text style={[styles.statValue, { color }]}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
       {sub && <Text style={styles.statSub}>{sub}</Text>}
+      {trend && <Text style={[styles.statTrend, { color: trend.color }]}>{trend.text}</Text>}
     </TouchableOpacity>
   );
 }
@@ -75,10 +76,13 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = React.useState(false);
   const [showChat, setShowChat] = React.useState(false);
   const [showBirthdays, setShowBirthdays] = React.useState(false);
+  const [prevMonthExpenses, setPrevMonthExpenses] = React.useState<number | null>(null);
 
   // Birthdays live in the calendar + the dedicated widget below — keep them out of "open tasks".
   const openTasks = tasks.filter(t => !t.completed_at && t.category !== 'Geburtstag');
   const uncheckedItems = items.filter(i => !i.checked);
+  const todayKey = format(new Date(), 'yyyy-MM-dd');
+  const overdueCount = openTasks.filter(t => t.due_date && t.due_date < todayKey).length;
 
   // Strip "Geburtstag" boilerplate from a task title so we show just the person's name.
   const birthdayName = (title: string) =>
@@ -112,12 +116,17 @@ export default function DashboardScreen() {
 
   const loadData = async () => {
     if (!household) return;
-    const [tasksRes, recentTx] = await Promise.all([
+    const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthKey = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
+    const [tasksRes, recentTx, prevTx] = await Promise.all([
       supabase.from('tasks').select('*').eq('household_id', household.id).is('completed_at', null).order('due_date'),
       fetchRecentTransactions(household.id, 50),
+      supabase.from('transactions').select('amount').eq('household_id', household.id).eq('type', 'expense')
+        .gte('transaction_date', `${prevMonthKey}-01`).lt('transaction_date', `${monthKey}-01`),
     ]);
     if (tasksRes.data) setTasks(tasksRes.data);
     if (recentTx) setTransactions(recentTx);
+    if (prevTx.data) setPrevMonthExpenses(prevTx.data.reduce((sum, t) => sum + Number(t.amount), 0));
   };
 
   useEffect(() => { loadData(); }, [household]);
@@ -194,9 +203,25 @@ export default function DashboardScreen() {
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <StatCard emoji="📋" label="Offen" value={openTasksThisMonth.length} sub="diesen Monat" onPress={() => router.push('/(tabs)/tasks')} />
+          <StatCard
+            emoji="📋" label="Offen" value={openTasksThisMonth.length} sub="diesen Monat"
+            onPress={() => router.push('/(tabs)/tasks')}
+            trend={overdueCount > 0 ? { text: `⚠️ ${overdueCount} überfällig`, color: colors.error } : undefined}
+          />
           <StatCard emoji="🛒" label="Fehlt" value={uncheckedItems.length} sub="Artikel" onPress={() => router.push('/(tabs)/shopping')} color={colors.accent} />
-          <StatCard emoji="💶" label="Ausgaben" value={`€ ${monthlyExpenses.toFixed(0)}`} sub="diesen Monat" onPress={() => router.push('/(tabs)/budget')} color={colors.info} />
+          <StatCard
+            emoji="💶" label="Ausgaben" value={`€ ${monthlyExpenses.toFixed(0)}`} sub="diesen Monat"
+            onPress={() => router.push('/(tabs)/budget')} color={colors.info}
+            trend={
+              prevMonthExpenses != null && prevMonthExpenses > 0
+                ? (() => {
+                    const diff = Math.round(((monthlyExpenses - prevMonthExpenses) / prevMonthExpenses) * 100);
+                    if (diff === 0) return { text: '= wie letzten Monat', color: colors.textMuted };
+                    return { text: `${diff > 0 ? '+' : ''}${diff}% ggü. Vormonat`, color: diff > 0 ? colors.warning : colors.success };
+                  })()
+                : undefined
+            }
+          />
         </View>
 
         {/* Pinboard / chat */}
@@ -305,6 +330,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   statValue: { ...typography.h2, color: colors.brand },
   statLabel: { ...typography.xs, color: colors.textMuted, marginTop: 2 },
   statSub: { ...typography.xs, color: colors.textMuted },
+  statTrend: { fontSize: 10, fontWeight: '700', marginTop: 3 },
   quickActions: { marginBottom: spacing.lg },
   sectionTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
   quickRow: { flexDirection: 'row', gap: spacing.sm },
