@@ -38,7 +38,7 @@ export default function TabLayout() {
       <Tabs.Screen name="shopping" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" label="Einkauf" focused={focused} /> }} />
       <Tabs.Screen name="scan" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🥗" label="Gesund" focused={focused} /> }} />
       <Tabs.Screen name="recipes" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🍳" label="Rezepte" focused={focused} /> }} />
-      <Tabs.Screen name="tasks" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="✅" label="Tasks" focused={focused} /> }} />
+      <Tabs.Screen name="tasks" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="📅" label="Tasks" focused={focused} /> }} />
       <Tabs.Screen name="budget" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="💶" label="Budget" focused={focused} /> }} />
       <Tabs.Screen name="household" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="👥" label="Haushalt" focused={focused} /> }} />
     </Tabs>
