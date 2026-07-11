@@ -1014,7 +1014,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   brandChip: { backgroundColor: colors.surface, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderWidth: 1.5, borderColor: colors.border },
   brandChipActive: { backgroundColor: colors.brand, borderColor: colors.brand },
   brandChipText: { ...typography.sm, color: colors.text, fontWeight: '600' },
-  brandChipTextActive: { color: '#fff' },
+  brandChipTextActive: { color: colors.textInverse },
   input: {
     backgroundColor: colors.background, borderRadius: radius.md,
     padding: spacing.md, ...typography.body, color: colors.text,

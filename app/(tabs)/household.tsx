@@ -24,7 +24,7 @@ import ThemeMotif from '../../components/ThemeMotif';
 function Avatar({ name, color, size = 48 }: { name: string; color: string; size?: number }) {
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: '#fff', fontWeight: '800', fontSize: size * 0.38 }}>{name[0].toUpperCase()}</Text>
+      <Text style={{ color: colors.textInverse, fontWeight: '800', fontSize: size * 0.38 }}>{name[0].toUpperCase()}</Text>
     </View>
   );
 }
@@ -623,7 +623,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   headerTitle: { ...typography.h2, color: colors.text },
   headerSub: { ...typography.sm, color: colors.textSecondary, marginTop: 2 },
   inviteBtn: { backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  inviteBtnText: { ...typography.sm, color: '#fff', fontWeight: '700' },
+  inviteBtnText: { ...typography.sm, color: colors.textInverse, fontWeight: '700' },
 
   inviteBanner: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -632,7 +632,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   },
   inviteBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   inviteBannerEmoji: { fontSize: 32 },
-  inviteBannerTitle: { ...typography.body, color: '#fff', fontWeight: '700' },
+  inviteBannerTitle: { ...typography.body, color: colors.textInverse, fontWeight: '700' },
   inviteBannerSub: { ...typography.sm, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   inviteBannerCode: { color: colors.brandLight, fontWeight: '800', fontFamily: 'monospace' },
   inviteBannerArrow: { fontSize: 28, color: 'rgba(255,255,255,0.5)' },
@@ -722,7 +722,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
     backgroundColor: colors.brand, borderRadius: radius.md, padding: spacing.md,
     alignItems: 'center', marginBottom: spacing.sm,
   },
-  shareBtnText: { ...typography.body, color: '#fff', fontWeight: '700' },
+  shareBtnText: { ...typography.body, color: colors.textInverse, fontWeight: '700' },
   webHint: { ...typography.xs, color: colors.textMuted, textAlign: 'center', marginBottom: spacing.sm },
   closeBtn: { padding: spacing.md, alignItems: 'center' },
   closeBtnText: { ...typography.body, color: colors.textSecondary },

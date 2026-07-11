@@ -112,17 +112,17 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <View style={styles.typeToggle}>
                 <TouchableOpacity style={[styles.typeBtn, type === 'expense' && styles.typeBtnExpense]} onPress={() => setType('expense')}>
-                  <Text style={[styles.typeBtnText, type === 'expense' && { color: '#fff' }]}>- Ausgabe</Text>
+                  <Text style={[styles.typeBtnText, type === 'expense' && { color: colors.textInverse }]}>- Ausgabe</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.typeBtn, type === 'income' && styles.typeBtnIncome]} onPress={() => setType('income')}>
-                  <Text style={[styles.typeBtnText, type === 'income' && { color: '#fff' }]}>+ Einnahme</Text>
+                  <Text style={[styles.typeBtnText, type === 'income' && { color: colors.textInverse }]}>+ Einnahme</Text>
                 </TouchableOpacity>
               </View>
               <Text style={styles.fieldLabel}>SCHNELLAUSWAHL</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
                 {QUICK_PRESETS.map(p => (
                   <TouchableOpacity key={p.label} style={[styles.presetChip, category === p.cat && description === p.desc && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => { setCategory(p.cat); setDescription(p.desc); }}>
-                    <Text style={[styles.presetChipText, category === p.cat && description === p.desc && { color: '#fff' }]}>{p.label}</Text>
+                    <Text style={[styles.presetChipText, category === p.cat && description === p.desc && { color: colors.textInverse }]}>{p.label}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -140,7 +140,7 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
                   return (
                     <TouchableOpacity key={cat} style={[styles.catChip, isActive && { backgroundColor: catColor, borderColor: catColor }]} onPress={() => setCategory(cat)}>
                       <Text style={styles.catChipEmoji}>{CAT_EMOJIS[cat]}</Text>
-                      <Text style={[styles.catChipText, isActive && { color: '#fff' }]}>{cat}</Text>
+                      <Text style={[styles.catChipText, isActive && { color: colors.textInverse }]}>{cat}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -152,13 +152,13 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
                     <View style={[styles.memberChipAvatar, { backgroundColor: paidBy === m.id ? 'rgba(255,255,255,0.3)' : m.avatar_color }]}>
                       <Text style={styles.memberChipAvatarText}>{m.display_name[0]}</Text>
                     </View>
-                    <Text style={[styles.memberChipText, paidBy === m.id && { color: '#fff' }]}>{m.display_name}</Text>
+                    <Text style={[styles.memberChipText, paidBy === m.id && { color: colors.textInverse }]}>{m.display_name}</Text>
                   </TouchableOpacity>
                 ))}
                 {members.length > 1 && (
                   <TouchableOpacity style={[styles.memberChip, paidBy === '' && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setPaidBy('')}>
                     <Text style={{ fontSize: 14 }}>🤝</Text>
-                    <Text style={[styles.memberChipText, paidBy === '' && { color: '#fff' }]}>Gemeinsam</Text>
+                    <Text style={[styles.memberChipText, paidBy === '' && { color: colors.textInverse }]}>Gemeinsam</Text>
                   </TouchableOpacity>
                 )}
               </ScrollView>
@@ -166,7 +166,7 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
               <View style={styles.recurrenceWrap}>
                 {TX_RECURRENCE_OPTIONS.map(r => (
                   <TouchableOpacity key={String(r.key)} style={[styles.catChip, recurrence === r.key && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setRecurrence(r.key)}>
-                    <Text style={[styles.catChipText, recurrence === r.key && { color: '#fff' }]}>{r.label}</Text>
+                    <Text style={[styles.catChipText, recurrence === r.key && { color: colors.textInverse }]}>{r.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -573,7 +573,7 @@ export default function BudgetScreen() {
                   style={[styles.filterChip, !filterCat && styles.filterChipActive]}
                   onPress={() => setFilterCat(null)}
                 >
-                  <Text style={[styles.filterChipText, !filterCat && { color: '#fff' }]}>Alle</Text>
+                  <Text style={[styles.filterChipText, !filterCat && { color: colors.textInverse }]}>Alle</Text>
                 </TouchableOpacity>
                 {availableCats.map(cat => (
                   <TouchableOpacity
@@ -582,7 +582,7 @@ export default function BudgetScreen() {
                     onPress={() => setFilterCat(filterCat === cat ? null : cat)}
                   >
                     <Text style={styles.filterChipEmoji}>{CAT_EMOJIS[cat] || '📦'}</Text>
-                    <Text style={[styles.filterChipText, filterCat === cat && { color: '#fff' }]}>{cat}</Text>
+                    <Text style={[styles.filterChipText, filterCat === cat && { color: colors.textInverse }]}>{cat}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -631,7 +631,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   whoNextBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginHorizontal: spacing.md, marginBottom: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, borderLeftWidth: 4, borderLeftColor: colors.textMuted, ...shadow.sm },
   whoNextBannerMe: { borderLeftColor: colors.brand, backgroundColor: colors.brandPale },
   whoNextAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  whoNextAvatarText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  whoNextAvatarText: { color: colors.textInverse, fontWeight: '800', fontSize: 16 },
   whoNextTitle: { ...typography.body, color: colors.text, fontWeight: '700' },
   whoNextSub: { ...typography.xs, color: colors.textSecondary, marginTop: 2 },
   summaryRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md, marginBottom: spacing.md },
@@ -642,7 +642,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   tab: { flex: 1, padding: spacing.sm, borderRadius: radius.sm, alignItems: 'center' },
   tabActive: { backgroundColor: colors.brand },
   tabText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
-  tabTextActive: { color: '#fff' },
+  tabTextActive: { color: colors.textInverse },
   section: { paddingHorizontal: spacing.md },
   sectionTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md, marginTop: spacing.sm },
 
@@ -660,7 +660,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   catBarAvatars: { flexDirection: 'row', gap: 6 },
   catBarAvatarWrap: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   catBarAvatar: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  catBarAvatarText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  catBarAvatarText: { color: colors.textInverse, fontSize: 9, fontWeight: '800' },
   catBarAvatarAmount: { ...typography.xs, color: colors.textSecondary, fontSize: 10 },
   catBarLastPayer: { ...typography.xs, color: colors.textMuted, fontSize: 10, fontStyle: 'italic' },
 
@@ -680,7 +680,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   txDate: { ...typography.xs, color: colors.textMuted },
   txPayerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   txPayerAvatar: { width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  txPayerAvatarText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  txPayerAvatarText: { color: colors.textInverse, fontSize: 9, fontWeight: '800' },
   txPayerName: { ...typography.xs, color: colors.textSecondary, fontWeight: '600' },
   txRight: { alignItems: 'flex-end', gap: 4 },
   txAmount: { ...typography.body, fontWeight: '700' },
@@ -689,7 +689,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   memberBreakdown: { marginTop: spacing.lg },
   memberRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
   memberAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
-  memberAvatarText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  memberAvatarText: { color: colors.textInverse, fontWeight: '700', fontSize: 14 },
   memberName: { flex: 1, ...typography.body, color: colors.text },
   memberAmount: { ...typography.body, color: colors.text, fontWeight: '700' },
   emptyState: { alignItems: 'center', paddingVertical: 48 },
@@ -697,7 +697,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   emptyTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.sm },
   emptyBody: { ...typography.sm, color: colors.textSecondary, textAlign: 'center' },
   fab: { position: 'absolute', right: spacing.lg, bottom: spacing.xl, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', ...shadow.lg },
-  fabText: { color: '#fff', fontSize: 28, lineHeight: 30, fontWeight: '300' },
+  fabText: { color: colors.textInverse, fontSize: 28, lineHeight: 30, fontWeight: '300' },
   modalOverlay: { flex: 1, justifyContent: Platform.OS === 'web' ? 'flex-start' : 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxl, maxHeight: Platform.OS === 'web' ? '100%' : '92%' },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
@@ -718,7 +718,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   catChipText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
   memberChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, marginRight: spacing.sm, backgroundColor: colors.surface },
   memberChipAvatar: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  memberChipAvatarText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  memberChipAvatarText: { color: colors.textInverse, fontSize: 11, fontWeight: '800' },
   memberChipText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
   recurrenceWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   intervalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
@@ -727,5 +727,5 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   intervalBtnText: { fontSize: 20, color: colors.brand, fontWeight: '800' },
   intervalValue: { ...typography.body, color: colors.text, fontWeight: '800', minWidth: 28, textAlign: 'center' },
   saveBtn: { backgroundColor: colors.brand, borderRadius: radius.md, padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },
-  saveBtnText: { ...typography.body, color: '#fff', fontWeight: '700' },
+  saveBtnText: { ...typography.body, color: colors.textInverse, fontWeight: '700' },
 }); }

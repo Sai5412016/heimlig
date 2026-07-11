@@ -105,7 +105,7 @@ function TimePickerDropdown({ value, onChange }: { value: string; onChange: (t: 
                   style={[styles.timeDropdownItem, h === hh && styles.timeDropdownItemActive]}
                   onPress={() => onChange(`${hh}:${m}`)}
                 >
-                  <Text style={[styles.timeDropdownText, h === hh && { color: '#fff', fontWeight: '700' }]}>{hh}</Text>
+                  <Text style={[styles.timeDropdownText, h === hh && { color: colors.textInverse, fontWeight: '700' }]}>{hh}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -117,7 +117,7 @@ function TimePickerDropdown({ value, onChange }: { value: string; onChange: (t: 
                   style={[styles.timeDropdownItem, m === mm && styles.timeDropdownItemActive]}
                   onPress={() => onChange(`${h}:${mm}`)}
                 >
-                  <Text style={[styles.timeDropdownText, m === mm && { color: '#fff', fontWeight: '700' }]}>{mm}</Text>
+                  <Text style={[styles.timeDropdownText, m === mm && { color: colors.textInverse, fontWeight: '700' }]}>{mm}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -282,7 +282,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
                   style={[styles.timeToggleSwitch, useTime && styles.timeToggleSwitchActive]}
                   onPress={() => setUseTime(v => !v)}
                 >
-                  <Text style={[styles.timeToggleText, useTime && { color: '#fff' }]}>
+                  <Text style={[styles.timeToggleText, useTime && { color: colors.textInverse }]}>
                     {useTime ? 'An' : 'Aus'}
                   </Text>
                 </TouchableOpacity>
@@ -345,7 +345,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
               <View style={styles.chipRow}>
                 {(Object.keys(PRIORITY_LABELS) as Priority[]).map(p => (
                   <TouchableOpacity key={p} style={[styles.chip, priority === p && { backgroundColor: PRIORITY_COLORS[p], borderColor: PRIORITY_COLORS[p] }]} onPress={() => setPriority(p)}>
-                    <Text style={[styles.chipText, priority === p && { color: '#fff' }]}>{PRIORITY_LABELS[p]}</Text>
+                    <Text style={[styles.chipText, priority === p && { color: colors.textInverse }]}>{PRIORITY_LABELS[p]}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -356,7 +356,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
                 {Object.keys(CATEGORY_EMOJIS).map(cat => (
                   <TouchableOpacity key={cat} style={[styles.chip, category === cat && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setCategory(cat)}>
                     <Text style={styles.chipEmoji}>{CATEGORY_EMOJIS[cat]}</Text>
-                    <Text style={[styles.chipText, category === cat && { color: '#fff' }]}>{cat}</Text>
+                    <Text style={[styles.chipText, category === cat && { color: colors.textInverse }]}>{cat}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -367,11 +367,11 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
                   <Text style={styles.fieldLabel}>ZUWEISEN AN</Text>
                   <View style={styles.chipWrap}>
                     <TouchableOpacity style={[styles.chip, !assignedTo && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setAssignedTo(null)}>
-                      <Text style={[styles.chipText, !assignedTo && { color: '#fff' }]}>👥 Alle</Text>
+                      <Text style={[styles.chipText, !assignedTo && { color: colors.textInverse }]}>👥 Alle</Text>
                     </TouchableOpacity>
                     {members.map(m => (
                       <TouchableOpacity key={m.id} style={[styles.chip, assignedTo === m.id && { backgroundColor: m.avatar_color, borderColor: m.avatar_color }]} onPress={() => setAssignedTo(m.id)}>
-                        <Text style={[styles.chipText, assignedTo === m.id && { color: '#fff' }]}>{m.display_name}</Text>
+                        <Text style={[styles.chipText, assignedTo === m.id && { color: colors.textInverse }]}>{m.display_name}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -383,7 +383,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
               <View style={styles.chipWrap}>
                 {RECURRENCE_OPTIONS.map(r => (
                   <TouchableOpacity key={String(r.key)} style={[styles.chip, recurrence === r.key && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setRecurrence(r.key)}>
-                    <Text style={[styles.chipText, recurrence === r.key && { color: '#fff' }]}>{r.label}</Text>
+                    <Text style={[styles.chipText, recurrence === r.key && { color: colors.textInverse }]}>{r.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -424,7 +424,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
                           style={[styles.chip, active && { backgroundColor: m.avatar_color, borderColor: m.avatar_color }]}
                           onPress={() => setRotation(r => active ? r.filter(x => x !== m.id) : [...r, m.id])}
                         >
-                          <Text style={[styles.chipText, active && { color: '#fff' }]}>
+                          <Text style={[styles.chipText, active && { color: colors.textInverse }]}>
                             {active ? `${idx + 1}. ` : ''}{m.display_name}
                           </Text>
                         </TouchableOpacity>
@@ -519,7 +519,7 @@ function TimeTreeQuickstartModal({ visible, onClose, onSave }: {
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md }}>
                 {RECURRENCE_OPTIONS.map(r => (
                   <TouchableOpacity key={String(r.key)} style={[styles.chip, recurrence === r.key && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setRecurrence(r.key)}>
-                    <Text style={[styles.chipText, recurrence === r.key && { color: '#fff' }]}>{r.label}</Text>
+                    <Text style={[styles.chipText, recurrence === r.key && { color: colors.textInverse }]}>{r.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -899,7 +899,7 @@ function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
                   styles.weekDayNum,
                   isToday_ && !isSelected && { color: colors.brand },
                   !isToday_ && !isSelected && holiday && { color: '#EF4444' },
-                  isSelected && { color: '#fff' },
+                  isSelected && { color: colors.textInverse },
                 ]}>
                   {format(day, 'd')}
                 </Text>
@@ -973,13 +973,13 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
           const extraBars = barColors.length - visibleBars.length;
           return (
             <TouchableOpacity key={key} style={[styles.dayCell, isSelected && styles.dayCellSelected, isToday_ && !isSelected && styles.dayCellToday]} onPress={() => onDayPress(day)}>
-              <Text style={[styles.dayNumber, !isCurrentMonth && { opacity: 0.3 }, !isToday_ && !isSelected && holiday && { color: '#EF4444' }, isSelected && { color: '#fff' }, isToday_ && !isSelected && { color: colors.brand, fontWeight: '700' }]}>{format(day, 'd')}</Text>
+              <Text style={[styles.dayNumber, !isCurrentMonth && { opacity: 0.3 }, !isToday_ && !isSelected && holiday && { color: '#EF4444' }, isSelected && { color: colors.textInverse }, isToday_ && !isSelected && { color: colors.brand, fontWeight: '700' }]}>{format(day, 'd')}</Text>
               {barColors.length > 0 && (
                 <View style={styles.dotRow}>
                   {visibleBars.map((c, i) => (
                     <View key={i} style={[styles.taskBarCal, { backgroundColor: c }, isSelected && { backgroundColor: 'rgba(255,255,255,0.85)' }]} />
                   ))}
-                  {extraBars > 0 && <Text style={[styles.dayMoreText, isSelected && { color: '#fff' }]}>+{extraBars}</Text>}
+                  {extraBars > 0 && <Text style={[styles.dayMoreText, isSelected && { color: colors.textInverse }]}>+{extraBars}</Text>}
                 </View>
               )}
             </TouchableOpacity>
@@ -1744,13 +1744,13 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   dayViewHourLabel: { ...typography.xs, color: colors.textMuted, marginTop: -6 },
   dayViewMemberHeader: { alignItems: 'center', justifyContent: 'center', gap: 4 },
   dayViewAvatar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  dayViewAvatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  dayViewAvatarText: { color: colors.textInverse, fontWeight: '700', fontSize: 13 },
   dayViewMemberName: { ...typography.xs, color: colors.text, fontWeight: '600' },
   dayViewCol: { borderLeftWidth: 1, borderLeftColor: colors.borderLight },
   dayViewHourLine: { position: 'absolute', left: 0, right: 0, borderTopWidth: 1, borderTopColor: colors.borderLight },
   dayViewBlock: { position: 'absolute', left: 2, right: 2, backgroundColor: colors.brand, borderRadius: radius.sm, padding: 4, minHeight: HOUR_HEIGHT - 6 },
-  dayViewBlockTime: { ...typography.xs, color: '#fff', fontWeight: '700', fontSize: 9 },
-  dayViewBlockTitle: { ...typography.xs, color: '#fff', fontSize: 10 },
+  dayViewBlockTime: { ...typography.xs, color: colors.textInverse, fontWeight: '700', fontSize: 9 },
+  dayViewBlockTitle: { ...typography.xs, color: colors.textInverse, fontSize: 10 },
   weekEmojiStack: { alignItems: 'center', gap: 2 },
   weekEmojiPill: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 3, paddingVertical: 1, alignItems: 'center', minWidth: 26 },
   weekTaskEmoji: { fontSize: 17, lineHeight: 22 },
@@ -1775,7 +1775,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   filterChipActive: { backgroundColor: colors.brand, borderColor: colors.brand },
   filterChipEmoji: { fontSize: 14 },
   filterChipText: { ...typography.xs, color: colors.textSecondary, fontWeight: '600' },
-  filterChipTextActive: { color: '#fff' },
+  filterChipTextActive: { color: colors.textInverse },
   selectedDateHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   selectedDateText: { ...typography.h3, color: colors.text },
   selectedDateHoliday: { ...typography.xs, color: '#EF4444', marginTop: 2 },
@@ -1792,14 +1792,14 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   priorityBar: { width: 4, alignSelf: 'stretch' },
   taskCheckbox: { padding: spacing.md },
   checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  checkmark: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  checkmark: { color: colors.textInverse, fontSize: 13, fontWeight: '700' },
   checklistRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs },
   checklistCheckRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 },
   checklistCheckbox: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   checklistText: { ...typography.body, color: colors.text, flexShrink: 1 },
   checklistAddRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, alignItems: 'center' },
   checklistAddBtn: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
-  checklistAddBtnText: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  checklistAddBtnText: { color: colors.textInverse, fontSize: 20, fontWeight: '700' },
   taskInfo: { flex: 1, paddingVertical: spacing.md, paddingRight: spacing.sm },
   taskTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   taskTitle: { ...typography.body, color: colors.text, fontWeight: '500', flex: 1 },
@@ -1821,7 +1821,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   deleteTaskBtn: { padding: spacing.md },
   deleteTaskBtnText: { fontSize: 20, color: colors.textMuted },
   swipeAction: { justifyContent: 'center', alignItems: 'center', width: 68, marginBottom: spacing.sm, borderRadius: radius.md },
-  swipeActionText: { fontSize: 22, color: '#fff' },
+  swipeActionText: { fontSize: 22, color: colors.textInverse },
   taskSectionLabel: { ...typography.label, color: colors.textMuted, textTransform: 'uppercase', paddingHorizontal: spacing.sm, marginTop: spacing.md, marginBottom: spacing.xs },
   completedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, marginTop: spacing.sm },
   completedHeaderText: { ...typography.label, color: colors.textSecondary },
@@ -1832,9 +1832,9 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   emptyTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.sm },
   emptyBody: { ...typography.sm, color: colors.textSecondary, textAlign: 'center' },
   fab: { position: 'absolute', right: spacing.lg, bottom: spacing.xl, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', ...shadow.lg },
-  fabText: { color: '#fff', fontSize: 28, lineHeight: 30, fontWeight: '300' },
+  fabText: { color: colors.textInverse, fontSize: 28, lineHeight: 30, fontWeight: '300' },
   pointsToast: { position: 'absolute', bottom: 100, alignSelf: 'center', backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, ...shadow.lg },
-  pointsToastText: { color: '#fff', fontWeight: '800', fontSize: 18 },
+  pointsToastText: { color: colors.textInverse, fontWeight: '800', fontSize: 18 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxl, maxHeight: '92%' },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
@@ -1891,5 +1891,5 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   chipEmoji: { fontSize: 14 },
   chipText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
   saveBtn: { backgroundColor: colors.brand, borderRadius: radius.md, padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },
-  saveBtnText: { ...typography.body, color: '#fff', fontWeight: '700' },
+  saveBtnText: { ...typography.body, color: colors.textInverse, fontWeight: '700' },
 }); }
