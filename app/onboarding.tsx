@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  KeyboardAvoidingView, Platform, ScrollView
+  KeyboardAvoidingView, Platform, ScrollView, Linking
 } from 'react-native';
 import { Alert } from '../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -230,6 +230,13 @@ export default function OnboardingScreen() {
             <Text style={styles.legalLink}>Datenschutz</Text>
           </TouchableOpacity>
         </View>
+        {Platform.OS !== 'web' && (
+          <TouchableOpacity onPress={() => Linking.openURL('https://heimlig.vercel.app')} style={styles.webHintRow}>
+            <Text style={styles.webHintText}>
+              🌐 Kein Android? Nutzt <Text style={styles.webHintLink}>heimlig.vercel.app</Text> am PC oder iPhone
+            </Text>
+          </TouchableOpacity>
+        )}
       </SafeAreaView>
     </LinearGradient>
   );
@@ -399,6 +406,9 @@ const styles = StyleSheet.create({
   legalRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg, gap: spacing.sm },
   legalLink: { ...typography.xs, color: 'rgba(255,255,255,0.6)', textDecorationLine: 'underline' },
   legalDivider: { ...typography.xs, color: 'rgba(255,255,255,0.4)' },
+  webHintRow: { marginTop: spacing.md },
+  webHintText: { ...typography.xs, color: 'rgba(255,255,255,0.6)', textAlign: 'center' },
+  webHintLink: { color: '#fff', fontWeight: '700', textDecorationLine: 'underline' },
   disabled: { opacity: 0.4 },
   stepTitle: { ...typography.h1, color: colors.text, marginBottom: spacing.sm },
   stepSub: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },

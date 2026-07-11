@@ -73,6 +73,11 @@ function InviteModal({ visible, onClose, inviteCode, householdName }: {
             <Text style={styles.shareBtnText}>📤 Einladung teilen</Text>
           </TouchableOpacity>
 
+          <Text style={styles.webHint}>
+            💡 Hat die Person kein Android (z.B. iPhone) oder will am PC beitreten? Der Link funktioniert auch
+            im Browser — kein App-Download nötig.
+          </Text>
+
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeBtnText}>Schließen</Text>
           </TouchableOpacity>
@@ -718,6 +723,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
     alignItems: 'center', marginBottom: spacing.sm,
   },
   shareBtnText: { ...typography.body, color: '#fff', fontWeight: '700' },
+  webHint: { ...typography.xs, color: colors.textMuted, textAlign: 'center', marginBottom: spacing.sm },
   closeBtn: { padding: spacing.md, alignItems: 'center' },
   closeBtnText: { ...typography.body, color: colors.textSecondary },
 
