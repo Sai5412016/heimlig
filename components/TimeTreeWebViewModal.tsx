@@ -95,8 +95,11 @@ export default function TimeTreeWebViewModal({ visible, onClose, onEvents }: {
           <View style={{ width: 70 }} />
         </View>
         <Text style={styles.hint}>
-          Melde dich hier mit deinem TimeTree-Konto an (auch per Google möglich) — deine Zugangsdaten laufen
-          direkt an TimeTree, nie über Heimlig.
+          Melde dich hier mit deinem TimeTree-Konto an — deine Zugangsdaten laufen direkt an TimeTree, nie über
+          Heimlig. Hinweis: Google-Login blockiert Google leider in eingebetteten Ansichten wie dieser („Dieser
+          Browser ist evtl. nicht sicher"). Nutze stattdessen E-Mail + Passwort — falls dein TimeTree-Konto nur
+          per Google angelegt wurde, kannst du bei TimeTree über „Passwort vergessen" eins für dieselbe
+          E-Mail-Adresse setzen.
         </Text>
         <WebView<{}>
           ref={webviewRef}
