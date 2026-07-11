@@ -104,6 +104,9 @@ export default function ScanScreen() {
         <Text style={styles.emptyEmoji}>🔍</Text>
         <Text style={styles.emptyTitle}>Noch nichts gescannt</Text>
         <Text style={styles.emptyBody}>Scanne dein erstes Produkt, um die Gesundheitsbewertung zu sehen.</Text>
+        <TouchableOpacity style={styles.emptyCta} onPress={openScanner}>
+          <Text style={styles.emptyCtaText}>📷 Jetzt scannen</Text>
+        </TouchableOpacity>
       </View>
     ) : (
       scanHistory.map(h => (
@@ -255,6 +258,8 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   emptyEmoji: { fontSize: 44 },
   emptyTitle: { ...typography.h3, color: colors.text },
   emptyBody: { ...typography.sm, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.lg },
+  emptyCta: { marginTop: spacing.sm, backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  emptyCtaText: { ...typography.sm, color: colors.textInverse, fontWeight: '700' },
   histRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, ...shadow.sm },
   histImg: { width: 52, height: 52, borderRadius: radius.md, backgroundColor: colors.background },
   histImgPlaceholder: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },

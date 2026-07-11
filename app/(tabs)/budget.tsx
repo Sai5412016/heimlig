@@ -529,7 +529,10 @@ export default function BudgetScreen() {
               <View style={styles.emptyState}>
                 <Text style={styles.emptyEmoji}>💶</Text>
                 <Text style={styles.emptyTitle}>Noch keine Einträge</Text>
-                <Text style={styles.emptyBody}>Tippe auf "+ Eintrag" um loszulegen.</Text>
+                <Text style={styles.emptyBody}>Trag deine erste Ausgabe oder Einnahme ein.</Text>
+                <TouchableOpacity style={styles.emptyCta} onPress={() => setShowModal(true)}>
+                  <Text style={styles.emptyCtaText}>+ Eintrag</Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <>
@@ -593,6 +596,11 @@ export default function BudgetScreen() {
                 <Text style={styles.emptyEmoji}>📋</Text>
                 <Text style={styles.emptyTitle}>Keine Buchungen</Text>
                 <Text style={styles.emptyBody}>{filterCat ? `Keine Einträge für ${filterCat}.` : `Noch keine Einträge für ${monthLabel}.`}</Text>
+                {!filterCat && (
+                  <TouchableOpacity style={styles.emptyCta} onPress={() => setShowModal(true)}>
+                    <Text style={styles.emptyCtaText}>+ Eintrag</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : (
               filteredTransactions.map(tx => <TransactionRow key={tx.id} tx={tx} onDelete={handleDelete} members={members} />)
@@ -692,10 +700,12 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   memberAvatarText: { color: colors.textInverse, fontWeight: '700', fontSize: 14 },
   memberName: { flex: 1, ...typography.body, color: colors.text },
   memberAmount: { ...typography.body, color: colors.text, fontWeight: '700' },
-  emptyState: { alignItems: 'center', paddingVertical: 48 },
+  emptyState: { alignItems: 'center', paddingVertical: spacing.xxl },
   emptyEmoji: { fontSize: 52, marginBottom: spacing.md },
   emptyTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.sm },
   emptyBody: { ...typography.sm, color: colors.textSecondary, textAlign: 'center' },
+  emptyCta: { marginTop: spacing.lg, backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  emptyCtaText: { ...typography.sm, color: colors.textInverse, fontWeight: '700' },
   fab: { position: 'absolute', right: spacing.lg, bottom: spacing.xl, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', ...shadow.lg },
   fabText: { color: colors.textInverse, fontSize: 28, lineHeight: 30, fontWeight: '300' },
   modalOverlay: { flex: 1, justifyContent: Platform.OS === 'web' ? 'flex-start' : 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },

@@ -263,7 +263,10 @@ export default function RecipesScreen() {
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🍽️</Text>
           <Text style={styles.emptyTitle}>Noch keine Rezepte</Text>
-          <Text style={styles.emptyText}>Tippe auf „+ Rezept", um dein erstes Rezept per Link oder Text zu speichern.</Text>
+          <Text style={styles.emptyText}>Speicher dein erstes Rezept per Link, Text oder Foto.</Text>
+          <TouchableOpacity style={styles.emptyCta} onPress={() => setShowImport(true)}>
+            <Text style={styles.emptyCtaText}>+ Rezept</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <>
@@ -331,6 +334,8 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   emptyEmoji: { fontSize: 56, marginBottom: spacing.md },
   emptyTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.sm },
   emptyText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  emptyCta: { marginTop: spacing.lg, backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  emptyCtaText: { ...typography.sm, color: colors.textInverse, fontWeight: '700' },
 
   // Modal
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
