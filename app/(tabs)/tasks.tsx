@@ -1490,7 +1490,7 @@ export default function TasksScreen() {
         )}
       </View>
       <View style={styles.toolbarRow}>
-        <View style={styles.toolbarLeft}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.toolbarLeftScroll} contentContainerStyle={styles.toolbarLeft}>
           {gamificationOn && (
             <TouchableOpacity style={styles.importBtn} onPress={() => setShowRewards(true)}>
               <Text style={styles.viewToggleText}>🎁</Text>
@@ -1510,7 +1510,7 @@ export default function TasksScreen() {
               <Text style={styles.viewToggleText}>🔗</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </ScrollView>
         <View style={styles.viewToggle}>
           <TouchableOpacity style={[styles.viewToggleBtn, viewMode === 'week' && styles.viewToggleBtnActive]} onPress={() => { setViewMode('week'); setSelectedDate(null); }}>
             <Text style={styles.viewToggleText}>📅</Text>
@@ -1715,7 +1715,8 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   headerTitle: { ...typography.h2, color: colors.text },
   headerSub: { ...typography.sm, color: colors.textSecondary, marginTop: 2 },
   toolbarRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  toolbarLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  toolbarLeftScroll: { flexShrink: 1, flexGrow: 0 },
+  toolbarLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingRight: spacing.sm },
   scoreBadge: { backgroundColor: colors.brandPale, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 4 },
   scoreBadgeLeading: { backgroundColor: '#FEF3C7' },
   scoreBadgeText: { ...typography.xs, color: colors.brand, fontWeight: '800' },
