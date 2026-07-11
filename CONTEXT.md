@@ -23,8 +23,13 @@ Heimlig ist **live im Play Store** (offizieller Production-Release, kein geschlo
 3. Fertige **AAB** in Play Console → **Production** → „Neuen Release erstellen" → Versionshinweise (de-DE) eintragen → hochladen → veröffentlichen. *(Upload macht Andi manuell – kein API-Zugang.)*
 4. Nach Veröffentlichung: in Supabase `app_config.latest_version_code` auf den neuen versionCode setzen → löst das In-App-„Update verfügbar"-Popup für ältere Nutzer aus.
 - **Web** braucht keinen Build – Push auf `main` reicht (Vercel).
-- Stand zuletzt: **versionCode 50** gebaut & veröffentlicht; `app_config.latest_version_code` = **50**. versionName = `1.0.2`.
+- Stand zuletzt: **versionCode 54** gebaut & veröffentlicht; `app_config.latest_version_code` = **50** (noch nicht auf 54 hochgesetzt). versionName = `1.0.2`.
 - Keine Tester-Ankündigungsmail mehr nötig (App ist live, keine Google-Group-Benachrichtigung mehr).
+
+## Bekannte Play-Console-Warnungen ("Empfohlene Aktionen")
+Zwei wiederkehrende Hinweise im Play-Console-Release-Dashboard, beide **kein Blocker**, keine weitere Aktion nötig:
+- **„Nicht mehr unterstützte APIs für randlose Anzeige" (edge-to-edge)**: Ökosystem-weites, aktuell nicht app-seitig behebbares Problem (React Native Core / react-native-screens / Google Material Components nutzen intern noch die alten `Window.setStatusBarColor`/`setNavigationBarColor`-APIs). Kein eigener Code betroffen (geprüft: kein Treffer für diese APIs in unserem Code). Tracking: github.com/expo/expo#37459. Löst sich mit zukünftigen Expo/RN-Updates von selbst.
+- **„Einschränkungen für Größenänderung/Ausrichtung entfernen" (Großbild-Support)**: `app.json` hat `"orientation": "default"` → erzeugt `android:screenOrientation="unspecified"` (nicht restriktiv). `app/_layout.tsx` sperrt Ausrichtung nur zur Laufzeit auf Handys (`Dimensions.get('screen')`, `smallestSide < 600`dp) via `expo-screen-orientation` — exakt das von Google offiziell empfohlene Pattern für Apps, die auf Handys Portrait behalten wollen (Android 16+ ignoriert `setRequestedOrientation` auf Großbildschirmen ohnehin automatisch). Kein `resizeableActivity`/`minAspectRatio`/`maxAspectRatio` irgendwo gesetzt (auch nicht in node_modules-Manifests). Die Warnung ist vermutlich ein generischer, nicht pro-Build neu bewerteter Hinweis der reinen Anwesenheit der Orientation-Lock-API im kompilierten Code – funktional ist die App bereits konform.
 
 ## Supabase / Datenbank
 - Schema-Änderungen werden **direkt** angewandt (Supabase-MCP `apply_migration`/`execute_sql` oder SQL-Editor) – **nicht** als lokale Migrations-Dateien getrackt.

@@ -34,9 +34,11 @@ function RootLayout() {
   // Lock phones to portrait, but let large screens (tablets/foldables) rotate freely.
   // The static manifest restriction is removed (orientation: default) so Play stops
   // warning about large-screen support; we enforce portrait only on small devices here.
+  // Use 'screen' (full physical display), not 'window' (can be smaller in split-screen/
+  // multi-window mode) — Android's own sw600dp large-screen classification is display-based.
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    const { width, height } = Dimensions.get('window');
+    const { width, height } = Dimensions.get('screen');
     const smallestSide = Math.min(width, height);
     if (smallestSide < 600) {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
