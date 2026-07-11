@@ -111,9 +111,9 @@ export default function RewardsModal({ visible, onClose }: { visible: boolean; o
                 />
                 <View style={styles.costRow}>
                   <Text style={styles.costLabel}>Kosten</Text>
-                  <TouchableOpacity style={styles.stepBtn} onPress={() => setCost(c => Math.max(5, c - 5))}><Text style={styles.stepBtnText}>−</Text></TouchableOpacity>
+                  <TouchableOpacity style={styles.stepBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={() => setCost(c => Math.max(5, c - 5))}><Text style={styles.stepBtnText}>−</Text></TouchableOpacity>
                   <Text style={styles.costValue}>{cost}</Text>
-                  <TouchableOpacity style={styles.stepBtn} onPress={() => setCost(c => c + 5)}><Text style={styles.stepBtnText}>+</Text></TouchableOpacity>
+                  <TouchableOpacity style={styles.stepBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={() => setCost(c => c + 5)}><Text style={styles.stepBtnText}>+</Text></TouchableOpacity>
                   <Text style={styles.costLabel}>Punkte</Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: spacing.sm }}>
@@ -155,7 +155,7 @@ export default function RewardsModal({ visible, onClose }: { visible: boolean; o
 
 function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xl },
+  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xl },
   handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.md },
   title: { ...typography.h2, color: colors.text, marginBottom: spacing.md },
   balanceCard: { backgroundColor: colors.brandPale, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center', marginBottom: spacing.md },

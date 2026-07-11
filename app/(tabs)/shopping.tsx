@@ -909,7 +909,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
 
   itemCard: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.surface, borderRadius: radius.md,
+    backgroundColor: colors.surface, borderRadius: radius.lg,
     marginBottom: spacing.sm, padding: spacing.md,
     ...shadow.sm,
   },
@@ -993,7 +993,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   // Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
-    backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
     padding: spacing.lg, paddingBottom: spacing.xxl,
   },
   modalHandle: {
@@ -1014,7 +1014,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   brandChip: { backgroundColor: colors.surface, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderWidth: 1.5, borderColor: colors.border },
   brandChipActive: { backgroundColor: colors.brand, borderColor: colors.brand },
   brandChipText: { ...typography.sm, color: colors.text, fontWeight: '600' },
-  brandChipTextActive: { color: '#fff' },
+  brandChipTextActive: { color: colors.textInverse },
   input: {
     backgroundColor: colors.background, borderRadius: radius.md,
     padding: spacing.md, ...typography.body, color: colors.text,

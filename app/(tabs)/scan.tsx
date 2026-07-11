@@ -104,6 +104,9 @@ export default function ScanScreen() {
         <Text style={styles.emptyEmoji}>🔍</Text>
         <Text style={styles.emptyTitle}>Noch nichts gescannt</Text>
         <Text style={styles.emptyBody}>Scanne dein erstes Produkt, um die Gesundheitsbewertung zu sehen.</Text>
+        <TouchableOpacity style={styles.emptyCta} onPress={openScanner}>
+          <Text style={styles.emptyCtaText}>📷 Jetzt scannen</Text>
+        </TouchableOpacity>
       </View>
     ) : (
       scanHistory.map(h => (
@@ -244,17 +247,19 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   segBtn: { flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md, alignItems: 'center', backgroundColor: colors.background },
   segBtnActive: { backgroundColor: colors.brand },
   segText: { ...typography.sm, color: colors.textSecondary, fontWeight: '700' },
-  segTextActive: { color: '#fff' },
+  segTextActive: { color: colors.textInverse },
   scroll: { padding: spacing.lg },
   scanCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.brand, borderRadius: radius.lg, padding: spacing.lg, ...shadow.md, marginBottom: spacing.lg },
   scanCardEmoji: { fontSize: 32 },
-  scanCardTitle: { ...typography.h3, color: '#fff' },
+  scanCardTitle: { ...typography.h3, color: colors.textInverse },
   scanCardSub: { ...typography.sm, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
   scanCardArrow: { fontSize: 28, color: 'rgba(255,255,255,0.9)', fontWeight: '300' },
   empty: { alignItems: 'center', paddingVertical: spacing.xxl, gap: spacing.sm },
   emptyEmoji: { fontSize: 44 },
   emptyTitle: { ...typography.h3, color: colors.text },
   emptyBody: { ...typography.sm, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.lg },
+  emptyCta: { marginTop: spacing.sm, backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  emptyCtaText: { ...typography.sm, color: colors.textInverse, fontWeight: '700' },
   histRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, ...shadow.sm },
   histImg: { width: 52, height: 52, borderRadius: radius.md, backgroundColor: colors.background },
   histImgPlaceholder: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
@@ -266,7 +271,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   pantryAddRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   pantryInput: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md, ...typography.body, color: colors.text, borderWidth: 1, borderColor: colors.border },
   pantryAddBtn: { width: 48, borderRadius: radius.md, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
-  pantryAddBtnText: { color: '#fff', fontSize: 26, fontWeight: '300' },
+  pantryAddBtnText: { color: colors.textInverse, fontSize: 26, fontWeight: '300' },
   pantryRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, ...shadow.sm },
   pantryEmoji: { fontSize: 24 },
   pantryName: { ...typography.body, color: colors.text, fontWeight: '600' },

@@ -212,7 +212,7 @@ export default function RecipesScreen() {
     const cartCount = items.filter(i => i.recipe_id === item.id && !i.checked).length;
     return (
       <View style={styles.card}>
-        <TouchableOpacity onPress={() => toggleRecipeFavorite(item.id)} style={styles.favBtn}>
+        <TouchableOpacity onPress={() => toggleRecipeFavorite(item.id)} style={styles.favBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={styles.favIcon}>{item.is_favorite ? '⭐' : '☆'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.cardBody} onPress={() => setPlanTarget(item)} activeOpacity={0.7}>
@@ -263,7 +263,10 @@ export default function RecipesScreen() {
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🍽️</Text>
           <Text style={styles.emptyTitle}>Noch keine Rezepte</Text>
-          <Text style={styles.emptyText}>Tippe auf „+ Rezept", um dein erstes Rezept per Link oder Text zu speichern.</Text>
+          <Text style={styles.emptyText}>Speicher dein erstes Rezept per Link, Text oder Foto.</Text>
+          <TouchableOpacity style={styles.emptyCta} onPress={() => setShowImport(true)}>
+            <Text style={styles.emptyCtaText}>+ Rezept</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <>
@@ -331,10 +334,12 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   emptyEmoji: { fontSize: 56, marginBottom: spacing.md },
   emptyTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.sm },
   emptyText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  emptyCta: { marginTop: spacing.lg, backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  emptyCtaText: { ...typography.sm, color: colors.textInverse, fontWeight: '700' },
 
   // Modal
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xxl },
+  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxl },
   handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   modalTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.lg },
   sectionLabel: { ...typography.xs, color: colors.textMuted, fontWeight: '700', letterSpacing: 0.5, marginBottom: spacing.sm },

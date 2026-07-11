@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
-import { Platform, Dimensions, View, ActivityIndicator } from 'react-native';
+import { Platform, Dimensions, View, ActivityIndicator, Text } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -142,7 +142,8 @@ function RootLayout() {
         <View
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}
         >
-          <ActivityIndicator size="large" color={colors.brand} />
+          <Text style={{ fontSize: 48, marginBottom: 12 }}>🏡</Text>
+          <ActivityIndicator size="small" color={colors.brand} />
         </View>
       )}
       <WhatsNewModal />

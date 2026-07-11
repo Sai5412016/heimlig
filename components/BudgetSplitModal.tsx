@@ -122,7 +122,7 @@ export default function BudgetSplitModal({ visible, onClose }: { visible: boolea
 
 function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: spacing.xl },
+  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xl },
   handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.md },
   title: { ...typography.h2, color: colors.text },
   subtitle: { ...typography.sm, color: colors.textSecondary, marginTop: 2, marginBottom: spacing.md },
