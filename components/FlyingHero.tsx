@@ -12,10 +12,10 @@ const theme = APP_THEMES.find(t => t.id === 'comic-hero')!;
 
 function Bolt({ style }: { style: any }) {
   return (
-    <View style={[styles.boltWrap, style]}>
+    <Animated.View style={[styles.boltWrap, style]}>
       <View style={styles.boltSeg1} />
       <View style={styles.boltSeg2} />
-    </View>
+    </Animated.View>
   );
 }
 
