@@ -13,6 +13,7 @@ import FlyingWitch from '../../components/FlyingWitch';
 import RacingCar from '../../components/RacingCar';
 import BulletTracers from '../../components/BulletTracers';
 import FlyingHero from '../../components/FlyingHero';
+import RedLightDoll from '../../components/RedLightDoll';
 
 function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
   const { colors } = useTheme();
@@ -81,6 +82,7 @@ export default function TabLayout() {
       {themeId === 'racing' && <RacingCar />}
       {themeId === 'tactical-ops' && <BulletTracers />}
       {themeId === 'comic-hero' && <FlyingHero />}
+      {themeId === 'red-light' && <RedLightDoll />}
     </View>
   );
 }
