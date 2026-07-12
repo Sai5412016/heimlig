@@ -60,6 +60,28 @@ function splitLine(line: string, delim: string): string[] {
   return out;
 }
 
+// Parses both German-locale amounts ("1.234,56") and international ones ("1,234.56" /
+// "1234.56"). Whichever separator (',' or '.') appears LAST and is followed by 1-2 digits is
+// treated as the decimal point; anything before it (including the other separator type) is
+// stripped as a thousands grouping. A trailing separator followed by 3+ digits has no decimal
+// part and is treated as pure grouping (e.g. "1.234" -> 1234, not 1.234).
+function parseAmount(raw: string): number {
+  const cleaned = raw.replace(/[^0-9,.-]/g, '');
+  if (!cleaned) return NaN;
+  const lastSep = Math.max(cleaned.lastIndexOf(','), cleaned.lastIndexOf('.'));
+  if (lastSep === -1) return parseFloat(cleaned);
+
+  const fraction = cleaned.slice(lastSep + 1);
+  const isDecimalSeparator = fraction.length === 1 || fraction.length === 2;
+  let whole = cleaned.slice(0, lastSep).replace(/[,.]/g, '');
+  let sign = '';
+  if (whole.startsWith('-')) { sign = '-'; whole = whole.slice(1); }
+
+  return isDecimalSeparator
+    ? parseFloat(`${sign}${whole}.${fraction}`)
+    : parseFloat(`${sign}${whole}${fraction}`);
+}
+
 export interface ParsedTxRow {
   transaction_date: string;
   type: 'income' | 'expense';
@@ -88,8 +110,7 @@ export function parseTransactionsCsv(content: string): ParsedTxRow[] {
   const rows: ParsedTxRow[] = [];
   for (let i = 1; i < lines.length; i++) {
     const cols = splitLine(lines[i], delim);
-    const rawAmount = (cols[ai] ?? '').replace(/[^0-9,.-]/g, '').replace(',', '.');
-    const amount = parseFloat(rawAmount);
+    const amount = parseAmount(cols[ai] ?? '');
     if (isNaN(amount)) continue;
 
     const typeRaw = (cols[ti] ?? '').toLowerCase();
@@ -99,7 +120,9 @@ export function parseTransactionsCsv(content: string): ParsedTxRow[] {
     // Accept DD.MM.YYYY and convert to YYYY-MM-DD
     const m = date.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
     if (m) date = `${m[3]}-${m[2]}-${m[1]}`;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) date = new Date().toISOString().slice(0, 10);
+    // An unparseable date is a sign the row/column mapping is off — skip the row instead of
+    // silently re-dating a historical transaction to "today".
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
 
     rows.push({
       transaction_date: date,
