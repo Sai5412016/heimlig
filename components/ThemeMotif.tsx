@@ -38,15 +38,19 @@ export default function ThemeMotif({ size = 26 }: { size?: number }) {
         </View>
       );
     case 'witch-purple':
+      // Small flying-witch-on-a-broomstick silhouette (generic, plain shapes) — the animated
+      // full-size version swoops across the screen in components/FlyingWitch.tsx.
       return (
-        <View style={[styles.wrap, box]}>
+        <View style={[styles.wrap, box, { transform: [{ rotate: '-14deg' }] }]}>
+          <View style={[styles.abs, { bottom: size * 0.3, left: 0, width: size * 0.56, height: size * 0.09, backgroundColor: '#5C3A21', borderRadius: size * 0.05 }]} />
+          <View style={[styles.abs, { bottom: size * 0.24, left: -size * 0.06, width: size * 0.2, height: size * 0.22, backgroundColor: '#8A5A2B', borderTopLeftRadius: size * 0.14, borderBottomLeftRadius: size * 0.14 }]} />
+          <View style={[styles.abs, { bottom: size * 0.28, left: size * 0.4, width: size * 0.3, height: size * 0.34, backgroundColor: theme.brand, borderRadius: size * 0.13 }]} />
           <View style={[styles.abs, {
-            bottom: size * 0.28, left: size * 0.5 - size * 0.22, width: 0, height: 0,
-            borderLeftWidth: size * 0.22, borderRightWidth: size * 0.22, borderBottomWidth: size * 0.48,
-            borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: '#1A1A1A',
+            bottom: size * 0.58, left: size * 0.44, width: 0, height: 0,
+            borderLeftWidth: size * 0.11, borderRightWidth: size * 0.11, borderBottomWidth: size * 0.3,
+            borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: theme.brandDark,
           }]} />
-          <View style={[styles.abs, { bottom: size * 0.24, left: size * 0.22, right: size * 0.22, height: size * 0.1, backgroundColor: theme.accent }]} />
-          <View style={[styles.abs, { bottom: size * 0.16, left: size * 0.06, right: size * 0.06, height: size * 0.14, backgroundColor: '#1A1A1A', borderRadius: size * 0.07 }]} />
+          <View style={[styles.abs, { bottom: size * 0.62, left: size * 0.4, width: size * 0.22, height: size * 0.06, backgroundColor: theme.accent, borderRadius: 2 }]} />
         </View>
       );
     case 'pitch-gold':
