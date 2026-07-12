@@ -1455,20 +1455,28 @@ export default function TasksScreen() {
     return Array.from(years).sort();
   }, [tasks]);
 
-  const filteredTasks = tasks.filter(t => {
-    if (!showCompleted && t.completed_at) return false;
-    if (filterCategory && t.category !== filterCategory) return false;
-    if (selectedDate && viewMode !== 'list') return t.due_date && isSameDay(parseISO(t.due_date), selectedDate);
-    if (!selectedDate && t.due_date && parseISO(t.due_date).getFullYear() !== selectedYear) return false;
-    return true;
-  });
+  // Bundled into one useMemo (was recomputed — 6 full passes over `tasks` — on every render,
+  // including keystrokes in unrelated modals) so it only reruns when something it actually
+  // depends on changes.
+  const { openTasks, openTasksWithDate, openTasksNoDate, completedTasks, overdueTasks } = useMemo(() => {
+    const filteredTasks = tasks.filter(t => {
+      if (!showCompleted && t.completed_at) return false;
+      if (filterCategory && t.category !== filterCategory) return false;
+      if (selectedDate && viewMode !== 'list') return t.due_date && isSameDay(parseISO(t.due_date), selectedDate);
+      if (!selectedDate && t.due_date && parseISO(t.due_date).getFullYear() !== selectedYear) return false;
+      return true;
+    });
 
-  const openTasks = filteredTasks.filter(t => !t.completed_at);
-  const byPinnedFirst = (a: Task, b: Task) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
-  const openTasksWithDate = openTasks.filter(t => t.due_date).sort(byPinnedFirst);
-  const openTasksNoDate = openTasks.filter(t => !t.due_date).sort(byPinnedFirst);
-  const completedTasks = filteredTasks.filter(t => !!t.completed_at);
-  const overdueTasks = tasks.filter(t => t.due_date && !t.completed_at && isBefore(parseISO(t.due_date), new Date()) && !isToday(parseISO(t.due_date)));
+    const openTasks = filteredTasks.filter(t => !t.completed_at);
+    const byPinnedFirst = (a: Task, b: Task) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
+    return {
+      openTasks,
+      openTasksWithDate: openTasks.filter(t => t.due_date).sort(byPinnedFirst),
+      openTasksNoDate: openTasks.filter(t => !t.due_date).sort(byPinnedFirst),
+      completedTasks: filteredTasks.filter(t => !!t.completed_at),
+      overdueTasks: tasks.filter(t => t.due_date && !t.completed_at && isBefore(parseISO(t.due_date), new Date()) && !isToday(parseISO(t.due_date))),
+    };
+  }, [tasks, showCompleted, filterCategory, selectedDate, viewMode, selectedYear]);
   const myScore = monthScores[currentMember?.id ?? ''] || 0;
   const topScore = Math.max(0, ...members.map(m => monthScores[m.id] || 0));
   const isLeading = myScore > 0 && myScore >= topScore;
