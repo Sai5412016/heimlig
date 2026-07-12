@@ -355,34 +355,44 @@ export default function BudgetScreen() {
 
   useEffect(() => { loadTransactions(); }, [loadTransactions]);
 
-  const monthTransactions = transactions.filter(tx => isSameMonth(parseISO(tx.transaction_date), currentMonth));
-  const totalExpenses = monthTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
-  const totalIncome = monthTransactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
-  const balance = totalIncome - totalExpenses;
+  // Bundled into one useMemo so this derived chain (several passes over the month's
+  // transactions) only reruns when something it actually depends on changes, instead of on
+  // every render of the screen.
+  const {
+    monthTransactions, totalExpenses, totalIncome, balance, catBreakdown,
+    whoIsNext, isMyTurn, filteredTransactions, availableCats, memberExpenses,
+  } = useMemo(() => {
+    const monthTransactions = transactions.filter(tx => isSameMonth(parseISO(tx.transaction_date), currentMonth));
+    const totalExpenses = monthTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+    const totalIncome = monthTransactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+    const balance = totalIncome - totalExpenses;
 
-  const catBreakdown = ALL_CATEGORIES.map(cat => ({
-    cat, amount: monthTransactions.filter(t => t.category === cat && t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0),
-  })).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
+    const catBreakdown = ALL_CATEGORIES.map(cat => ({
+      cat, amount: monthTransactions.filter(t => t.category === cat && t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0),
+    })).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
 
-  // "Wer ist dran?" — gemeinsam bezahlte Ausgaben (kein member_id) zaehlen zu gleichen Teilen
-  // fuer alle mit, statt fuer niemanden - sonst wirkt es so, als haette dafuer keiner bezahlt.
-  const memberExpenses: Record<string, number> = {};
-  monthTransactions.filter(t => t.type === 'expense').forEach(t => {
-    if (t.member_id) {
-      memberExpenses[t.member_id] = (memberExpenses[t.member_id] || 0) + Number(t.amount);
-    } else if (members.length > 0) {
-      const share = Number(t.amount) / members.length;
-      members.forEach(m => { memberExpenses[m.id] = (memberExpenses[m.id] || 0) + share; });
-    }
-  });
-  const whoIsNext = members.length > 1
-    ? members.reduce((min, m) => (memberExpenses[m.id] || 0) < (memberExpenses[min.id] || 0) ? m : min, members[0])
-    : null;
-  const isMyTurn = whoIsNext?.id === currentMember?.id;
+    // "Wer ist dran?" — gemeinsam bezahlte Ausgaben (kein member_id) zaehlen zu gleichen Teilen
+    // fuer alle mit, statt fuer niemanden - sonst wirkt es so, als haette dafuer keiner bezahlt.
+    const memberExpenses: Record<string, number> = {};
+    monthTransactions.filter(t => t.type === 'expense').forEach(t => {
+      if (t.member_id) {
+        memberExpenses[t.member_id] = (memberExpenses[t.member_id] || 0) + Number(t.amount);
+      } else if (members.length > 0) {
+        const share = Number(t.amount) / members.length;
+        members.forEach(m => { memberExpenses[m.id] = (memberExpenses[m.id] || 0) + share; });
+      }
+    });
+    const whoIsNext = members.length > 1
+      ? members.reduce((min, m) => (memberExpenses[m.id] || 0) < (memberExpenses[min.id] || 0) ? m : min, members[0])
+      : null;
+    const isMyTurn = whoIsNext?.id === currentMember?.id;
 
-  // Filtered transactions for tab
-  const filteredTransactions = monthTransactions.filter(tx => !filterCat || tx.category === filterCat);
-  const availableCats = [...new Set(monthTransactions.map(t => t.category))];
+    // Filtered transactions for tab
+    const filteredTransactions = monthTransactions.filter(tx => !filterCat || tx.category === filterCat);
+    const availableCats = [...new Set(monthTransactions.map(t => t.category))];
+
+    return { monthTransactions, totalExpenses, totalIncome, balance, catBreakdown, whoIsNext, isMyTurn, filteredTransactions, availableCats, memberExpenses };
+  }, [transactions, currentMonth, filterCat, members, currentMember?.id]);
 
   useEffect(() => { setFilterCat(null); }, [currentMonth]);
 
