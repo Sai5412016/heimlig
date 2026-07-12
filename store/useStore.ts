@@ -2,7 +2,8 @@
 import { create } from 'zustand';
 import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption, PantryItem, HouseholdNote, Settlement, HouseholdMessage, MemberLocation } from '../lib/supabase';
 import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
-import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
+import { format, startOfWeek, parseISO, addDays, addWeeks } from 'date-fns';
+import { advanceMonthlyPreservingDay, advanceYearlyPreservingDay } from '../lib/dateMath';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerPushToken } from '../lib/pushTokens';
 import * as shoppingRepo from '../repositories/shoppingRepository';
@@ -552,8 +553,11 @@ export const useStore = create<AppState>((set, get) => ({
     if (data) set(s => (s.messages.some(m => m.id === (data as any).id) ? {} as any : { messages: [...s.messages, data as HouseholdMessage] }));
 
     // Push-notify the rest of the household, WhatsApp-style. Best-effort, never blocks sending.
+    // The function derives the sender's own identity server-side from the auth token — it
+    // doesn't trust a client-supplied sender id/name (that would let a member spoof another
+    // member's display name in the push notification).
     supabase.functions.invoke('notify-message', {
-      body: { household_id: household.id, sender_member_id: currentMember?.id, sender_name: currentMember?.display_name, text: trimmed },
+      body: { household_id: household.id, text: trimmed },
     }).catch(() => {});
   },
   deleteMessage: async (id) => {
@@ -654,11 +658,15 @@ export const useStore = create<AppState>((set, get) => ({
     if (!isAlreadyCompleted && task.recurrence && task.due_date) {
       const n = (task as any).recurrence_interval || 1;
       const base = parseISO(task.due_date);
+      // recurrence_day anchors the series to its original day-of-month/year, so a clamp in
+      // a short month (e.g. Jan 31 -> Feb 28) doesn't compound into a permanent drift —
+      // see advanceMonthlyPreservingDay/advanceYearlyPreservingDay in lib/dateMath.ts.
+      const anchorDay = (task as any).recurrence_day ?? base.getDate();
       let next: Date | null = null;
       if (task.recurrence === 'daily') next = addDays(base, n);
       else if (task.recurrence === 'weekly') next = addWeeks(base, n);
-      else if (task.recurrence === 'monthly') next = addMonths(base, n);
-      else if (task.recurrence === 'yearly') next = addYears(base, n);
+      else if (task.recurrence === 'monthly') next = advanceMonthlyPreservingDay(base, n, anchorDay);
+      else if (task.recurrence === 'yearly') next = advanceYearlyPreservingDay(base, n, anchorDay);
       // 🔁 Rotation: pass the next occurrence to the next person in the cycle.
       const rotation = (task as any).rotation as string[] | null | undefined;
       let nextAssignee = task.assigned_to;
@@ -680,6 +688,7 @@ export const useStore = create<AppState>((set, get) => ({
           due_time: (task as any).due_time || null,
           recurrence: task.recurrence,
           recurrence_interval: n,
+          recurrence_day: anchorDay,
           created_by: task.created_by,
         }).select().single();
         if (newTask) set(s => ({ tasks: [...s.tasks, newTask] }));
@@ -693,33 +702,15 @@ export const useStore = create<AppState>((set, get) => ({
     if (isHousehold && currentMember && household && !isAlreadyCompleted) {
       const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
-      // Update member_scores
-      const { data: existing } = await supabase
-        .from('member_scores')
-        .select('*')
-        .eq('member_id', currentMember.id)
-        .eq('week_start', weekStart)
-        .single();
-
-      if (existing) {
-        await supabase
-          .from('member_scores')
-          .update({
-            points: existing.points + points,
-            tasks_done: existing.tasks_done + 1
-          })
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('member_scores')
-          .insert({
-            member_id: currentMember.id,
-            household_id: household.id,
-            week_start: weekStart,
-            points,
-            tasks_done: 1,
-          });
-      }
+      // Atomic upsert (bump_member_score does points = points + p_points server-side) so two
+      // completeTask() calls resolving close together can't clobber each other's increment —
+      // the previous read-then-write here could silently lose points under that race.
+      await supabase.rpc('bump_member_score', {
+        p_member: currentMember.id,
+        p_household: household.id,
+        p_week_start: weekStart,
+        p_points: points,
+      });
 
       // Update local score
       set(s => ({

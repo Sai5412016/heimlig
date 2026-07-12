@@ -37,16 +37,25 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...cors, 'Content-Type': 'application/json' } });
     }
 
-    const { household_id, sender_member_id, sender_name, text } = await req.json();
-    if (!household_id || !sender_member_id || !text) {
+    const { household_id, text } = await req.json();
+    if (!household_id || !text) {
       return new Response(JSON.stringify({ error: 'missing fields' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
     }
 
-    // Confirm the caller is actually a member of this household (RLS-scoped to their own row).
-    const { data: isMember } = await authClient.rpc('is_household_member', { hid: household_id });
-    if (!isMember) {
+    // Look up the CALLER's own member row for this household — never trust a client-supplied
+    // sender_member_id/sender_name, which would let anyone spoof another member's identity
+    // (excluding them from the notification, or showing a fake display name to the household).
+    const { data: sender } = await authClient
+      .from('members')
+      .select('id, display_name')
+      .eq('household_id', household_id)
+      .eq('user_id', user.id)
+      .single();
+    if (!sender) {
       return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
     }
+    const sender_member_id = sender.id;
+    const sender_name = sender.display_name;
 
     // Service role needed here: push_tokens RLS only exposes each user's own row.
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -76,6 +85,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ sent: messages.length }), { headers: { ...cors, 'Content-Type': 'application/json' } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+    console.error('notify-message error:', e);
+    return new Response(JSON.stringify({ error: 'Nachricht konnte nicht gesendet werden.' }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 });

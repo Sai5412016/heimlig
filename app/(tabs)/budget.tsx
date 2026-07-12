@@ -8,7 +8,8 @@ import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
-import { format, subMonths, addMonths, addWeeks, addYears, parseISO, isSameMonth } from 'date-fns';
+import { format, subMonths, addMonths, parseISO, isSameMonth } from 'date-fns';
+import { advanceFromAnchor, stepsBetween, type RecurrenceUnit } from '../../lib/dateMath';
 
 const TX_RECURRENCE_OPTIONS = [
   { key: null, label: 'Einmalig' },
@@ -16,13 +17,6 @@ const TX_RECURRENCE_OPTIONS = [
   { key: 'monthly', label: 'Monatlich' },
   { key: 'yearly', label: 'Jährlich' },
 ];
-
-// Advance a yyyy-MM-dd date string by N units
-function advanceDate(dateStr: string, unit: string, n: number): string {
-  const d = parseISO(dateStr);
-  const next = unit === 'weekly' ? addWeeks(d, n) : unit === 'yearly' ? addYears(d, n) : addMonths(d, n);
-  return format(next, 'yyyy-MM-dd');
-}
 import { de } from 'date-fns/locale';
 import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
@@ -97,7 +91,7 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
       transaction_date: date, member_id: paidBy || undefined,
       recurrence: recurrence || undefined,
       recurrence_interval: recurrence ? recurrenceInterval : undefined,
-      recurrence_next: recurrence ? advanceDate(date, recurrence, recurrenceInterval) : undefined,
+      recurrence_next: recurrence ? advanceFromAnchor(date, recurrence as RecurrenceUnit, recurrenceInterval) : undefined,
     });
     onClose();
   };
@@ -327,7 +321,14 @@ export default function BudgetScreen() {
     if (templates.length === 0) return;
 
     for (const t of templates) {
-      let next = t.recurrence_next as string;
+      const unit = (t.recurrence || 'monthly') as RecurrenceUnit;
+      const interval = t.recurrence_interval || 1;
+      const anchor = t.transaction_date; // fixed, never mutated by this loop
+      // Seed the step counter from the currently-stored recurrence_next (so we don't replay
+      // the whole history), then always compute each occurrence fresh from the anchor date
+      // instead of chaining — see advanceFromAnchor for why that matters.
+      let step = Math.max(1, Math.round(stepsBetween(anchor, t.recurrence_next as string, unit) / interval));
+      let next = advanceFromAnchor(anchor, unit, interval * step);
       const inserts: any[] = [];
       let guard = 0;
       while (next && next <= today && guard < 120) {
@@ -336,7 +337,8 @@ export default function BudgetScreen() {
           category: t.category, description: t.description, member_id: t.member_id,
           transaction_date: next,
         });
-        next = advanceDate(next, t.recurrence || 'monthly', t.recurrence_interval || 1);
+        step++;
+        next = advanceFromAnchor(anchor, unit, interval * step);
         guard++;
       }
       await budgetRepo.insertTransactions(inserts);
@@ -353,34 +355,44 @@ export default function BudgetScreen() {
 
   useEffect(() => { loadTransactions(); }, [loadTransactions]);
 
-  const monthTransactions = transactions.filter(tx => isSameMonth(parseISO(tx.transaction_date), currentMonth));
-  const totalExpenses = monthTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
-  const totalIncome = monthTransactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
-  const balance = totalIncome - totalExpenses;
+  // Bundled into one useMemo so this derived chain (several passes over the month's
+  // transactions) only reruns when something it actually depends on changes, instead of on
+  // every render of the screen.
+  const {
+    monthTransactions, totalExpenses, totalIncome, balance, catBreakdown,
+    whoIsNext, isMyTurn, filteredTransactions, availableCats, memberExpenses,
+  } = useMemo(() => {
+    const monthTransactions = transactions.filter(tx => isSameMonth(parseISO(tx.transaction_date), currentMonth));
+    const totalExpenses = monthTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+    const totalIncome = monthTransactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+    const balance = totalIncome - totalExpenses;
 
-  const catBreakdown = ALL_CATEGORIES.map(cat => ({
-    cat, amount: monthTransactions.filter(t => t.category === cat && t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0),
-  })).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
+    const catBreakdown = ALL_CATEGORIES.map(cat => ({
+      cat, amount: monthTransactions.filter(t => t.category === cat && t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0),
+    })).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
 
-  // "Wer ist dran?" — gemeinsam bezahlte Ausgaben (kein member_id) zaehlen zu gleichen Teilen
-  // fuer alle mit, statt fuer niemanden - sonst wirkt es so, als haette dafuer keiner bezahlt.
-  const memberExpenses: Record<string, number> = {};
-  monthTransactions.filter(t => t.type === 'expense').forEach(t => {
-    if (t.member_id) {
-      memberExpenses[t.member_id] = (memberExpenses[t.member_id] || 0) + Number(t.amount);
-    } else if (members.length > 0) {
-      const share = Number(t.amount) / members.length;
-      members.forEach(m => { memberExpenses[m.id] = (memberExpenses[m.id] || 0) + share; });
-    }
-  });
-  const whoIsNext = members.length > 1
-    ? members.reduce((min, m) => (memberExpenses[m.id] || 0) < (memberExpenses[min.id] || 0) ? m : min, members[0])
-    : null;
-  const isMyTurn = whoIsNext?.id === currentMember?.id;
+    // "Wer ist dran?" — gemeinsam bezahlte Ausgaben (kein member_id) zaehlen zu gleichen Teilen
+    // fuer alle mit, statt fuer niemanden - sonst wirkt es so, als haette dafuer keiner bezahlt.
+    const memberExpenses: Record<string, number> = {};
+    monthTransactions.filter(t => t.type === 'expense').forEach(t => {
+      if (t.member_id) {
+        memberExpenses[t.member_id] = (memberExpenses[t.member_id] || 0) + Number(t.amount);
+      } else if (members.length > 0) {
+        const share = Number(t.amount) / members.length;
+        members.forEach(m => { memberExpenses[m.id] = (memberExpenses[m.id] || 0) + share; });
+      }
+    });
+    const whoIsNext = members.length > 1
+      ? members.reduce((min, m) => (memberExpenses[m.id] || 0) < (memberExpenses[min.id] || 0) ? m : min, members[0])
+      : null;
+    const isMyTurn = whoIsNext?.id === currentMember?.id;
 
-  // Filtered transactions for tab
-  const filteredTransactions = monthTransactions.filter(tx => !filterCat || tx.category === filterCat);
-  const availableCats = [...new Set(monthTransactions.map(t => t.category))];
+    // Filtered transactions for tab
+    const filteredTransactions = monthTransactions.filter(tx => !filterCat || tx.category === filterCat);
+    const availableCats = [...new Set(monthTransactions.map(t => t.category))];
+
+    return { monthTransactions, totalExpenses, totalIncome, balance, catBreakdown, whoIsNext, isMyTurn, filteredTransactions, availableCats, memberExpenses };
+  }, [transactions, currentMonth, filterCat, members, currentMember?.id]);
 
   useEffect(() => { setFilterCat(null); }, [currentMonth]);
 

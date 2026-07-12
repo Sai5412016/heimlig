@@ -18,7 +18,12 @@ export default function BudgetSplitModal({ visible, onClose }: { visible: boolea
   useEffect(() => { if (visible) loadSettlements(); }, [visible]);
 
   const { net, suggestions } = useMemo(() => {
-    const expenses = transactions.filter(t => t.type === 'expense' && (t as any).member_id);
+    // Only split expenses paid by someone still in the household — a departed member's
+    // historical spend can't be credited back to them (they're no longer in `members`), so
+    // including it in the shared total would inflate everyone else's share with no way to
+    // net it out.
+    const currentIds = new Set(members.map(m => m.id));
+    const expenses = transactions.filter(t => t.type === 'expense' && (t as any).member_id && currentIds.has((t as any).member_id));
     const total = expenses.reduce((s, t) => s + Number(t.amount), 0);
     const N = members.length || 1;
     const share = total / N;
