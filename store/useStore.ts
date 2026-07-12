@@ -58,6 +58,19 @@ export function mergeQuantities(a?: string | null, b?: string | null): string | 
   return `${a} + ${b}`;
 }
 
+// Merge same-named ingredients within one incoming batch (case-insensitive) before adding
+// them to the cart, so parallel addItem() calls never race on the same existing-item lookup.
+function dedupeIngredients<T extends { name: string; quantity?: string; category: string }>(list: T[]): T[] {
+  const byKey = new Map<string, T>();
+  for (const ing of list) {
+    const key = ing.name.toLowerCase().trim();
+    const existing = byKey.get(key);
+    if (existing) existing.quantity = mergeQuantities(existing.quantity, ing.quantity);
+    else byKey.set(key, { ...ing });
+  }
+  return [...byKey.values()];
+}
+
 interface AppState {
   userId: string | null;
   setUserId: (id: string | null) => void;
@@ -824,7 +837,8 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     if (addToCart && activeListId) {
-      for (const ing of toAdd) await addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlanId, undefined, recipe?.id);
+      const deduped = dedupeIngredients(toAdd);
+      await Promise.all(deduped.map(ing => addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlanId, undefined, recipe?.id)));
     }
     return { added: addToCart ? toAdd.length : 0, planned: !!(date && mealType) };
   },
@@ -846,7 +860,8 @@ export const useStore = create<AppState>((set, get) => ({
 
     const toAdd = (recipe.ingredients || []).filter(i => i.include);
     if (addToCart && activeListId) {
-      for (const ing of toAdd) await addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlan?.id, undefined, recipe.id);
+      const deduped = dedupeIngredients(toAdd);
+      await Promise.all(deduped.map(ing => addItem(activeListId, ing.name, ing.quantity, ing.category, mealPlan?.id, undefined, recipe.id)));
     }
     return { added: addToCart ? toAdd.length : 0 };
   },

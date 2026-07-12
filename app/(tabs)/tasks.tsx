@@ -7,10 +7,9 @@ import {
 import { Alert } from '../../lib/alert';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-const hapticImpact = (style: Haptics.ImpactFeedbackStyle) => { if (Platform.OS !== 'web') Haptics.impactAsync(style); };
-const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
+import { hapticImpact, hapticNotification } from '../../lib/haptics';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameDay, isToday, isBefore, startOfWeek, addMonths,
@@ -1175,6 +1174,10 @@ export default function TasksScreen() {
     loadMonthScores();
     requestNotificationPermission();
   }, [loadTasks, loadMealPlans, loadMonthScores]);
+
+  // Refetch on focus so edits made elsewhere (Home's own fetch, another device, another
+  // member) aren't silently stale after navigating back to this tab.
+  useFocusEffect(useCallback(() => { loadTasks(); }, [loadTasks]));
 
   // Once per month: celebrate last month's top household member
   useEffect(() => {

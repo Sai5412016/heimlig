@@ -119,7 +119,10 @@ export default function DashboardScreen() {
     const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const prevMonthKey = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
     const [tasksRes, recentTx, prevTx] = await Promise.all([
-      supabase.from('tasks').select('*').eq('household_id', household.id).is('completed_at', null).order('due_date'),
+      // Fetch the full task set (not just open ones) so this doesn't clobber the shared
+      // store with a partial list — the Tasks screen keeps completed tasks in the same
+      // slice, and "open" is already derived client-side below via openTasks/openTasksThisMonth.
+      supabase.from('tasks').select('*').eq('household_id', household.id).order('due_date'),
       fetchRecentTransactions(household.id, 50),
       supabase.from('transactions').select('amount').eq('household_id', household.id).eq('type', 'expense')
         .gte('transaction_date', `${prevMonthKey}-01`).lt('transaction_date', `${monthKey}-01`),
