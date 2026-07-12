@@ -10,6 +10,7 @@ import { radius, motion } from '../../constants/theme';
 import MatrixRain from '../../components/MatrixRain';
 import PitchBall from '../../components/PitchBall';
 import FlyingWitch from '../../components/FlyingWitch';
+import RacingCar from '../../components/RacingCar';
 
 function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
   const { colors } = useTheme();
@@ -75,6 +76,7 @@ export default function TabLayout() {
       </Tabs>
       {themeId === 'pitch-gold' && <PitchBall />}
       {themeId === 'witch-purple' && <FlyingWitch />}
+      {themeId === 'racing' && <RacingCar />}
     </View>
   );
 }

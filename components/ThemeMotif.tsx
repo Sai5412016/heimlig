@@ -17,13 +17,21 @@ export default function ThemeMotif({ size = 26 }: { size?: number }) {
 
   switch (theme.id) {
     case 'racing':
+      // Small side-profile racer (generic, plain shapes) — the animated full-size version
+      // speeds across the screen on a short track stretch in components/RacingCar.tsx.
       return (
         <View style={[styles.wrap, box]}>
-          <View style={[styles.absFill, { backgroundColor: theme.brand, borderRadius: size / 2 }]} />
-          <View style={[styles.carCabin, { backgroundColor: '#1A1A1A', bottom: size * 0.42, left: size * 0.22, right: size * 0.22, height: size * 0.16 }]} />
-          <View style={[styles.abs, { backgroundColor: '#1A1A1A', bottom: size * 0.24, left: size * 0.1, right: size * 0.1, height: size * 0.18, borderRadius: size * 0.09 }]} />
-          <View style={[styles.wheel, { backgroundColor: theme.accent, bottom: size * 0.16, left: size * 0.14 }]} />
-          <View style={[styles.wheel, { backgroundColor: theme.accent, bottom: size * 0.16, right: size * 0.14 }]} />
+          <View style={[styles.abs, { bottom: size * 0.36, left: size * 0.06, width: size * 0.9, height: size * 0.34, backgroundColor: theme.brand, borderRadius: size * 0.17 }]} />
+          <View style={[styles.abs, {
+            bottom: size * 0.54, left: size * 0.34, width: size * 0.4, height: size * 0.26, backgroundColor: '#1A1A1A',
+            borderTopLeftRadius: size * 0.16, borderTopRightRadius: size * 0.08, borderBottomLeftRadius: 2, borderBottomRightRadius: 2,
+          }]} />
+          <View style={[styles.wheel, { backgroundColor: '#1A1A1A', bottom: size * 0.14, left: size * 0.16, width: size * 0.24, height: size * 0.24, borderRadius: size * 0.12, alignItems: 'center', justifyContent: 'center' }]}>
+            <View style={{ width: size * 0.09, height: size * 0.09, borderRadius: size * 0.045, backgroundColor: theme.accent }} />
+          </View>
+          <View style={[styles.wheel, { backgroundColor: '#1A1A1A', bottom: size * 0.14, right: size * 0.12, width: size * 0.24, height: size * 0.24, borderRadius: size * 0.12, alignItems: 'center', justifyContent: 'center' }]}>
+            <View style={{ width: size * 0.09, height: size * 0.09, borderRadius: size * 0.045, backgroundColor: theme.accent }} />
+          </View>
         </View>
       );
     case 'monster-fang':
