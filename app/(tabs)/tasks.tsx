@@ -9,8 +9,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-const hapticImpact = (style: Haptics.ImpactFeedbackStyle) => { if (Platform.OS !== 'web') Haptics.impactAsync(style); };
-const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
+import { hapticImpact, hapticNotification } from '../../lib/haptics';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameDay, isToday, isBefore, startOfWeek, addMonths,

@@ -9,8 +9,7 @@ import {
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-const hapticImpact = (style: Haptics.ImpactFeedbackStyle) => { if (Platform.OS !== 'web') Haptics.impactAsync(style); };
-const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
+import { hapticImpact, hapticNotification } from '../../lib/haptics';
 import { colors, spacing, radius, typography, shadow, SHOPPING_CATEGORIES, CATEGORY_COLORS, APP_THEMES, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { ShoppingItem, RecipeIngredient } from '../../lib/supabase';

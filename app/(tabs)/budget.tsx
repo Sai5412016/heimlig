@@ -7,7 +7,7 @@ import {
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
+import { hapticNotification } from '../../lib/haptics';
 import { format, subMonths, addMonths, addWeeks, addYears, parseISO, isSameMonth } from 'date-fns';
 
 const TX_RECURRENCE_OPTIONS = [

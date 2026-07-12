@@ -8,6 +8,7 @@ import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { hapticNotification } from '../../lib/haptics';
 import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { Recipe, MealType } from '../../lib/supabase';
@@ -17,7 +18,6 @@ import ThemeMotif from '../../components/ThemeMotif';
 import { format, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 
-const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 const MEAL_LABELS: Record<MealType, string> = { fruehstueck: '🌅 Frühstück', mittag: '☀️ Mittagessen', abendessen: '🌙 Abendessen' };
 
 const RECIPE_CATEGORIES: { key: string; emoji: string }[] = [

@@ -12,6 +12,7 @@ import { useTheme } from '../hooks/useTheme';
 import { checkForUpdate } from '../lib/appUpdate';
 import WhatsNewModal from '../components/WhatsNewModal';
 import ErrorFallback from '../components/ErrorFallback';
+import { SkeletonList } from '../components/Skeleton';
 import { initSentry, Sentry } from '../lib/sentry';
 
 initSentry();
@@ -143,7 +144,10 @@ function RootLayout() {
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}
         >
           <Text style={{ fontSize: 48, marginBottom: 12 }}>🏡</Text>
-          <ActivityIndicator size="small" color={colors.brand} />
+          <ActivityIndicator size="small" color={colors.brand} style={{ marginBottom: 24 }} />
+          <View style={{ width: '80%', maxWidth: 340 }}>
+            <SkeletonList rows={3} />
+          </View>
         </View>
       )}
       <WhatsNewModal />
