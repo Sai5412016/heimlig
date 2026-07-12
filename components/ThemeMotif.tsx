@@ -127,6 +127,17 @@ export default function ThemeMotif({ size = 26 }: { size?: number }) {
           }]} />
         </View>
       );
+    case 'matrix':
+      return (
+        <View style={[styles.wrap, box, { borderRadius: size * 0.22, backgroundColor: '#070A08', borderWidth: 1, borderColor: theme.brand, overflow: 'hidden' }]}>
+          <View style={[styles.abs, {
+            top: size * 0.3, left: size * 0.16, width: size * 0.24, height: size * 0.24,
+            borderLeftWidth: size * 0.07, borderBottomWidth: size * 0.07, borderColor: theme.brand,
+            transform: [{ rotate: '-45deg' }],
+          }]} />
+          <View style={[styles.abs, { top: size * 0.42, left: size * 0.52, width: size * 0.28, height: size * 0.11, backgroundColor: theme.brand }]} />
+        </View>
+      );
     case 'inselfreunde':
       return (
         <View style={[styles.wrap, box]}>

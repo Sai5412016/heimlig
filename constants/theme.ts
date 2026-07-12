@@ -95,6 +95,12 @@ export interface AppTheme {
   id: string; label: string; emoji: string; brand: string; brandLight: string; brandDark: string; accent: string;
   // Optional original-mascot illustrations shown in empty states instead of the default emoji.
   illustrations?: { shoppingEmpty?: number; tasksEmpty?: number };
+  // Full palette override + dark-mode lock, for themes that commit to one fixed look
+  // (currently only "matrix") instead of following the Hell/Dunkel toggle.
+  forceDark?: boolean;
+  background?: string; surface?: string; surfaceElevated?: string;
+  border?: string; borderLight?: string;
+  text?: string; textSecondary?: string; textMuted?: string; textInverse?: string;
 }
 
 export const APP_THEMES: AppTheme[] = [
@@ -196,6 +202,21 @@ export const APP_THEMES: AppTheme[] = [
       shoppingEmpty: require('../assets/themes/witch-purple/shopping-empty.png'),
       tasksEmpty: require('../assets/themes/witch-purple/tasks-empty.png'),
     },
+  },
+  {
+    // Deliberately black regardless of the Hell/Dunkel toggle — the whole point is the
+    // near-black backdrop, so this one locks forceDark and overrides the full surface
+    // stack instead of just brand/accent like the other 12 themes.
+    id: 'matrix', label: 'Matrix', emoji: '🟢', brand: '#39FF6E', brandLight: '#B9FFD1', brandDark: '#1E8A44', accent: '#FFB020',
+    forceDark: true,
+    // "background" is transparent on purpose: <MatrixRain> paints the actual near-black
+    // + animated glyphs once behind the tab navigator (see app/(tabs)/_layout.tsx), and
+    // every screen's own SafeAreaView reads this token for its container — leaving it
+    // transparent lets that single animated layer show through everywhere instead of
+    // every screen painting over it with a flat color.
+    background: 'transparent', surface: '#0D1410', surfaceElevated: '#101A13',
+    border: '#163322', borderLight: '#0F2417',
+    text: '#E7FFEF', textSecondary: '#8FC9A3', textMuted: '#4D7A5C', textInverse: '#041A0C',
   },
 ];
 

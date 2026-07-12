@@ -5,7 +5,9 @@ import { View, Text, Animated, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
+import { useStore } from '../../store/useStore';
 import { radius, motion } from '../../constants/theme';
+import MatrixRain from '../../components/MatrixRain';
 
 function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
   const { colors } = useTheme();
@@ -35,32 +37,40 @@ function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focu
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const themeId = useStore((s: { themeId: string }) => s.themeId);
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 56 + insets.bottom,
-          paddingBottom: insets.bottom,
-          paddingTop: 6,
-        },
-        tabBarShowLabel: false,
-      }}
-      screenListeners={{
-        tabPress: () => { if (Platform.OS !== 'web') Haptics.selectionAsync(); },
-      }}
-    >
-      <Tabs.Screen name="index" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🏡" label="Home" focused={focused} /> }} />
-      <Tabs.Screen name="shopping" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" label="Einkauf" focused={focused} /> }} />
-      <Tabs.Screen name="scan" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🥗" label="Gesund" focused={focused} /> }} />
-      <Tabs.Screen name="recipes" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🍳" label="Rezepte" focused={focused} /> }} />
-      <Tabs.Screen name="tasks" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="📅" label="Tasks" focused={focused} /> }} />
-      <Tabs.Screen name="budget" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="💶" label="Budget" focused={focused} /> }} />
-      <Tabs.Screen name="household" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="👥" label="Haushalt" focused={focused} /> }} />
-    </Tabs>
+    <View style={{ flex: 1 }}>
+      {themeId === 'matrix' && <MatrixRain />}
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          // Transparent for every theme except "matrix" this resolves to colors.background
+          // (opaque) anyway — for "matrix" it's transparent so <MatrixRain /> above shows
+          // through every screen instead of each one painting over it.
+          sceneStyle: { backgroundColor: colors.background },
+          tabBarStyle: {
+            backgroundColor: colors.surface,
+            borderTopColor: colors.border,
+            borderTopWidth: 1,
+            height: 56 + insets.bottom,
+            paddingBottom: insets.bottom,
+            paddingTop: 6,
+          },
+          tabBarShowLabel: false,
+        }}
+        screenListeners={{
+          tabPress: () => { if (Platform.OS !== 'web') Haptics.selectionAsync(); },
+        }}
+      >
+        <Tabs.Screen name="index" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🏡" label="Home" focused={focused} /> }} />
+        <Tabs.Screen name="shopping" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" label="Einkauf" focused={focused} /> }} />
+        <Tabs.Screen name="scan" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🥗" label="Gesund" focused={focused} /> }} />
+        <Tabs.Screen name="recipes" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🍳" label="Rezepte" focused={focused} /> }} />
+        <Tabs.Screen name="tasks" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="📅" label="Tasks" focused={focused} /> }} />
+        <Tabs.Screen name="budget" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="💶" label="Budget" focused={focused} /> }} />
+        <Tabs.Screen name="household" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="👥" label="Haushalt" focused={focused} /> }} />
+      </Tabs>
+    </View>
   );
 }
