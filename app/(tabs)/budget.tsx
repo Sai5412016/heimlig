@@ -8,7 +8,8 @@ import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
-import { format, subMonths, addMonths, addWeeks, addYears, parseISO, isSameMonth } from 'date-fns';
+import { format, subMonths, addMonths, parseISO, isSameMonth } from 'date-fns';
+import { advanceFromAnchor, stepsBetween, type RecurrenceUnit } from '../../lib/dateMath';
 
 const TX_RECURRENCE_OPTIONS = [
   { key: null, label: 'Einmalig' },
@@ -16,13 +17,6 @@ const TX_RECURRENCE_OPTIONS = [
   { key: 'monthly', label: 'Monatlich' },
   { key: 'yearly', label: 'Jährlich' },
 ];
-
-// Advance a yyyy-MM-dd date string by N units
-function advanceDate(dateStr: string, unit: string, n: number): string {
-  const d = parseISO(dateStr);
-  const next = unit === 'weekly' ? addWeeks(d, n) : unit === 'yearly' ? addYears(d, n) : addMonths(d, n);
-  return format(next, 'yyyy-MM-dd');
-}
 import { de } from 'date-fns/locale';
 import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
@@ -97,7 +91,7 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
       transaction_date: date, member_id: paidBy || undefined,
       recurrence: recurrence || undefined,
       recurrence_interval: recurrence ? recurrenceInterval : undefined,
-      recurrence_next: recurrence ? advanceDate(date, recurrence, recurrenceInterval) : undefined,
+      recurrence_next: recurrence ? advanceFromAnchor(date, recurrence as RecurrenceUnit, recurrenceInterval) : undefined,
     });
     onClose();
   };
@@ -327,7 +321,14 @@ export default function BudgetScreen() {
     if (templates.length === 0) return;
 
     for (const t of templates) {
-      let next = t.recurrence_next as string;
+      const unit = (t.recurrence || 'monthly') as RecurrenceUnit;
+      const interval = t.recurrence_interval || 1;
+      const anchor = t.transaction_date; // fixed, never mutated by this loop
+      // Seed the step counter from the currently-stored recurrence_next (so we don't replay
+      // the whole history), then always compute each occurrence fresh from the anchor date
+      // instead of chaining — see advanceFromAnchor for why that matters.
+      let step = Math.max(1, Math.round(stepsBetween(anchor, t.recurrence_next as string, unit) / interval));
+      let next = advanceFromAnchor(anchor, unit, interval * step);
       const inserts: any[] = [];
       let guard = 0;
       while (next && next <= today && guard < 120) {
@@ -336,7 +337,8 @@ export default function BudgetScreen() {
           category: t.category, description: t.description, member_id: t.member_id,
           transaction_date: next,
         });
-        next = advanceDate(next, t.recurrence || 'monthly', t.recurrence_interval || 1);
+        step++;
+        next = advanceFromAnchor(anchor, unit, interval * step);
         guard++;
       }
       await budgetRepo.insertTransactions(inserts);
