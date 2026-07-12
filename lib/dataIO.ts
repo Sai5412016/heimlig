@@ -6,7 +6,12 @@ import { Transaction, Member } from './supabase';
 const DELIM = ';';
 
 function escape(value: string): string {
-  const v = value ?? '';
+  let v = value ?? '';
+  // Formula-injection guard: a field starting with =, +, -, @ (or tab/CR) is interpreted as
+  // a formula by Excel/Sheets when the CSV is opened — a malicious transaction description
+  // (e.g. from a shared household member) could run a formula on whoever opens the export.
+  // Prefixing with a single quote forces it to be read as plain text.
+  if (/^[=+\-@\t\r]/.test(v)) v = `'${v}`;
   if (v.includes(DELIM) || v.includes('"') || v.includes('\n')) {
     return `"${v.replace(/"/g, '""')}"`;
   }

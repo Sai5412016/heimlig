@@ -55,8 +55,15 @@ const BLOCKED_HOSTNAMES = new Set(['localhost', 'metadata', 'metadata.google.int
 function assertSafeUrl(rawUrl: string): URL {
   const u = new URL(rawUrl);
   if (!['http:', 'https:'].includes(u.protocol)) throw new Error('unsupported protocol');
-  const host = u.hostname.toLowerCase();
+  let host = u.hostname.toLowerCase();
   if (BLOCKED_HOSTNAMES.has(host) || host.endsWith('.local')) throw new Error('blocked host');
+
+  // IPv4-mapped IPv6 (e.g. "::ffff:127.0.0.1") embeds a real IPv4 address after the
+  // "::ffff:" prefix — unwrap it so the IPv4 blocklist patterns below still catch it,
+  // instead of only matching the plain-IPv6 patterns.
+  const mapped = host.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+  if (mapped) host = mapped[1];
+
   if (BLOCKED_HOST_PATTERNS.some(rx => rx.test(host))) throw new Error('blocked host');
   return u;
 }
@@ -222,7 +229,8 @@ serve(async (req) => {
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), {
+    console.error('extract-recipe error:', e);
+    return new Response(JSON.stringify({ error: 'Rezept konnte nicht verarbeitet werden.' }), {
       status: 500,
       headers: { ...cors, 'Content-Type': 'application/json' },
     });

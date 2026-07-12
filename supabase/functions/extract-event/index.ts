@@ -104,6 +104,7 @@ serve(async (req) => {
       description: parsed.description || null,
     }), { headers: { ...cors, 'Content-Type': 'application/json' } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+    console.error('extract-event error:', e);
+    return new Response(JSON.stringify({ error: 'Termin konnte nicht erkannt werden.' }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 });

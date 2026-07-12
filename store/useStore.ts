@@ -553,8 +553,11 @@ export const useStore = create<AppState>((set, get) => ({
     if (data) set(s => (s.messages.some(m => m.id === (data as any).id) ? {} as any : { messages: [...s.messages, data as HouseholdMessage] }));
 
     // Push-notify the rest of the household, WhatsApp-style. Best-effort, never blocks sending.
+    // The function derives the sender's own identity server-side from the auth token — it
+    // doesn't trust a client-supplied sender id/name (that would let a member spoof another
+    // member's display name in the push notification).
     supabase.functions.invoke('notify-message', {
-      body: { household_id: household.id, sender_member_id: currentMember?.id, sender_name: currentMember?.display_name, text: trimmed },
+      body: { household_id: household.id, text: trimmed },
     }).catch(() => {});
   },
   deleteMessage: async (id) => {
