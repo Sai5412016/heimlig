@@ -218,6 +218,13 @@ export const APP_THEMES: AppTheme[] = [
     border: '#163322', borderLight: '#0F2417',
     text: '#E7FFEF', textSecondary: '#8FC9A3', textMuted: '#4D7A5C', textInverse: '#041A0C',
   },
+  {
+    // Tactical-ops vibe (orange/gunmetal), inspired by the mood of competitive tactical
+    // shooters — deliberately not named/branded after a specific game, same convention as
+    // every other theme in this list.
+    id: 'tactical-ops', label: 'Task Force Orange', emoji: '🎯',
+    brand: '#FF6A13', brandLight: '#FFB073', brandDark: '#B33D00', accent: '#5A6270',
+  },
 ];
 
 export const CATEGORY_COLORS: Record<string, string> = {

@@ -158,6 +158,17 @@ export default function ThemeMotif({ size = 26 }: { size?: number }) {
           <View style={[styles.abs, { top: size * 0.42, left: size * 0.52, width: size * 0.28, height: size * 0.11, backgroundColor: theme.brand }]} />
         </View>
       );
+    case 'tactical-ops':
+      // Generic tactical operator bust (helmet/visor/vest) — no team logo, no specific
+      // game's character skin, same "plain shapes" treatment as every other motif here.
+      return (
+        <View style={[styles.wrap, box]}>
+          <View style={[styles.abs, { bottom: 0, left: size * 0.08, right: size * 0.08, height: size * 0.34, backgroundColor: theme.accent, borderTopLeftRadius: size * 0.1, borderTopRightRadius: size * 0.1 }]} />
+          <View style={[styles.abs, { bottom: size * 0.28, left: size * 0.16, right: size * 0.16, height: size * 0.5, backgroundColor: '#1A1A1A', borderRadius: size * 0.22 }]} />
+          <View style={[styles.abs, { bottom: size * 0.5, left: size * 0.2, right: size * 0.2, height: size * 0.14, backgroundColor: theme.brand, borderRadius: size * 0.05 }]} />
+          <View style={[styles.abs, { bottom: size * 0.68, right: size * 0.14, width: size * 0.08, height: size * 0.16, backgroundColor: '#1A1A1A', borderRadius: 2 }]} />
+        </View>
+      );
     case 'inselfreunde':
       return (
         <View style={[styles.wrap, box]}>
