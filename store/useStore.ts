@@ -699,33 +699,15 @@ export const useStore = create<AppState>((set, get) => ({
     if (isHousehold && currentMember && household && !isAlreadyCompleted) {
       const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
-      // Update member_scores
-      const { data: existing } = await supabase
-        .from('member_scores')
-        .select('*')
-        .eq('member_id', currentMember.id)
-        .eq('week_start', weekStart)
-        .single();
-
-      if (existing) {
-        await supabase
-          .from('member_scores')
-          .update({
-            points: existing.points + points,
-            tasks_done: existing.tasks_done + 1
-          })
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('member_scores')
-          .insert({
-            member_id: currentMember.id,
-            household_id: household.id,
-            week_start: weekStart,
-            points,
-            tasks_done: 1,
-          });
-      }
+      // Atomic upsert (bump_member_score does points = points + p_points server-side) so two
+      // completeTask() calls resolving close together can't clobber each other's increment —
+      // the previous read-then-write here could silently lose points under that race.
+      await supabase.rpc('bump_member_score', {
+        p_member: currentMember.id,
+        p_household: household.id,
+        p_week_start: weekStart,
+        p_points: points,
+      });
 
       // Update local score
       set(s => ({
