@@ -50,12 +50,20 @@ export default function ThemeMotif({ size = 26 }: { size?: number }) {
         </View>
       );
     case 'pitch-gold':
+      // Generic mid-kick star striker (not a specific character) — kicking leg reaching
+      // toward the ball, same "plain shapes" treatment as every other motif here.
       return (
-        <View style={[styles.wrap, box, { borderRadius: size / 2, overflow: 'hidden' }]}>
-          <View style={[styles.abs, { top: 0, left: 0, right: 0, bottom: 0, backgroundColor: theme.brand }]} />
-          <View style={[styles.abs, { bottom: 0, left: 0, right: 0, height: size * 0.3, backgroundColor: theme.brandDark }]} />
-          <View style={[styles.abs, { top: size * 0.14, left: size * 0.22, width: size * 0.56, height: size * 0.56, borderRadius: size * 0.28, backgroundColor: '#fff' }]} />
-          <View style={[styles.abs, { top: size * 0.36, left: size * 0.42, width: size * 0.16, height: size * 0.16, borderRadius: 2, backgroundColor: '#1A1A1A' }]} />
+        <View style={[styles.wrap, box]}>
+          <View style={[styles.abs, {
+            bottom: size * 0.18, left: size * 0.02, width: size * 0.62, height: size * 0.16,
+            backgroundColor: theme.brand, borderRadius: size * 0.08, transform: [{ rotate: '-40deg' }],
+          }]} />
+          <View style={[styles.abs, {
+            bottom: size * 0.14, left: size * 0.34, width: size * 0.16, height: size * 0.46,
+            backgroundColor: theme.brandDark, borderRadius: size * 0.08, transform: [{ rotate: '18deg' }],
+          }]} />
+          <View style={[styles.abs, { top: size * 0.06, left: size * 0.5, width: size * 0.26, height: size * 0.26, borderRadius: size * 0.13, backgroundColor: theme.brandDark }]} />
+          <View style={[styles.abs, { top: size * 0.02, left: size * 0.02, width: size * 0.2, height: size * 0.2, borderRadius: size * 0.1, backgroundColor: theme.accent, borderWidth: 1, borderColor: '#1A1A1A' }]} />
         </View>
       );
     case 'battle-royale':

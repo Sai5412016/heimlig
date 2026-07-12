@@ -8,6 +8,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useStore } from '../../store/useStore';
 import { radius, motion } from '../../constants/theme';
 import MatrixRain from '../../components/MatrixRain';
+import PitchBall from '../../components/PitchBall';
 
 function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
   const { colors } = useTheme();
@@ -71,6 +72,7 @@ export default function TabLayout() {
         <Tabs.Screen name="budget" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="💶" label="Budget" focused={focused} /> }} />
         <Tabs.Screen name="household" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="👥" label="Haushalt" focused={focused} /> }} />
       </Tabs>
+      {themeId === 'pitch-gold' && <PitchBall />}
     </View>
   );
 }
