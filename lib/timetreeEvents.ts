@@ -2,6 +2,7 @@
 // using the user's own browser session) into the same shape lib/ics.ts already produces,
 // so both importers share the same dedup/insert code in app/(tabs)/tasks.tsx.
 import type { IcsEvent } from './ics';
+import { nextYearlyOccurrence, formatDateKey } from './dateMath';
 
 export interface RawTimeTreeEvent {
   title?: string;
@@ -14,11 +15,14 @@ export interface RawTimeTreeEvent {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
+// start_at is a unix-ms instant; read it in the device's local time (matching lib/ics.ts'
+// UTC->local conversion for timed events), not UTC — otherwise every timed event lands
+// 1-2 hours off for German users, and events near midnight can land on the wrong day.
 function tsToDateTime(ms: number, allDay: boolean): { date: string; time?: string } {
   const d = new Date(ms);
-  const date = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   if (allDay) return { date };
-  return { date, time: `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}` };
+  return { date, time: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
 }
 
 function recurrenceFreq(recurrences?: string[]): IcsEvent['recurrence'] {
@@ -34,10 +38,7 @@ function recurrenceFreq(recurrences?: string[]): IcsEvent['recurrence'] {
 function nextOccurrence(dateStr: string, freq?: string): string {
   if (freq !== 'yearly') return dateStr;
   const [, m, d] = dateStr.split('-').map(Number);
-  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
-  let cand = new Date(Date.UTC(today.getUTCFullYear(), m - 1, d));
-  if (cand < today) cand = new Date(Date.UTC(today.getUTCFullYear() + 1, m - 1, d));
-  return `${cand.getUTCFullYear()}-${pad(cand.getUTCMonth() + 1)}-${pad(cand.getUTCDate())}`;
+  return formatDateKey(nextYearlyOccurrence(m - 1, d));
 }
 
 export function mapTimeTreeEvents(raw: RawTimeTreeEvent[]): IcsEvent[] {

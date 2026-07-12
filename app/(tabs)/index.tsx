@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { fetchRecentTransactions } from '../../repositories/budgetRepository';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { nextYearlyOccurrence } from '../../lib/dateMath';
 import ChatModal from '../../components/ChatModal';
 import BirthdayListModal from '../../components/BirthdayListModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -95,9 +96,7 @@ export default function DashboardScreen() {
       .filter(t => t.category === 'Geburtstag' && t.due_date)
       .map(t => {
         const d = parseISO(t.due_date!);
-        const next = new Date(today.getFullYear(), d.getMonth(), d.getDate());
-        next.setHours(0, 0, 0, 0);
-        if (next.getTime() < today.getTime()) next.setFullYear(today.getFullYear() + 1);
+        const next = nextYearlyOccurrence(d.getMonth(), d.getDate(), today);
         const days = Math.round((next.getTime() - today.getTime()) / 86400000);
         return { task: t, days };
       })

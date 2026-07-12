@@ -1,4 +1,5 @@
 // lib/ics.ts — minimal iCalendar (.ics) parser for importing events into Heimlig
+import { nextYearlyOccurrence, formatDateKey } from './dateMath';
 
 export interface IcsEvent {
   title: string;
@@ -57,11 +58,8 @@ function parseDateProp(line: string): { date: string; time?: string } | null {
 // For yearly events (birthdays), roll the date forward to the next upcoming occurrence
 function nextOccurrence(date: string, freq?: string): string {
   if (freq !== 'yearly') return date;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
   const [, m, d] = date.split('-').map(Number);
-  let cand = new Date(today.getFullYear(), m - 1, d);
-  if (cand < today) cand = new Date(today.getFullYear() + 1, m - 1, d);
-  return `${cand.getFullYear()}-${pad(cand.getMonth() + 1)}-${pad(cand.getDate())}`;
+  return formatDateKey(nextYearlyOccurrence(m - 1, d));
 }
 
 export function parseICS(content: string): IcsEvent[] {

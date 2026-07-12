@@ -6,6 +6,7 @@ import { spacing, radius, typography, type ColorPalette } from '../constants/the
 import type { Task } from '../lib/supabase';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { nextYearlyOccurrence } from '../lib/dateMath';
 
 // Strip "Geburtstag" boilerplate from a task title so we show just the person's name.
 function birthdayName(title: string): string {
@@ -22,9 +23,7 @@ export default function BirthdayListModal({ visible, onClose, tasks }: { visible
       .filter(t => t.category === 'Geburtstag' && t.due_date)
       .map(t => {
         const d = parseISO(t.due_date!);
-        const next = new Date(today.getFullYear(), d.getMonth(), d.getDate());
-        next.setHours(0, 0, 0, 0);
-        if (next.getTime() < today.getTime()) next.setFullYear(today.getFullYear() + 1);
+        const next = nextYearlyOccurrence(d.getMonth(), d.getDate(), today);
         const days = Math.round((next.getTime() - today.getTime()) / 86400000);
         return { task: t, date: next, days };
       })
