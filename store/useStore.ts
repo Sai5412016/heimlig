@@ -2,7 +2,8 @@
 import { create } from 'zustand';
 import { supabase, Household, Member, ShoppingList, ShoppingItem, Task, Transaction, Recipe, RecipeIngredient, MealType, Reward, RewardRedemption, PantryItem, HouseholdNote, Settlement, HouseholdMessage, MemberLocation } from '../lib/supabase';
 import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
-import { format, startOfWeek, parseISO, addDays, addWeeks, addMonths, addYears } from 'date-fns';
+import { format, startOfWeek, parseISO, addDays, addWeeks } from 'date-fns';
+import { advanceMonthlyPreservingDay, advanceYearlyPreservingDay } from '../lib/dateMath';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerPushToken } from '../lib/pushTokens';
 import * as shoppingRepo from '../repositories/shoppingRepository';
@@ -654,11 +655,15 @@ export const useStore = create<AppState>((set, get) => ({
     if (!isAlreadyCompleted && task.recurrence && task.due_date) {
       const n = (task as any).recurrence_interval || 1;
       const base = parseISO(task.due_date);
+      // recurrence_day anchors the series to its original day-of-month/year, so a clamp in
+      // a short month (e.g. Jan 31 -> Feb 28) doesn't compound into a permanent drift —
+      // see advanceMonthlyPreservingDay/advanceYearlyPreservingDay in lib/dateMath.ts.
+      const anchorDay = (task as any).recurrence_day ?? base.getDate();
       let next: Date | null = null;
       if (task.recurrence === 'daily') next = addDays(base, n);
       else if (task.recurrence === 'weekly') next = addWeeks(base, n);
-      else if (task.recurrence === 'monthly') next = addMonths(base, n);
-      else if (task.recurrence === 'yearly') next = addYears(base, n);
+      else if (task.recurrence === 'monthly') next = advanceMonthlyPreservingDay(base, n, anchorDay);
+      else if (task.recurrence === 'yearly') next = advanceYearlyPreservingDay(base, n, anchorDay);
       // 🔁 Rotation: pass the next occurrence to the next person in the cycle.
       const rotation = (task as any).rotation as string[] | null | undefined;
       let nextAssignee = task.assigned_to;
@@ -680,6 +685,7 @@ export const useStore = create<AppState>((set, get) => ({
           due_time: (task as any).due_time || null,
           recurrence: task.recurrence,
           recurrence_interval: n,
+          recurrence_day: anchorDay,
           created_by: task.created_by,
         }).select().single();
         if (newTask) set(s => ({ tasks: [...s.tasks, newTask] }));

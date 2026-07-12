@@ -46,6 +46,15 @@ export function advanceMonthlyPreservingDay(base: Date, months: number, anchorDa
   return target;
 }
 
+// Same idea as advanceMonthlyPreservingDay but for yearly recurrence (the Feb-29 case):
+// clamps to anchorDay instead of letting `new Date(year, month, 29)` silently overflow into
+// March in a non-leap year.
+export function advanceYearlyPreservingDay(base: Date, years: number, anchorDay: number): Date {
+  const targetYear = base.getFullYear() + years;
+  const daysInTargetMonth = new Date(targetYear, base.getMonth() + 1, 0).getDate();
+  return new Date(targetYear, base.getMonth(), Math.min(anchorDay, daysInTargetMonth));
+}
+
 // Next occurrence (today or later) of a given month/day, in local time. Feb 29 birthdays/
 // anniversaries are shown on Feb 28 in non-leap years instead of silently overflowing into
 // March 1st (the default behavior of `new Date(year, 1, 29)`), matching the convention most
