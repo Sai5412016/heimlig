@@ -129,8 +129,15 @@ export default function ThemeMotif({ size = 26 }: { size?: number }) {
         </View>
       );
     case 'comic-hero':
+      // Full flying version with a lightning speed-trail lives in components/FlyingHero.tsx —
+      // this header badge gets a small cape flourish to match, still no specific emblem/face.
       return (
-        <View style={[styles.wrap, box, { borderRadius: size / 2, backgroundColor: theme.brand }]}>
+        <View style={[styles.wrap, box, { borderRadius: size / 2, backgroundColor: theme.brand, overflow: 'visible' }]}>
+          <View style={[styles.abs, {
+            top: size * 0.06, left: -size * 0.12, width: size * 0.34, height: size * 0.6,
+            backgroundColor: theme.brandDark, borderTopLeftRadius: size * 0.2, borderBottomLeftRadius: size * 0.3,
+            transform: [{ rotate: '18deg' }],
+          }]} />
           <View style={[styles.abs, {
             top: size * 0.22, left: size * 0.5 - size * 0.16, width: size * 0.32, height: size * 0.32,
             backgroundColor: theme.accent, transform: [{ rotate: '45deg' }],
