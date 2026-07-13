@@ -14,6 +14,12 @@ import RacingCar from '../../components/RacingCar';
 import BulletTracers from '../../components/BulletTracers';
 import FlyingHero from '../../components/FlyingHero';
 import RedLightDoll from '../../components/RedLightDoll';
+import PitchField from '../../components/PitchField';
+import NightSky from '../../components/NightSky';
+import NightTrack from '../../components/NightTrack';
+import OpsBackdrop from '../../components/OpsBackdrop';
+import CitySkyline from '../../components/CitySkyline';
+import ArenaBackdrop from '../../components/ArenaBackdrop';
 
 function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
   const { colors } = useTheme();
@@ -48,11 +54,18 @@ export default function TabLayout() {
   return (
     <View style={{ flex: 1 }}>
       {themeId === 'matrix' && <MatrixRain />}
+      {themeId === 'pitch-gold' && <PitchField />}
+      {themeId === 'witch-purple' && <NightSky />}
+      {themeId === 'racing' && <NightTrack />}
+      {themeId === 'tactical-ops' && <OpsBackdrop />}
+      {themeId === 'comic-hero' && <CitySkyline />}
+      {themeId === 'red-light' && <ArenaBackdrop />}
       <Tabs
         screenOptions={{
           headerShown: false,
-          // Transparent for every theme except "matrix" this resolves to colors.background
-          // (opaque) anyway — for "matrix" it's transparent so <MatrixRain /> above shows
+          // For most themes this resolves to colors.background (opaque) — for the
+          // full-backdrop themes (matrix, pitch-gold, witch-purple, racing, tactical-ops,
+          // comic-hero, red-light) it's transparent so their backdrop component above shows
           // through every screen instead of each one painting over it.
           sceneStyle: { backgroundColor: colors.background },
           tabBarStyle: {

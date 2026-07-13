@@ -134,7 +134,14 @@ export const APP_THEMES: AppTheme[] = [
     },
   },
   {
+    // Full dark-arena backdrop (see components/ArenaBackdrop.tsx) — same forceDark +
+    // transparent-background pattern as "matrix", so it locks to its own look regardless
+    // of the Hell/Dunkel toggle instead of just re-skinning brand/accent.
     id: 'red-light', label: 'Rotlicht Arena', emoji: '🦑', brand: '#E0286B', brandLight: '#FF6B9D', brandDark: '#7A1338', accent: '#00C2A8',
+    forceDark: true,
+    background: 'transparent', surface: '#1A0E14', surfaceElevated: '#241420',
+    border: '#4A2038', borderLight: '#33182A',
+    text: '#FBEAF2', textSecondary: '#D69EBB', textMuted: '#7A4A63', textInverse: '#0F0710',
     illustrations: {
       shoppingEmpty: require('../assets/themes/red-light/shopping-empty.png'),
       tasksEmpty: require('../assets/themes/red-light/tasks-empty.png'),
@@ -148,7 +155,12 @@ export const APP_THEMES: AppTheme[] = [
     },
   },
   {
+    // Full night-skyline backdrop (see components/CitySkyline.tsx) — same forceDark pattern.
     id: 'comic-hero', label: 'Comic Held', emoji: '🦸', brand: '#D62828', brandLight: '#F4A100', brandDark: '#7A1010', accent: '#1D4ED8',
+    forceDark: true,
+    background: 'transparent', surface: '#141B33', surfaceElevated: '#1C2444',
+    border: '#2C355C', borderLight: '#222B4A',
+    text: '#F2F4FF', textSecondary: '#AAB4DD', textMuted: '#5C6790', textInverse: '#0B0F1E',
     illustrations: {
       shoppingEmpty: require('../assets/themes/comic-hero/shopping-empty.png'),
       tasksEmpty: require('../assets/themes/comic-hero/tasks-empty.png'),
@@ -176,14 +188,24 @@ export const APP_THEMES: AppTheme[] = [
     },
   },
   {
+    // Full night-pitch backdrop (see components/PitchField.tsx) — same forceDark pattern.
     id: 'pitch-gold', label: 'Rasen Gold', emoji: '⚽', brand: '#2E8B3D', brandLight: '#6FCB6F', brandDark: '#154019', accent: '#D4AF37',
+    forceDark: true,
+    background: 'transparent', surface: '#0F1D12', surfaceElevated: '#15271A',
+    border: '#234A2E', borderLight: '#1A3220',
+    text: '#EAF7EC', textSecondary: '#9FC9A8', textMuted: '#5C8265', textInverse: '#08130A',
     illustrations: {
       shoppingEmpty: require('../assets/themes/pitch-gold/shopping-empty.png'),
       tasksEmpty: require('../assets/themes/pitch-gold/tasks-empty.png'),
     },
   },
   {
+    // Full night-track backdrop (see components/NightTrack.tsx) — same forceDark pattern.
     id: 'racing', label: 'Rennsport Rot', emoji: '🏎️', brand: '#C1121F', brandLight: '#E85D4E', brandDark: '#680C13', accent: '#8D99AE',
+    forceDark: true,
+    background: 'transparent', surface: '#16161A', surfaceElevated: '#1E1E24',
+    border: '#2E2E36', borderLight: '#242429',
+    text: '#F5F5F7', textSecondary: '#A8A8B0', textMuted: '#5C5C64', textInverse: '#0A0A0C',
     illustrations: {
       shoppingEmpty: require('../assets/themes/racing/shopping-empty.png'),
       tasksEmpty: require('../assets/themes/racing/tasks-empty.png'),
@@ -197,7 +219,12 @@ export const APP_THEMES: AppTheme[] = [
     },
   },
   {
+    // Full night-sky backdrop (see components/NightSky.tsx) — same forceDark pattern.
     id: 'witch-purple', label: 'Hexen Lila', emoji: '🧹', brand: '#6B3FA0', brandLight: '#A784D1', brandDark: '#3A2058', accent: '#4CAF50',
+    forceDark: true,
+    background: 'transparent', surface: '#150B24', surfaceElevated: '#1D1132',
+    border: '#3A2058', borderLight: '#2A1642',
+    text: '#F1E9FF', textSecondary: '#B6A0D9', textMuted: '#6B5590', textInverse: '#0B0616',
     illustrations: {
       shoppingEmpty: require('../assets/themes/witch-purple/shopping-empty.png'),
       tasksEmpty: require('../assets/themes/witch-purple/tasks-empty.png'),
@@ -224,6 +251,11 @@ export const APP_THEMES: AppTheme[] = [
     // every other theme in this list.
     id: 'tactical-ops', label: 'Task Force Orange', emoji: '🎯',
     brand: '#FF6A13', brandLight: '#FFB073', brandDark: '#B33D00', accent: '#5A6270',
+    // Full ops-backdrop (see components/OpsBackdrop.tsx) — same forceDark pattern.
+    forceDark: true,
+    background: 'transparent', surface: '#20242A', surfaceElevated: '#2A2F36',
+    border: '#3A4048', borderLight: '#2E343C',
+    text: '#F2F3F5', textSecondary: '#A9AFB8', textMuted: '#616872', textInverse: '#14171B',
   },
 ];
 
