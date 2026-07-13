@@ -71,8 +71,12 @@ export default function FlyingWitch() {
   });
   const sparkleOpacity = progress.interpolate({ inputRange: [0, 0.1, 0.9, 1], outputRange: [0, 1, 1, 0] });
 
+  // Single wrapping View so this component always contributes exactly one child to its
+  // parent (app/(tabs)/_layout.tsx) — a Fragment with several root siblings here previously
+  // caused an Android "getChildDrawingOrder() returned invalid index" crash (child count
+  // desync when a sibling's own child count changes at the wrong moment).
   return (
-    <>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <Animated.View pointerEvents="none" style={[styles.wrap, { transform: [{ translateX }, { translateY }] }]}>
         <WitchSprite facingRight={dir === 1} />
       </Animated.View>
@@ -90,7 +94,7 @@ export default function FlyingWitch() {
           { translateY: Animated.add(translateY, 4) },
         ] }]}
       />
-    </>
+    </View>
   );
 }
 

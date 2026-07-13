@@ -49,8 +49,12 @@ export default function RedLightDoll() {
 
   const flashBg = flashColor.interpolate({ inputRange: [0, 1], outputRange: [GREEN, RED] });
 
+  // Single wrapping View (always present, never a Fragment) so this component always
+  // contributes exactly one child to its parent — see the same fix/comment in
+  // FlyingWitch.tsx for why (Android getChildDrawingOrder crash from a variable sibling
+  // count).
   return (
-    <>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       {!reduceMotion && (
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: flashBg, opacity: flashOpacity }]} />
       )}
@@ -66,7 +70,7 @@ export default function RedLightDoll() {
         </View>
         <View style={[styles.indicator, { backgroundColor: (reduceMotion || facing) ? RED : GREEN }]} />
       </View>
-    </>
+    </View>
   );
 }
 

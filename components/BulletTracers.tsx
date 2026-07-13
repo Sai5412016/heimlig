@@ -38,13 +38,14 @@ function Tracer({ y, dir, delay, width, onDone }: { y: number; dir: 1 | -1; dela
     ? ['transparent', theme.brand, '#FFE4B3'] as const
     : ['#FFE4B3', theme.brand, 'transparent'] as const;
 
+  // Single wrapping View (never a bare Fragment) — see BulletTracers() below for why.
   return (
-    <>
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <Animated.View pointerEvents="none" style={[styles.spark, { top: y - 3, left: dir === 1 ? -6 : width - 4, opacity: flash }]} />
       <Animated.View pointerEvents="none" style={[styles.tracer, { top: y, transform: [{ translateX }], opacity }]}>
         <LinearGradient colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.tracerFill} />
       </Animated.View>
-    </>
+    </View>
   );
 }
 
@@ -81,14 +82,17 @@ export default function BulletTracers() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, [height, reduceMotion]);
 
-  if (reduceMotion) return null;
-
+  // Always render the same single wrapping View (never null, never a bare Fragment around a
+  // variable-length .map()) so this component always contributes exactly one child to its
+  // parent (app/(tabs)/_layout.tsx) regardless of how many tracers are in flight — a Fragment
+  // whose child count changed every burst previously caused an Android
+  // "getChildDrawingOrder() returned invalid index" crash (child count desync).
   return (
-    <>
-      {tracers.map(t => (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {!reduceMotion && tracers.map(t => (
         <Tracer key={t.id} y={t.y} dir={t.dir} delay={t.delay} width={width} onDone={() => {}} />
       ))}
-    </>
+    </View>
   );
 }
 

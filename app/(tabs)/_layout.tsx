@@ -1,7 +1,7 @@
 // app/(tabs)/_layout.tsx
 import { useEffect, useRef } from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, Animated, Platform } from 'react-native';
+import { View, Text, Animated, Platform, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
@@ -53,13 +53,20 @@ export default function TabLayout() {
 
   return (
     <View style={{ flex: 1 }}>
-      {themeId === 'matrix' && <MatrixRain />}
-      {themeId === 'pitch-gold' && <PitchField />}
-      {themeId === 'witch-purple' && <NightSky />}
-      {themeId === 'racing' && <NightTrack />}
-      {themeId === 'tactical-ops' && <OpsBackdrop />}
-      {themeId === 'comic-hero' && <CitySkyline />}
-      {themeId === 'red-light' && <ArenaBackdrop />}
+      {/* Stable wrapping Views (always rendered, never conditionally absent) so this outer
+          View's own direct child count never changes as the theme switches — the backdrop
+          and sprite each vary internally, but that variability stays isolated one level
+          down instead of reaching the ViewGroup that also holds <Tabs>. See the matching
+          fix/comment in FlyingWitch.tsx, RedLightDoll.tsx and BulletTracers.tsx. */}
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        {themeId === 'matrix' && <MatrixRain />}
+        {themeId === 'pitch-gold' && <PitchField />}
+        {themeId === 'witch-purple' && <NightSky />}
+        {themeId === 'racing' && <NightTrack />}
+        {themeId === 'tactical-ops' && <OpsBackdrop />}
+        {themeId === 'comic-hero' && <CitySkyline />}
+        {themeId === 'red-light' && <ArenaBackdrop />}
+      </View>
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -90,12 +97,14 @@ export default function TabLayout() {
         <Tabs.Screen name="budget" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="💶" label="Budget" focused={focused} /> }} />
         <Tabs.Screen name="household" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="👥" label="Haushalt" focused={focused} /> }} />
       </Tabs>
-      {themeId === 'pitch-gold' && <PitchBall />}
-      {themeId === 'witch-purple' && <FlyingWitch />}
-      {themeId === 'racing' && <RacingCar />}
-      {themeId === 'tactical-ops' && <BulletTracers />}
-      {themeId === 'comic-hero' && <FlyingHero />}
-      {themeId === 'red-light' && <RedLightDoll />}
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        {themeId === 'pitch-gold' && <PitchBall />}
+        {themeId === 'witch-purple' && <FlyingWitch />}
+        {themeId === 'racing' && <RacingCar />}
+        {themeId === 'tactical-ops' && <BulletTracers />}
+        {themeId === 'comic-hero' && <FlyingHero />}
+        {themeId === 'red-light' && <RedLightDoll />}
+      </View>
     </View>
   );
 }
