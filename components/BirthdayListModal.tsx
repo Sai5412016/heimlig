@@ -1,11 +1,13 @@
 // components/BirthdayListModal.tsx — full list of upcoming birthdays within the next year.
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
+import { useStore } from '../store/useStore';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import type { Task } from '../lib/supabase';
 import { format, parseISO } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
 import { nextYearlyOccurrence } from '../lib/dateMath';
 
 // Strip "Geburtstag" boilerplate from a task title so we show just the person's name.
@@ -15,17 +17,20 @@ function birthdayName(title: string): string {
 
 export default function BirthdayListModal({ visible, onClose, tasks }: { visible: boolean; onClose: () => void; tasks: Task[] }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const upcoming = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     return tasks
-      .filter(t => t.category === 'Geburtstag' && t.due_date)
-      .map(t => {
-        const d = parseISO(t.due_date!);
+      .filter(task => task.category === 'Geburtstag' && task.due_date)
+      .map(task => {
+        const d = parseISO(task.due_date!);
         const next = nextYearlyOccurrence(d.getMonth(), d.getDate(), today);
         const days = Math.round((next.getTime() - today.getTime()) / 86400000);
-        return { task: t, date: next, days };
+        return { task, date: next, days };
       })
       .filter(x => x.days <= 366)
       .sort((a, b) => a.days - b.days);
@@ -39,26 +44,26 @@ export default function BirthdayListModal({ visible, onClose, tasks }: { visible
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} onPress={onClose} />
         <View style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.title}>🎂 Geburtstage</Text>
-          <Text style={styles.subtitle}>Die nächsten 12 Monate</Text>
+          <Text style={styles.title}>{t('birthdays.title')}</Text>
+          <Text style={styles.subtitle}>{t('birthdays.subtitle')}</Text>
 
           <ScrollView
             style={{ flexGrow: 0, flexShrink: 1 }}
             showsVerticalScrollIndicator={false}
           >
             {upcoming.length === 0 ? (
-              <Text style={styles.empty}>Keine Geburtstage hinterlegt. Leg sie unter Aufgaben mit der Kategorie „Geburtstag" an.</Text>
+              <Text style={styles.empty}>{t('birthdays.emptyBody')}</Text>
             ) : (
               upcoming.map(({ task, date, days }) => (
                 <View key={task.id} style={styles.row}>
                   <View style={styles.dateBox}>
                     <Text style={styles.dateDay}>{format(date, 'd')}</Text>
-                    <Text style={styles.dateMonth}>{format(date, 'MMM', { locale: de })}</Text>
+                    <Text style={styles.dateMonth}>{format(date, 'MMM', { locale: dateLocale })}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.name}>{birthdayName(task.title)}</Text>
                     <Text style={styles.days}>
-                      {days === 0 ? 'Heute! 🎉' : days === 1 ? 'Morgen' : `in ${days} Tagen`}
+                      {days === 0 ? t('birthdays.today') : days === 1 ? t('recipes.tomorrow') : t('birthdays.inDays', { days })}
                     </Text>
                   </View>
                 </View>
@@ -67,7 +72,7 @@ export default function BirthdayListModal({ visible, onClose, tasks }: { visible
           </ScrollView>
 
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>Schließen</Text>
+            <Text style={styles.closeBtnText}>{t('common.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>
