@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, Pressable, ActivityInd
 import { Alert } from '../lib/alert';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
@@ -14,6 +15,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function GoogleCalendarModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { importGoogleEvents, exportTasksToGoogle } = useStore();
   const [token, setToken] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export default function GoogleCalendarModal({ visible, onClose }: { visible: boo
       const t = response.authentication?.accessToken;
       if (t) setToken(t);
     } else if (response?.type === 'error') {
-      Alert.alert('Verbindung fehlgeschlagen', 'Bitte versuche es erneut.');
+      Alert.alert(t('gcal.connectFailedTitle'), t('gcal.tryAgain'));
     }
   }, [response]);
 
@@ -42,9 +44,9 @@ export default function GoogleCalendarModal({ visible, onClose }: { visible: boo
     try {
       const events = await listUpcomingEvents(token, 60);
       const n = await importGoogleEvents(events);
-      Alert.alert('✓ Importiert', n > 0 ? `${n} Termin${n === 1 ? '' : 'e'} aus Google Kalender übernommen.` : 'Keine neuen Termine gefunden.');
+      Alert.alert(t('gcal.importedTitle'), n > 0 ? t(n === 1 ? 'gcal.importedBody_one' : 'gcal.importedBody_other', { count: n }) : t('gcal.noNewEvents'));
     } catch {
-      Alert.alert('Fehler', 'Import fehlgeschlagen. Verbinde dich ggf. neu (Zugriff abgelaufen).');
+      Alert.alert(t('common.error'), t('gcal.importFailedBody'));
       setToken(null);
     } finally { setBusy(null); }
   };
@@ -54,9 +56,9 @@ export default function GoogleCalendarModal({ visible, onClose }: { visible: boo
     setBusy('export');
     try {
       const n = await exportTasksToGoogle(token);
-      Alert.alert('✓ Exportiert', n > 0 ? `${n} Aufgabe${n === 1 ? '' : 'n'} in Google Kalender eingetragen.` : 'Keine neuen Aufgaben zum Exportieren.');
+      Alert.alert(t('gcal.exportedTitle'), n > 0 ? t(n === 1 ? 'gcal.exportedBody_one' : 'gcal.exportedBody_other', { count: n }) : t('gcal.noNewTasks'));
     } catch {
-      Alert.alert('Fehler', 'Export fehlgeschlagen. Verbinde dich ggf. neu (Zugriff abgelaufen).');
+      Alert.alert(t('common.error'), t('gcal.exportFailedBody'));
       setToken(null);
     } finally { setBusy(null); }
   };
@@ -66,38 +68,36 @@ export default function GoogleCalendarModal({ visible, onClose }: { visible: boo
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.title}>📅 Google Kalender</Text>
+          <Text style={styles.title}>{t('gcal.title')}</Text>
 
           {Platform.OS !== 'web' ? (
-            <Text style={styles.body}>
-              Die Google-Kalender-Verbindung funktioniert aktuell nur in der Web-Version von Heimlig (heimlig.vercel.app) — Google lässt die Anmeldung auf Android in der App momentan nicht zu. Eine native Lösung ist in Arbeit.
-            </Text>
+            <Text style={styles.body}>{t('gcal.webOnlyBody')}</Text>
           ) : !token ? (
             <>
-              <Text style={styles.body}>Verbinde dein Google-Konto, um Termine zwischen Heimlig und Google Kalender abzugleichen.</Text>
+              <Text style={styles.body}>{t('gcal.connectBody')}</Text>
               <TouchableOpacity style={[styles.primaryBtn, !request && { opacity: 0.5 }]} onPress={connect} disabled={!request}>
-                <Text style={styles.primaryBtnText}>Mit Google verbinden</Text>
+                <Text style={styles.primaryBtnText}>{t('gcal.connectButton')}</Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
-              <Text style={styles.connected}>✓ Verbunden</Text>
-              <Text style={styles.body}>Was möchtest du abgleichen?</Text>
+              <Text style={styles.connected}>{t('gcal.connectedLabel')}</Text>
+              <Text style={styles.body}>{t('gcal.whatToSync')}</Text>
 
               <TouchableOpacity style={styles.primaryBtn} onPress={handleImport} disabled={busy !== null}>
-                {busy === 'import' ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>⬇️ Google-Termine importieren</Text>}
+                {busy === 'import' ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{t('gcal.importButton')}</Text>}
               </TouchableOpacity>
-              <Text style={styles.hint}>Holt die nächsten 60 Tage aus Google als Aufgaben (ohne Duplikate).</Text>
+              <Text style={styles.hint}>{t('gcal.importHint')}</Text>
 
               <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.accent }]} onPress={handleExport} disabled={busy !== null}>
-                {busy === 'export' ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>⬆️ Aufgaben exportieren</Text>}
+                {busy === 'export' ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{t('gcal.exportButton')}</Text>}
               </TouchableOpacity>
-              <Text style={styles.hint}>Trägt deine Heimlig-Aufgaben mit Datum in den Google Kalender ein.</Text>
+              <Text style={styles.hint}>{t('gcal.exportHint')}</Text>
             </>
           )}
 
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>Schließen</Text>
+            <Text style={styles.closeBtnText}>{t('common.close')}</Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>

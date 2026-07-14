@@ -294,4 +294,28 @@ export interface AppTranslations {
     notSharedYet: string;
     mapButton: string;
   };
+  gcal: {
+    connectFailedTitle: string;
+    tryAgain: string;
+    importedTitle: string;
+    importedBody_one: string;
+    importedBody_other: string;
+    noNewEvents: string;
+    importFailedBody: string;
+    exportedTitle: string;
+    exportedBody_one: string;
+    exportedBody_other: string;
+    noNewTasks: string;
+    exportFailedBody: string;
+    title: string;
+    webOnlyBody: string;
+    connectBody: string;
+    connectButton: string;
+    connectedLabel: string;
+    whatToSync: string;
+    importButton: string;
+    importHint: string;
+    exportButton: string;
+    exportHint: string;
+  };
 }
