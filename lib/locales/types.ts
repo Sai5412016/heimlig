@@ -27,6 +27,7 @@ export interface AppTranslations {
     error: string;
     category: string;
     shared: string;
+    all: string;
   };
   shopping: {
     defaultListName: string;
@@ -119,5 +120,39 @@ export interface AppTranslations {
     importButton: string;
     importedTitle: string;
     importedBody: string;
+  };
+  recipes: {
+    categoryModalTitle: string;
+    removeCategory: string;
+    planModalTitle: string;
+    whenLabel: string;
+    today: string;
+    tomorrow: string;
+    mealLabel: string;
+    mealBreakfast: string;
+    mealLunch: string;
+    mealDinner: string;
+    addToCartLabel: string;
+    planButton: string;
+    savedTitle: string;
+    savedIngredients: string;
+    savedCalendar: string;
+    plannedTitle: string;
+    plannedBody: string;
+    plannedBodyIngredients: string;
+    deleteConfirmTitle: string;
+    deleteConfirmBody: string;
+    removeFromCartTitle: string;
+    removeButton: string;
+    removeFromCartBody_one: string;
+    removeFromCartBody_other: string;
+    removedTitle: string;
+    removedBody_one: string;
+    removedBody_other: string;
+    savedCount: string;
+    addRecipe: string;
+    emptyTitle: string;
+    emptyBody: string;
+    ingredientsCount: string;
   };
 }

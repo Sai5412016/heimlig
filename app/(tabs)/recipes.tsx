@@ -7,6 +7,7 @@ import {
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
@@ -15,10 +16,9 @@ import { useStore } from '../../store/useStore';
 import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
 import ThemeMotif from '../../components/ThemeMotif';
 import { format, addDays } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
 
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
-const MEAL_LABELS: Record<MealType, string> = { fruehstueck: '🌅 Frühstück', mittag: '☀️ Mittagessen', abendessen: '🌙 Abendessen' };
 
 const RECIPE_CATEGORIES: { key: string; emoji: string }[] = [
   { key: 'Hauptgericht', emoji: '🍝' },
@@ -39,13 +39,14 @@ function CategoryModal({ recipe, onClose, onPick }: {
   onPick: (category: string | null) => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <Modal visible={!!recipe} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.modalTitle}>📁 Kategorie für „{recipe?.name}"</Text>
+          <Text style={styles.modalTitle}>{t('recipes.categoryModalTitle', { name: recipe?.name })}</Text>
           <View style={styles.catGrid}>
             {RECIPE_CATEGORIES.map(c => {
               const active = recipe?.category === c.key;
@@ -63,7 +64,7 @@ function CategoryModal({ recipe, onClose, onPick }: {
           </View>
           {recipe?.category && (
             <TouchableOpacity style={styles.closeBtn} onPress={() => onPick(null)}>
-              <Text style={styles.closeBtnText}>Kategorie entfernen</Text>
+              <Text style={styles.closeBtnText}>{t('recipes.removeCategory')}</Text>
             </TouchableOpacity>
           )}
         </Pressable>
@@ -79,6 +80,12 @@ function PlanModal({ recipe, onClose, onConfirm }: {
   onConfirm: (date: string, mealType: MealType, addToCart: boolean) => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
+  const mealLabels: Record<MealType, string> = {
+    fruehstueck: t('recipes.mealBreakfast'), mittag: t('recipes.mealLunch'), abendessen: t('recipes.mealDinner'),
+  };
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [mealType, setMealType] = useState<MealType>('abendessen');
@@ -91,7 +98,7 @@ function PlanModal({ recipe, onClose, onConfirm }: {
   const quickDates = Array.from({ length: 14 }, (_, i) => {
     const d = addDays(new Date(), i);
     return {
-      label: i === 0 ? 'Heute' : i === 1 ? 'Morgen' : format(d, 'EEE dd.MM.', { locale: de }),
+      label: i === 0 ? t('recipes.today') : i === 1 ? t('recipes.tomorrow') : format(d, 'EEE dd.MM.', { locale: dateLocale }),
       value: format(d, 'yyyy-MM-dd'),
     };
   });
@@ -101,9 +108,9 @@ function PlanModal({ recipe, onClose, onConfirm }: {
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.modalTitle}>📅 „{recipe?.name}" einplanen</Text>
+          <Text style={styles.modalTitle}>{t('recipes.planModalTitle', { name: recipe?.name })}</Text>
 
-          <Text style={styles.sectionLabel}>WANN</Text>
+          <Text style={styles.sectionLabel}>{t('recipes.whenLabel')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
             {quickDates.map(d => (
               <TouchableOpacity key={d.value} style={[styles.chip, date === d.value && styles.chipActive]} onPress={() => setDate(d.value)}>
@@ -112,9 +119,9 @@ function PlanModal({ recipe, onClose, onConfirm }: {
             ))}
           </ScrollView>
 
-          <Text style={styles.sectionLabel}>MAHLZEIT</Text>
+          <Text style={styles.sectionLabel}>{t('recipes.mealLabel')}</Text>
           <View style={styles.mealTypeRow}>
-            {(Object.entries(MEAL_LABELS) as [MealType, string][]).map(([type, label]) => (
+            {(Object.entries(mealLabels) as [MealType, string][]).map(([type, label]) => (
               <TouchableOpacity key={type} style={[styles.mealChip, mealType === type && styles.chipActive]} onPress={() => setMealType(type)}>
                 <Text style={[styles.chipText, mealType === type && styles.chipTextActive]}>{label}</Text>
               </TouchableOpacity>
@@ -123,14 +130,14 @@ function PlanModal({ recipe, onClose, onConfirm }: {
 
           <TouchableOpacity style={styles.toggleRow} onPress={() => setAddToCart(v => !v)}>
             <View style={[styles.checkbox, addToCart && styles.checkboxChecked]}>{addToCart && <Text style={styles.checkmark}>✓</Text>}</View>
-            <Text style={styles.toggleText}>Zutaten zum Einkaufskorb hinzufügen</Text>
+            <Text style={styles.toggleText}>{t('recipes.addToCartLabel')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.primaryBtn} onPress={() => onConfirm(date, mealType, addToCart)}>
-            <Text style={styles.primaryBtnText}>Einplanen ✓</Text>
+            <Text style={styles.primaryBtnText}>{t('recipes.planButton')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>Abbrechen</Text>
+            <Text style={styles.closeBtnText}>{t('common.cancel')}</Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>
@@ -141,6 +148,9 @@ function PlanModal({ recipe, onClose, onConfirm }: {
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function RecipesScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { household, recipes, items, loadRecipes, toggleRecipeFavorite, setRecipeCategory, deleteRecipe, saveRecipe, planRecipe, removeRecipeIngredientsFromCart } = useStore();
   const [showImport, setShowImport] = useState(false);
@@ -164,9 +174,9 @@ export default function RecipesScreen() {
     const { added, planned } = await saveRecipe(ingredients, recipeName, opts);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
     const parts = [];
-    if (added > 0) parts.push(`${added} Zutaten im Einkauf`);
-    if (planned) parts.push('im Kalender');
-    Alert.alert('✓ Gespeichert', `"${recipeName}"${parts.length ? ' – ' + parts.join(' & ') : ''}.`);
+    if (added > 0) parts.push(t('recipes.savedIngredients', { count: added }));
+    if (planned) parts.push(t('recipes.savedCalendar'));
+    Alert.alert(t('recipes.savedTitle'), `"${recipeName}"${parts.length ? ' – ' + parts.join(' & ') : ''}.`);
   };
 
   const handlePlanConfirm = async (date: string, mealType: MealType, addToCart: boolean) => {
@@ -174,7 +184,9 @@ export default function RecipesScreen() {
     const { added } = await planRecipe(planTarget, { date, mealType, addToCart });
     setPlanTarget(null);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('✓ Eingeplant', `"${planTarget.name}" für ${format(new Date(date), 'EEEE, d. MMM', { locale: de })}${added ? ` – ${added} Zutaten im Einkauf` : ''}.`);
+    const body = t('recipes.plannedBody', { name: planTarget.name, date: format(new Date(date), 'EEEE, d. MMM', { locale: dateLocale }) })
+      + (added ? t('recipes.plannedBodyIngredients', { count: added }) : '') + '.';
+    Alert.alert(t('recipes.plannedTitle'), body);
   };
 
   const handlePickCategory = async (category: string | null) => {
@@ -183,24 +195,24 @@ export default function RecipesScreen() {
   };
 
   const confirmDelete = (recipe: Recipe) => {
-    Alert.alert('Rezept löschen?', `"${recipe.name}" dauerhaft entfernen?`, [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: () => deleteRecipe(recipe.id) },
+    Alert.alert(t('recipes.deleteConfirmTitle'), t('recipes.deleteConfirmBody', { name: recipe.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteRecipe(recipe.id) },
     ]);
   };
 
   // "Doch nicht kochen" — pull this recipe's not-yet-bought ingredients back out of the cart.
   const confirmRemoveFromCart = (recipe: Recipe, count: number) => {
     Alert.alert(
-      'Zutaten aus dem Einkauf entfernen?',
-      `${count} Zutat${count === 1 ? '' : 'en'} von "${recipe.name}" aus dem Einkaufskorb entfernen? Bereits abgehakte Artikel bleiben erhalten.`,
+      t('recipes.removeFromCartTitle'),
+      t(count === 1 ? 'recipes.removeFromCartBody_one' : 'recipes.removeFromCartBody_other', { count, name: recipe.name }),
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Entfernen', style: 'destructive', onPress: async () => {
+          text: t('recipes.removeButton'), style: 'destructive', onPress: async () => {
             const removed = await removeRecipeIngredientsFromCart(recipe.id);
             hapticNotification(Haptics.NotificationFeedbackType.Success);
-            if (removed > 0) Alert.alert('✓ Entfernt', `${removed} Zutat${removed === 1 ? '' : 'en'} aus dem Einkaufskorb entfernt.`);
+            if (removed > 0) Alert.alert(t('recipes.removedTitle'), t(removed === 1 ? 'recipes.removedBody_one' : 'recipes.removedBody_other', { count: removed }));
           }
         },
       ]
@@ -218,7 +230,7 @@ export default function RecipesScreen() {
         <TouchableOpacity style={styles.cardBody} onPress={() => setPlanTarget(item)} activeOpacity={0.7}>
           <Text style={styles.cardName}>{item.name}</Text>
           <Text style={styles.cardMeta}>
-            {item.category ? `${RECIPE_CAT_EMOJI[item.category] ?? '📁'} ${item.category} · ` : ''}{count} Zutaten{item.source_url ? ' · 🔗 Link' : ''}
+            {item.category ? `${RECIPE_CAT_EMOJI[item.category] ?? '📁'} ${item.category} · ` : ''}{t('recipes.ingredientsCount', { count })}{item.source_url ? ' · 🔗 Link' : ''}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.iconBtn} onPress={() => setCatTarget(item)}>
@@ -249,23 +261,23 @@ export default function RecipesScreen() {
       <View style={styles.header}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Text style={styles.headerTitle}>🍳 Rezepte</Text>
+            <Text style={styles.headerTitle}>🍳 {t('tabs.recipes')}</Text>
             <ThemeMotif />
           </View>
-          <Text style={styles.headerSub}>{recipes.length} gespeichert</Text>
+          <Text style={styles.headerSub}>{t('recipes.savedCount', { count: recipes.length })}</Text>
         </View>
         <TouchableOpacity style={styles.addBtn} onPress={() => setShowImport(true)}>
-          <Text style={styles.addBtnText}>+ Rezept</Text>
+          <Text style={styles.addBtnText}>{t('recipes.addRecipe')}</Text>
         </TouchableOpacity>
       </View>
 
       {recipes.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🍽️</Text>
-          <Text style={styles.emptyTitle}>Noch keine Rezepte</Text>
-          <Text style={styles.emptyText}>Speicher dein erstes Rezept per Link, Text oder Foto.</Text>
+          <Text style={styles.emptyTitle}>{t('recipes.emptyTitle')}</Text>
+          <Text style={styles.emptyText}>{t('recipes.emptyBody')}</Text>
           <TouchableOpacity style={styles.emptyCta} onPress={() => setShowImport(true)}>
-            <Text style={styles.emptyCtaText}>+ Rezept</Text>
+            <Text style={styles.emptyCtaText}>{t('recipes.addRecipe')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -273,7 +285,7 @@ export default function RecipesScreen() {
           {usedCategories.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={{ paddingHorizontal: spacing.md, gap: spacing.sm }}>
               <TouchableOpacity style={[styles.filterChip, !filter && styles.chipActive]} onPress={() => setFilter(null)}>
-                <Text style={[styles.chipText, !filter && styles.chipTextActive]}>Alle</Text>
+                <Text style={[styles.chipText, !filter && styles.chipTextActive]}>{t('common.all')}</Text>
               </TouchableOpacity>
               {usedCategories.map(c => (
                 <TouchableOpacity key={c.key} style={[styles.filterChip, filter === c.key && styles.chipActive]} onPress={() => setFilter(filter === c.key ? null : c.key)}>
