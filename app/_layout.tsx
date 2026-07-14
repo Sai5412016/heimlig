@@ -6,6 +6,7 @@ import { Platform, Dimensions, View, ActivityIndicator, Text } from 'react-nativ
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Localization from 'expo-localization';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { useTheme } from '../hooks/useTheme';
@@ -13,6 +14,8 @@ import { checkForUpdate } from '../lib/appUpdate';
 import WhatsNewModal from '../components/WhatsNewModal';
 import ErrorFallback from '../components/ErrorFallback';
 import { initSentry, Sentry } from '../lib/sentry';
+import '../lib/i18n';
+import type { SupportedLanguage } from '../lib/i18n';
 
 initSentry();
 
@@ -29,7 +32,7 @@ function RootLayout() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const { colors } = useTheme();
-  const { setUserId, loadMyHouseholds, activateHousehold, setDarkMode, setThemeId } = useStore();
+  const { setUserId, loadMyHouseholds, activateHousehold, setDarkMode, setThemeId, setLanguage } = useStore();
 
   // Lock phones to portrait, but let large screens (tablets/foldables) rotate freely.
   // The static manifest restriction is removed (orientation: default) so Play stops
@@ -82,6 +85,18 @@ function RootLayout() {
       if (dm === '1') setDarkMode(true);
       const savedThemeId = await AsyncStorage.getItem('@heimlig/themeId');
       if (savedThemeId) setThemeId(savedThemeId);
+
+      // Language: respect an explicit earlier choice, otherwise fall back to the device's
+      // own language on first launch (English if set to English, German for everyone else —
+      // German remains the default since translation coverage is still being rolled out
+      // screen by screen).
+      const savedLanguage = await AsyncStorage.getItem('@heimlig/language');
+      if (savedLanguage === 'en' || savedLanguage === 'de') {
+        setLanguage(savedLanguage as SupportedLanguage);
+      } else {
+        const deviceLanguage = Localization.getLocales()[0]?.languageCode;
+        setLanguage(deviceLanguage === 'en' ? 'en' : 'de');
+      }
 
       // getUser() re-verifies against the Auth server instead of trusting local storage,
       // so a revoked/expired session doesn't leave the app thinking it's still logged in.

@@ -8,6 +8,7 @@ import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 import { colors, spacing, radius, typography, shadow, APP_THEMES, type ColorPalette } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
@@ -201,7 +202,9 @@ export default function HouseholdScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const { household, currentMember, members, setMembers, setHousehold, tasks, transactions,
-    myHouseholds, loadMyHouseholds, switchHousehold, leaveHousehold, toggleDarkMode, themeId, selectTheme } = useStore();
+    myHouseholds, loadMyHouseholds, switchHousehold, leaveHousehold, toggleDarkMode, themeId, selectTheme,
+    language, selectLanguage } = useStore();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [showInvite, setShowInvite] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
@@ -480,19 +483,40 @@ export default function HouseholdScreen() {
         <View style={styles.settingsBtn}>
           <Text style={[styles.settingsBtnText, { alignSelf: 'flex-start' }]}>🎨 Design</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.sm, width: '100%' }} contentContainerStyle={{ gap: spacing.sm }}>
-            {APP_THEMES.map(t => (
+            {APP_THEMES.map(theme => (
               <TouchableOpacity
-                key={t.id}
-                style={[styles.themeChip, themeId === t.id && { borderColor: t.brand, backgroundColor: t.brand + '15' }]}
-                onPress={() => selectTheme(t.id)}
+                key={theme.id}
+                style={[styles.themeChip, themeId === theme.id && { borderColor: theme.brand, backgroundColor: theme.brand + '15' }]}
+                onPress={() => selectTheme(theme.id)}
               >
-                <View style={[styles.themeSwatch, { backgroundColor: t.brand }]}>
-                  <Text style={styles.themeSwatchEmoji}>{t.emoji}</Text>
+                <View style={[styles.themeSwatch, { backgroundColor: theme.brand }]}>
+                  <Text style={styles.themeSwatchEmoji}>{theme.emoji}</Text>
                 </View>
-                <Text style={[styles.themeChipText, themeId === t.id && { color: t.brand, fontWeight: '700' }]}>{t.label}</Text>
+                <Text style={[styles.themeChipText, themeId === theme.id && { color: theme.brand, fontWeight: '700' }]}>{theme.label}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
+        </View>
+
+        {/* Language switcher — auto-detected from the device on first launch, manual choice
+            persists from here on (see store/useStore.ts selectLanguage). Pilot i18n rollout:
+            only the tab bar + this row are translated so far, rest follows screen by screen. */}
+        <View style={styles.settingsBtn}>
+          <Text style={[styles.settingsBtnText, { alignSelf: 'flex-start' }]}>🌐 {t('settings.language')}</Text>
+          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, width: '100%' }}>
+            <TouchableOpacity
+              style={[styles.themeChip, { width: undefined, flex: 1 }, language === 'de' && { borderColor: colors.brand, backgroundColor: colors.brand + '15' }]}
+              onPress={() => selectLanguage('de')}
+            >
+              <Text style={[styles.themeChipText, language === 'de' && { color: colors.brand, fontWeight: '700' }]}>🇩🇪 {t('settings.languageGerman')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.themeChip, { width: undefined, flex: 1 }, language === 'en' && { borderColor: colors.brand, backgroundColor: colors.brand + '15' }]}
+              onPress={() => selectLanguage('en')}
+            >
+              <Text style={[styles.themeChipText, language === 'en' && { color: colors.brand, fontWeight: '700' }]}>🇬🇧 {t('settings.languageEnglish')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Gamification toggle */}

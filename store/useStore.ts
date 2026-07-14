@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerPushToken } from '../lib/pushTokens';
 import * as shoppingRepo from '../repositories/shoppingRepository';
 import { supermarketKey } from '../lib/brands';
+import i18n, { type SupportedLanguage } from '../lib/i18n';
 
 export interface SaveRecipeOpts { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }
 export interface PlanRecipeOpts { date: string; mealType: MealType; addToCart: boolean }
@@ -181,6 +182,11 @@ interface AppState {
   themeId: string;
   setThemeId: (id: string) => void;
   selectTheme: (id: string) => Promise<void>;
+
+  // 🌐 Language (device-local, see lib/i18n.ts — rolled out screen by screen)
+  language: SupportedLanguage;
+  setLanguage: (lang: SupportedLanguage) => void;
+  selectLanguage: (lang: SupportedLanguage) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -859,5 +865,13 @@ export const useStore = create<AppState>((set, get) => ({
   selectTheme: async (id) => {
     set({ themeId: id });
     await AsyncStorage.setItem('@heimlig/themeId', id);
+  },
+
+  language: 'de',
+  setLanguage: (lang) => { set({ language: lang }); i18n.changeLanguage(lang); },
+  selectLanguage: async (lang) => {
+    set({ language: lang });
+    i18n.changeLanguage(lang);
+    await AsyncStorage.setItem('@heimlig/language', lang);
   },
 }));

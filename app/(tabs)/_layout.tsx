@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { Tabs } from 'expo-router';
 import { View, Text, Animated, Platform, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../hooks/useTheme';
 import { useStore } from '../../store/useStore';
@@ -50,6 +51,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const themeId = useStore((s: { themeId: string }) => s.themeId);
+  const { t } = useTranslation();
 
   return (
     <View style={{ flex: 1 }}>
@@ -89,13 +91,13 @@ export default function TabLayout() {
           tabPress: () => { if (Platform.OS !== 'web') Haptics.selectionAsync(); },
         }}
       >
-        <Tabs.Screen name="index" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🏡" label="Home" focused={focused} /> }} />
-        <Tabs.Screen name="shopping" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" label="Einkauf" focused={focused} /> }} />
-        <Tabs.Screen name="scan" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🥗" label="Gesund" focused={focused} /> }} />
-        <Tabs.Screen name="recipes" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🍳" label="Rezepte" focused={focused} /> }} />
-        <Tabs.Screen name="tasks" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="📅" label="Tasks" focused={focused} /> }} />
-        <Tabs.Screen name="budget" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="💶" label="Budget" focused={focused} /> }} />
-        <Tabs.Screen name="household" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="👥" label="Haushalt" focused={focused} /> }} />
+        <Tabs.Screen name="index" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🏡" label={t('tabs.home')} focused={focused} /> }} />
+        <Tabs.Screen name="shopping" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" label={t('tabs.shopping')} focused={focused} /> }} />
+        <Tabs.Screen name="scan" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🥗" label={t('tabs.scan')} focused={focused} /> }} />
+        <Tabs.Screen name="recipes" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🍳" label={t('tabs.recipes')} focused={focused} /> }} />
+        <Tabs.Screen name="tasks" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="📅" label={t('tabs.tasks')} focused={focused} /> }} />
+        <Tabs.Screen name="budget" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="💶" label={t('tabs.budget')} focused={focused} /> }} />
+        <Tabs.Screen name="household" options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="👥" label={t('tabs.household')} focused={focused} /> }} />
       </Tabs>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         {themeId === 'pitch-gold' && <PitchBall />}
