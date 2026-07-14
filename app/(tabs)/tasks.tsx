@@ -8,15 +8,17 @@ import { Alert } from '../../lib/alert';
 import { Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import * as Haptics from 'expo-haptics';
 const hapticImpact = (style: Haptics.ImpactFeedbackStyle) => { if (Platform.OS !== 'web') Haptics.impactAsync(style); };
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameDay, isToday, isBefore, startOfWeek, addMonths,
-  subMonths, parseISO, addDays, differenceInCalendarDays
+  subMonths, parseISO, addDays, differenceInCalendarDays, type Locale
 } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
 import { colors, spacing, radius, typography, shadow, APP_THEMES, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { supabase, Task, MealPlan, MealType } from '../../lib/supabase';
@@ -41,16 +43,22 @@ type Priority = 'low' | 'normal' | 'high';
 const PRIORITY_COLORS: Record<Priority, string> = {
   low: '#10B981', normal: colors.brand, high: '#EF4444',
 };
-const PRIORITY_LABELS: Record<Priority, string> = {
-  low: 'Leicht · 5', normal: 'Mittel · 10', high: 'Schwer · 20',
-};
-const RECURRENCE_OPTIONS = [
-  { key: null, label: 'Einmalig' },
-  { key: 'daily', label: 'Täglich' },
-  { key: 'weekly', label: 'Wöchentlich' },
-  { key: 'monthly', label: 'Monatlich' },
-  { key: 'yearly', label: 'Jährlich' },
-];
+function priorityLabels(t: TFunction): Record<Priority, string> {
+  return { low: t('tasksTab.priorityLow'), normal: t('tasksTab.priorityNormal'), high: t('tasksTab.priorityHigh') };
+}
+function recurrenceOptions(t: TFunction): { key: string | null; label: string }[] {
+  return [
+    { key: null, label: t('tasksTab.recurrenceOnce') },
+    { key: 'daily', label: t('tasksTab.recurrenceDaily') },
+    { key: 'weekly', label: t('tasksTab.recurrenceWeekly') },
+    { key: 'monthly', label: t('tasksTab.recurrenceMonthly') },
+    { key: 'yearly', label: t('tasksTab.recurrenceYearly') },
+  ];
+}
+function recurrenceUnit(t: TFunction, recurrence: string | null | undefined, interval: number): string {
+  const key = recurrence === 'daily' ? 'recurUnitDay' : recurrence === 'weekly' ? 'recurUnitWeek' : recurrence === 'monthly' ? 'recurUnitMonth' : 'recurUnitYear';
+  return t(`tasksTab.${key}_${interval === 1 ? 'one' : 'other'}` as const, { count: interval });
+}
 const CATEGORY_EMOJIS: Record<string, string> = {
   'Haushalt': '🏠', 'Einkauf': '🛒', 'Wartung': '🔧',
   'Garten': '🌱', 'Büro': '💼', 'Familie': '👨‍👩‍👧', 'Sonstiges': '📋',
@@ -80,6 +88,7 @@ function getCurrentTime(): string {
 // not just in fixed steps.
 function TimePickerDropdown({ value, onChange }: { value: string; onChange: (t: string) => void }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [open, setOpen] = useState(false);
   const [h, m] = value.split(':');
@@ -123,7 +132,7 @@ function TimePickerDropdown({ value, onChange }: { value: string; onChange: (t: 
             </ScrollView>
           </View>
           <TouchableOpacity style={styles.timeDropdownDone} onPress={() => setOpen(false)}>
-            <Text style={styles.timeDropdownDoneText}>Fertig ✓</Text>
+            <Text style={styles.timeDropdownDoneText}>{t('tasksTab.doneButton')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -141,6 +150,9 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
   prefill?: { title?: string; description?: string; due_date?: string; due_time?: string; location_url?: string } | null;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const PRIORITY_LABELS = priorityLabels(t);
+  const RECURRENCE_OPTIONS = recurrenceOptions(t);
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -184,7 +196,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       setRotation(editTask.rotation || []);
       setNotify(true);
       setRemindTime(editTask.remind_time || '05:00');
-      setAttachment(editTask.attachment_path ? { path: editTask.attachment_path, name: editTask.attachment_name || 'Anhang' } : null);
+      setAttachment(editTask.attachment_path ? { path: editTask.attachment_path, name: editTask.attachment_name || t('tasksTab.attachmentDefaultName') } : null);
       setLocationUrl(editTask.location_url || '');
     } else if (prefill) {
       setTitle(prefill.title || '');
@@ -219,7 +231,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
     const result = await uploadTaskAttachment(householdId, file);
     setAttachmentUploading(false);
     if (result) setAttachment(result);
-    else Alert.alert('Fehler', 'Datei konnte nicht hochgeladen werden.');
+    else Alert.alert(t('common.error'), t('tasksTab.attachmentUploadFailed'));
   };
 
   const removeAttachment = () => {
@@ -259,17 +271,17 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={Platform.OS === 'web' ? { width: '100%', flex: 1 } : undefined}>
           <View style={[styles.modalSheet, Platform.OS === 'web' && { maxHeight: '100%' }]}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>{editTask ? 'Aufgabe bearbeiten' : 'Neue Aufgabe'}</Text>
+            <Text style={styles.modalTitle}>{editTask ? t('tasksTab.modalTitleEdit') : t('tasksTab.modalTitleNew')}</Text>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-              <TextInput style={styles.input} placeholder="Was ist zu tun?" placeholderTextColor={colors.textMuted} value={title} onChangeText={setTitle} autoFocus />
-              <TextInput style={[styles.input, { height: 70, textAlignVertical: 'top' }]} placeholder="Notizen (optional)" placeholderTextColor={colors.textMuted} value={description} onChangeText={setDescription} multiline />
+              <TextInput style={styles.input} placeholder={t('tasksTab.titlePlaceholder')} placeholderTextColor={colors.textMuted} value={title} onChangeText={setTitle} autoFocus />
+              <TextInput style={[styles.input, { height: 70, textAlignVertical: 'top' }]} placeholder={t('tasksTab.notesPlaceholder')} placeholderTextColor={colors.textMuted} value={description} onChangeText={setDescription} multiline />
 
               {/* Datum */}
-              <Text style={styles.fieldLabel}>DATUM</Text>
+              <Text style={styles.fieldLabel}>{t('tasksTab.dateLabel')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="JJJJ-MM-TT"
+                placeholder={t('tasksTab.datePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={dueDate}
                 onChangeText={setDueDate}
@@ -277,13 +289,13 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
 
               {/* Uhrzeit Toggle + Dropdown */}
               <View style={styles.timeToggleRow}>
-                <Text style={styles.fieldLabel}>UHRZEIT</Text>
+                <Text style={styles.fieldLabel}>{t('tasksTab.timeLabel')}</Text>
                 <TouchableOpacity
                   style={[styles.timeToggleSwitch, useTime && styles.timeToggleSwitchActive]}
                   onPress={() => setUseTime(v => !v)}
                 >
                   <Text style={[styles.timeToggleText, useTime && { color: colors.textInverse }]}>
-                    {useTime ? 'An' : 'Aus'}
+                    {useTime ? t('tasksTab.timeOn') : t('tasksTab.timeOff')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -298,9 +310,9 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
                   <TouchableOpacity style={[styles.notifyToggle, notify && styles.notifyToggleActive]} onPress={() => setNotify(v => !v)}>
                     <Text style={styles.notifyToggleEmoji}>{notify ? '🔔' : '🔕'}</Text>
                     <View>
-                      <Text style={[styles.notifyToggleText, notify && { color: colors.brand }]}>{notify ? 'Erinnerung aktiv' : 'Keine Erinnerung'}</Text>
+                      <Text style={[styles.notifyToggleText, notify && { color: colors.brand }]}>{notify ? t('tasksTab.reminderActive') : t('tasksTab.reminderInactive')}</Text>
                       <Text style={styles.notifyToggleSub}>
-                        {notify ? `Um ${remindTime} Uhr am Fälligkeitstag` : 'Keine Benachrichtigung'}
+                        {notify ? t('tasksTab.reminderSubActive', { time: remindTime }) : t('tasksTab.reminderSubInactive')}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -309,10 +321,10 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
               )}
 
               {/* Standort-Link */}
-              <Text style={styles.fieldLabel}>STANDORT (OPTIONAL)</Text>
+              <Text style={styles.fieldLabel}>{t('tasksTab.locationLabel')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Google-Maps-Link einfügen"
+                placeholder={t('tasksTab.locationPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={locationUrl}
                 onChangeText={setLocationUrl}
@@ -321,7 +333,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
               />
 
               {/* Anhang */}
-              <Text style={styles.fieldLabel}>ANHANG (OPTIONAL)</Text>
+              <Text style={styles.fieldLabel}>{t('tasksTab.attachmentLabel')}</Text>
               {attachment ? (
                 <View style={styles.attachmentRow}>
                   <Text style={styles.attachmentRowText} numberOfLines={1}>📎 {attachment.name}</Text>
@@ -332,16 +344,16 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
               ) : (
                 <View style={styles.chipRow}>
                   <TouchableOpacity style={[styles.chip, { flex: 1 }]} onPress={pickPhoto} disabled={attachmentUploading}>
-                    <Text style={styles.chipText}>📷 Foto</Text>
+                    <Text style={styles.chipText}>{t('tasksTab.attachmentPhoto')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.chip, { flex: 1 }]} onPress={pickDocument} disabled={attachmentUploading}>
-                    <Text style={styles.chipText}>{attachmentUploading ? 'Lädt hoch…' : '📄 Dokument'}</Text>
+                    <Text style={styles.chipText}>{attachmentUploading ? t('tasksTab.attachmentUploading') : t('tasksTab.attachmentDocument')}</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
               {/* Priorität */}
-              <Text style={styles.fieldLabel}>PRIORITÄT</Text>
+              <Text style={styles.fieldLabel}>{t('tasksTab.priorityLabel')}</Text>
               <View style={styles.chipRow}>
                 {(Object.keys(PRIORITY_LABELS) as Priority[]).map(p => (
                   <TouchableOpacity key={p} style={[styles.chip, priority === p && { backgroundColor: PRIORITY_COLORS[p], borderColor: PRIORITY_COLORS[p] }]} onPress={() => setPriority(p)}>
@@ -351,7 +363,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
               </View>
 
               {/* Kategorie */}
-              <Text style={styles.fieldLabel}>KATEGORIE</Text>
+              <Text style={styles.fieldLabel}>{t('tasksTab.categoryLabel')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
                 {Object.keys(CATEGORY_EMOJIS).map(cat => (
                   <TouchableOpacity key={cat} style={[styles.chip, category === cat && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setCategory(cat)}>
@@ -364,10 +376,10 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
               {/* Zuweisen */}
               {members.length > 1 && (
                 <>
-                  <Text style={styles.fieldLabel}>ZUWEISEN AN</Text>
+                  <Text style={styles.fieldLabel}>{t('tasksTab.assignLabel')}</Text>
                   <View style={styles.chipWrap}>
                     <TouchableOpacity style={[styles.chip, !assignedTo && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setAssignedTo(null)}>
-                      <Text style={[styles.chipText, !assignedTo && { color: colors.textInverse }]}>👥 Alle</Text>
+                      <Text style={[styles.chipText, !assignedTo && { color: colors.textInverse }]}>{t('tasksTab.assignAll')}</Text>
                     </TouchableOpacity>
                     {members.map(m => (
                       <TouchableOpacity key={m.id} style={[styles.chip, assignedTo === m.id && { backgroundColor: m.avatar_color, borderColor: m.avatar_color }]} onPress={() => setAssignedTo(m.id)}>
@@ -379,7 +391,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
               )}
 
               {/* Wiederkehrend */}
-              <Text style={styles.fieldLabel}>WIEDERKEHREND</Text>
+              <Text style={styles.fieldLabel}>{t('tasksTab.recurrenceLabel')}</Text>
               <View style={styles.chipWrap}>
                 {RECURRENCE_OPTIONS.map(r => (
                   <TouchableOpacity key={String(r.key)} style={[styles.chip, recurrence === r.key && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setRecurrence(r.key)}>
@@ -390,7 +402,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
 
               {recurrence && (
                 <View style={styles.intervalRow}>
-                  <Text style={styles.intervalLabel}>Alle</Text>
+                  <Text style={styles.intervalLabel}>{t('tasksTab.everyLabel')}</Text>
                   <TouchableOpacity style={styles.intervalBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={() => setRecurrenceInterval(n => Math.max(1, n - 1))}>
                     <Text style={styles.intervalBtnText}>−</Text>
                   </TouchableOpacity>
@@ -398,22 +410,15 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
                   <TouchableOpacity style={styles.intervalBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={() => setRecurrenceInterval(n => Math.min(99, n + 1))}>
                     <Text style={styles.intervalBtnText}>+</Text>
                   </TouchableOpacity>
-                  <Text style={styles.intervalLabel}>
-                    {recurrence === 'daily' ? (recurrenceInterval === 1 ? 'Tag' : 'Tage')
-                      : recurrence === 'weekly' ? (recurrenceInterval === 1 ? 'Woche' : 'Wochen')
-                      : recurrence === 'monthly' ? (recurrenceInterval === 1 ? 'Monat' : 'Monate')
-                      : (recurrenceInterval === 1 ? 'Jahr' : 'Jahre')}
-                  </Text>
+                  <Text style={styles.intervalLabel}>{recurrenceUnit(t, recurrence, recurrenceInterval)}</Text>
                 </View>
               )}
 
               {/* Rotation – reihum zuweisen (nur bei Wiederholung & mehreren Mitgliedern) */}
               {recurrence && members.length > 1 && (
                 <>
-                  <Text style={styles.fieldLabel}>🔄 REIHUM (WER IST DRAN)</Text>
-                  <Text style={styles.rotationHint}>
-                    Tippe die Mitglieder in der gewünschten Reihenfolge an – die Aufgabe wandert bei jeder Wiederholung zum Nächsten.
-                  </Text>
+                  <Text style={styles.fieldLabel}>{t('tasksTab.rotationLabel')}</Text>
+                  <Text style={styles.rotationHint}>{t('tasksTab.rotationHint')}</Text>
                   <View style={styles.chipWrap}>
                     {members.map(m => {
                       const idx = rotation.indexOf(m.id);
@@ -435,7 +440,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
               )}
 
               <TouchableOpacity style={[styles.saveBtn, !title.trim() && { opacity: 0.4 }]} onPress={handleSave} disabled={!title.trim()}>
-                <Text style={styles.saveBtnText}>{editTask ? 'Änderungen speichern ✓' : 'Aufgabe erstellen ✓'}</Text>
+                <Text style={styles.saveBtnText}>{editTask ? t('tasksTab.saveEdit') : t('tasksTab.saveCreate')}</Text>
               </TouchableOpacity>
               <View style={{ height: 20 }} />
             </ScrollView>
@@ -458,6 +463,8 @@ function TimeTreeQuickstartModal({ visible, onClose, onSave }: {
   onSave: (entries: QuickstartEntry[]) => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const RECURRENCE_OPTIONS = recurrenceOptions(t);
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
@@ -491,31 +498,30 @@ function TimeTreeQuickstartModal({ visible, onClose, onSave }: {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={Platform.OS === 'web' ? { width: '100%', flex: 1 } : undefined}>
           <View style={[styles.modalSheet, Platform.OS === 'web' && { maxHeight: '100%' }]}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>🔄 Schnellstart von TimeTree & Co.</Text>
+            <Text style={styles.modalTitle}>{t('tasksTab.quickstartTitle')}</Text>
             <Text style={[styles.fieldLabel, { textTransform: 'none', marginBottom: spacing.md }]}>
-              TimeTree lässt sich leider nicht direkt exportieren. Trag stattdessen kurz deine wichtigsten
-              wiederkehrenden Termine ein (Geburtstage, „Mülltonne raus" usw.) — meist unter 2 Minuten.
+              {t('tasksTab.quickstartDesc')}
             </Text>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <TextInput
                 ref={titleRef}
                 style={styles.input}
-                placeholder="z.B. Geburtstag Mama, Müll raus, …"
+                placeholder={t('tasksTab.quickstartTitlePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={title}
                 onChangeText={setTitle}
                 returnKeyType="done"
                 onSubmitEditing={addToQueue}
               />
-              <Text style={styles.fieldLabel}>DATUM (ERSTER/NÄCHSTER TERMIN)</Text>
+              <Text style={styles.fieldLabel}>{t('tasksTab.quickstartDateLabel')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="JJJJ-MM-TT"
+                placeholder={t('tasksTab.datePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={date}
                 onChangeText={setDate}
               />
-              <Text style={styles.fieldLabel}>WIEDERHOLUNG</Text>
+              <Text style={styles.fieldLabel}>{t('tasksTab.quickstartRecurrenceLabel')}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md }}>
                 {RECURRENCE_OPTIONS.map(r => (
                   <TouchableOpacity key={String(r.key)} style={[styles.chip, recurrence === r.key && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setRecurrence(r.key)}>
@@ -524,18 +530,18 @@ function TimeTreeQuickstartModal({ visible, onClose, onSave }: {
                 ))}
               </View>
               <TouchableOpacity style={[styles.saveBtn, !title.trim() && { opacity: 0.4 }]} onPress={addToQueue} disabled={!title.trim()}>
-                <Text style={styles.saveBtnText}>+ Zur Liste hinzufügen</Text>
+                <Text style={styles.saveBtnText}>{t('tasksTab.quickstartAddButton')}</Text>
               </TouchableOpacity>
 
               {queue.length > 0 && (
                 <>
-                  <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>BEREIT ZUM ÜBERNEHMEN ({queue.length})</Text>
+                  <Text style={[styles.fieldLabel, { marginTop: spacing.lg }]}>{t('tasksTab.quickstartReadyLabel', { count: queue.length })}</Text>
                   {queue.map((e, i) => (
                     <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
                       <View style={{ flex: 1 }}>
                         <Text style={{ ...typography.body, color: colors.text, fontWeight: '600' }}>{e.title}</Text>
                         <Text style={{ ...typography.xs, color: colors.textMuted }}>
-                          {e.date || 'ohne Datum'}{e.recurrence ? ` · ${RECURRENCE_OPTIONS.find(r => r.key === e.recurrence)?.label}` : ''}
+                          {e.date || t('tasksTab.quickstartNoDate')}{e.recurrence ? ` · ${RECURRENCE_OPTIONS.find(r => r.key === e.recurrence)?.label}` : ''}
                         </Text>
                       </View>
                       <TouchableOpacity onPress={() => removeFromQueue(i)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -544,7 +550,7 @@ function TimeTreeQuickstartModal({ visible, onClose, onSave }: {
                     </View>
                   ))}
                   <TouchableOpacity style={[styles.saveBtn, { marginTop: spacing.md }]} onPress={finish}>
-                    <Text style={styles.saveBtnText}>{queue.length} Termine übernehmen ✓</Text>
+                    <Text style={styles.saveBtnText}>{t('tasksTab.quickstartFinishButton', { count: queue.length })}</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -563,6 +569,9 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
   onDelete: (id: string) => void; members: any[]; showPoints?: boolean; onOpen?: (task: Task) => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const isCompleted = !!task.completed_at;
   const isOverdue = task.due_date && !isCompleted && isBefore(parseISO(task.due_date), new Date()) && !isToday(parseISO(task.due_date));
@@ -572,9 +581,9 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
   const swipeRef = useRef<Swipeable>(null);
 
   const dueDateText = task.due_date
-    ? isToday(parseISO(task.due_date)) ? 'Heute'
-    : isSameDay(parseISO(task.due_date), addDays(new Date(), 1)) ? 'Morgen'
-    : format(parseISO(task.due_date), 'dd. MMM', { locale: de })
+    ? isToday(parseISO(task.due_date)) ? t('recipes.today')
+    : isSameDay(parseISO(task.due_date), addDays(new Date(), 1)) ? t('recipes.tomorrow')
+    : format(parseISO(task.due_date), 'dd. MMM', { locale: dateLocale })
     : null;
 
   // Swipe right → complete (skips the tap-to-confirm dialog, the swipe itself is the deliberate act).
@@ -602,9 +611,9 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
       <View style={[styles.priorityBar, { backgroundColor: priorityColor }]} />
       <TouchableOpacity style={styles.taskCheckbox} onPress={() => {
         if (isCompleted) { onComplete(task.id); return; }
-        Alert.alert('Aufgabe erledigen?', `"${task.title}" als erledigt markieren?`, [
-          { text: 'Abbrechen', style: 'cancel' },
-          { text: 'Erledigt ✓', onPress: () => { hapticImpact(Haptics.ImpactFeedbackStyle.Medium); onComplete(task.id); } },
+        Alert.alert(t('tasksTab.confirmCompleteTitle'), t('tasksTab.confirmCompleteBody', { title: task.title }), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('tasksTab.markDoneButton'), onPress: () => { hapticImpact(Haptics.ImpactFeedbackStyle.Medium); onComplete(task.id); } },
         ]);
       }}>
         <View style={[styles.checkbox, isCompleted && { backgroundColor: colors.brand, borderColor: colors.brand }]}>
@@ -637,8 +646,8 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
           {task.recurrence && (
             <View style={styles.recurrenceBadge}>
               <Text style={styles.recurrenceBadgeText}>🔄 {(task.recurrence_interval && task.recurrence_interval > 1)
-                ? `Alle ${task.recurrence_interval} ${task.recurrence === 'daily' ? 'Tage' : task.recurrence === 'weekly' ? 'Wochen' : task.recurrence === 'monthly' ? 'Monate' : 'Jahre'}`
-                : RECURRENCE_OPTIONS.find(r => r.key === task.recurrence)?.label}</Text>
+                ? t('tasksTab.recurrenceEvery', { interval: task.recurrence_interval, unit: recurrenceUnit(t, task.recurrence, task.recurrence_interval) })
+                : recurrenceOptions(t).find(r => r.key === task.recurrence)?.label}</Text>
             </View>
           )}
           {assignedMember && (
@@ -663,6 +672,7 @@ interface ChecklistItem { id: string; text: string; done: boolean; sort_order: n
 
 function ChecklistSection({ taskId }: { taskId: string }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [newText, setNewText] = useState('');
@@ -700,7 +710,7 @@ function ChecklistSection({ taskId }: { taskId: string }) {
 
   return (
     <View style={{ marginBottom: spacing.lg }}>
-      <Text style={styles.detailLabel}>✅ Checkliste{items.length > 0 ? ` (${doneCount}/${items.length})` : ''}</Text>
+      <Text style={styles.detailLabel}>{t('tasksTab.checklistLabel')}{items.length > 0 ? t('tasksTab.checklistCount', { done: doneCount, total: items.length }) : ''}</Text>
       {items.map(item => (
         <View key={item.id} style={styles.checklistRow}>
           <TouchableOpacity style={styles.checklistCheckRow} onPress={() => toggleItem(item.id)}>
@@ -717,7 +727,7 @@ function ChecklistSection({ taskId }: { taskId: string }) {
       <View style={styles.checklistAddRow}>
         <TextInput
           style={[styles.input, { flex: 1 }]}
-          placeholder="Punkt hinzufügen…"
+          placeholder={t('tasksTab.checklistAddPlaceholder')}
           placeholderTextColor={colors.textMuted}
           value={newText}
           onChangeText={setNewText}
@@ -743,31 +753,38 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit,
   onTogglePin: (id: string) => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   if (!task) return null;
   const isCompleted = !!task.completed_at;
   const assignedMember = members.find(m => m.id === task.assigned_to);
-  const dateText = task.due_date ? format(parseISO(task.due_date), 'EEEE, d. MMMM yyyy', { locale: de }) : '—';
+  const dateText = task.due_date ? format(parseISO(task.due_date), 'EEEE, d. MMMM yyyy', { locale: dateLocale }) : '—';
   const countdownText = (() => {
     if (!task.due_date || isCompleted) return null;
     const days = differenceInCalendarDays(parseISO(task.due_date), new Date());
-    if (days === 0) return 'Heute';
-    if (days === 1) return 'Noch 1 Tag';
-    if (days > 1) return `Noch ${days} Tage`;
-    if (days === -1) return 'Vor 1 Tag';
-    return `Vor ${-days} Tagen`;
+    if (days === 0) return t('recipes.today');
+    if (days === 1) return t('tasksTab.countdownInDays_one', { count: 1 });
+    if (days > 1) return t('tasksTab.countdownInDays_other', { count: days });
+    if (days === -1) return t('tasksTab.countdownAgo_one', { count: 1 });
+    return t('tasksTab.countdownAgo_other', { count: -days });
+  })();
+  const isOverdueCountdown = countdownText != null && (() => {
+    if (!task.due_date || isCompleted) return false;
+    return differenceInCalendarDays(parseISO(task.due_date), new Date()) < 0;
   })();
   const recurrenceText = task.recurrence
     ? (task.recurrence_interval && task.recurrence_interval > 1
-        ? `Alle ${task.recurrence_interval} ${task.recurrence === 'daily' ? 'Tage' : task.recurrence === 'weekly' ? 'Wochen' : task.recurrence === 'monthly' ? 'Monate' : 'Jahre'}`
-        : RECURRENCE_OPTIONS.find(r => r.key === task.recurrence)?.label)
+        ? t('tasksTab.recurrenceEvery', { interval: task.recurrence_interval, unit: recurrenceUnit(t, task.recurrence, task.recurrence_interval) })
+        : recurrenceOptions(t).find(r => r.key === task.recurrence)?.label)
     : null;
 
   const handleOpenAttachment = async () => {
     if (!task.attachment_path) return;
     const url = await getTaskAttachmentUrl(task.attachment_path);
     if (url) Linking.openURL(url);
-    else Alert.alert('Fehler', 'Anhang konnte nicht geladen werden.');
+    else Alert.alert(t('common.error'), t('tasksTab.attachmentLoadFailed'));
   };
 
   return (
@@ -784,43 +801,43 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit,
               </TouchableOpacity>
             </View>
             {countdownText && (
-              <View style={[styles.countdownBadge, countdownText.startsWith('Vor') && styles.countdownBadgeOverdue]}>
-                <Text style={[styles.countdownBadgeText, countdownText.startsWith('Vor') && { color: colors.error }]}>⏳ {countdownText}</Text>
+              <View style={[styles.countdownBadge, isOverdueCountdown && styles.countdownBadgeOverdue]}>
+                <Text style={[styles.countdownBadgeText, isOverdueCountdown && { color: colors.error }]}>⏳ {countdownText}</Text>
               </View>
             )}
             {task.description ? <Text style={styles.detailDesc}>{task.description}</Text> : null}
 
             <ChecklistSection taskId={task.id} />
 
-            <View style={styles.detailRow}><Text style={styles.detailLabel}>📂 Kategorie</Text><Text style={styles.detailValue}>{CATEGORY_EMOJIS[task.category] || '📋'} {task.category}</Text></View>
-            <View style={styles.detailRow}><Text style={styles.detailLabel}>📅 Datum</Text><Text style={styles.detailValue}>{dateText}</Text></View>
-            <View style={styles.detailRow}><Text style={styles.detailLabel}>🕐 Uhrzeit</Text><Text style={styles.detailValue}>{task.due_time ? `${task.due_time} Uhr` : 'Keine'}</Text></View>
-            <View style={styles.detailRow}><Text style={styles.detailLabel}>⭐ Aufwand</Text><Text style={styles.detailValue}>{PRIORITY_LABELS[task.priority as Priority]} Pkt</Text></View>
-            {recurrenceText && <View style={styles.detailRow}><Text style={styles.detailLabel}>🔄 Wiederholung</Text><Text style={styles.detailValue}>{recurrenceText}</Text></View>}
+            <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailCategory')}</Text><Text style={styles.detailValue}>{CATEGORY_EMOJIS[task.category] || '📋'} {task.category}</Text></View>
+            <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailDate')}</Text><Text style={styles.detailValue}>{dateText}</Text></View>
+            <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailTime')}</Text><Text style={styles.detailValue}>{task.due_time ? t('tasksTab.detailTimeValue', { time: task.due_time }) : t('tasksTab.detailTimeNone')}</Text></View>
+            <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailEffort')}</Text><Text style={styles.detailValue}>{t('tasksTab.detailEffortPoints', { label: priorityLabels(t)[task.priority as Priority] })}</Text></View>
+            {recurrenceText && <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailRecurrence')}</Text><Text style={styles.detailValue}>{recurrenceText}</Text></View>}
             {task.rotation && task.rotation.length > 1 && (
-              <View style={styles.detailRow}><Text style={styles.detailLabel}>🔁 Reihum</Text><Text style={styles.detailValue}>{task.rotation.map(id => members.find(m => m.id === id)?.display_name ?? '?').join(' → ')}</Text></View>
+              <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailRotation')}</Text><Text style={styles.detailValue}>{task.rotation.map(id => members.find(m => m.id === id)?.display_name ?? '?').join(' → ')}</Text></View>
             )}
-            <View style={styles.detailRow}><Text style={styles.detailLabel}>👤 Zugewiesen</Text><Text style={styles.detailValue}>{assignedMember ? assignedMember.display_name : 'Alle'}</Text></View>
+            <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailAssigned')}</Text><Text style={styles.detailValue}>{assignedMember ? assignedMember.display_name : t('tasksTab.detailAssignedAll')}</Text></View>
 
             {task.location_url && (
               <TouchableOpacity style={styles.attachmentBtn} onPress={() => Linking.openURL(task.location_url!)}>
-                <Text style={styles.attachmentBtnText}>📍 Standort öffnen</Text>
+                <Text style={styles.attachmentBtnText}>{t('tasksTab.openLocation')}</Text>
               </TouchableOpacity>
             )}
             {task.attachment_path && (
               <TouchableOpacity style={styles.attachmentBtn} onPress={handleOpenAttachment}>
-                <Text style={styles.attachmentBtnText} numberOfLines={1}>📎 {task.attachment_name || 'Anhang'} öffnen</Text>
+                <Text style={styles.attachmentBtnText} numberOfLines={1}>{t('tasksTab.openAttachment', { name: task.attachment_name || t('tasksTab.attachmentDefaultName') })}</Text>
               </TouchableOpacity>
             )}
 
             <TouchableOpacity style={styles.saveBtn} onPress={() => { onComplete(task.id); onClose(); }}>
-              <Text style={styles.saveBtnText}>{isCompleted ? 'Als offen markieren' : 'Erledigt ✓'}</Text>
+              <Text style={styles.saveBtnText}>{isCompleted ? t('tasksTab.markOpenButton') : t('tasksTab.markDoneButton')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.detailEditBtn} onPress={() => onEdit(task)}>
-              <Text style={styles.detailEditText}>✏️ Bearbeiten</Text>
+              <Text style={styles.detailEditText}>{t('tasksTab.editButton')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.detailDeleteBtn} onPress={() => { onClose(); onDelete(task.id); }}>
-              <Text style={styles.detailDeleteText}>Löschen</Text>
+              <Text style={styles.detailDeleteText}>{t('common.delete')}</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -835,6 +852,8 @@ function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
   tasks: Task[]; onDayPress: (date: Date) => void; selectedDate: Date | null; mealPlans: MealPlan[];
 }) {
   const { colors } = useTheme();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -848,7 +867,7 @@ function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
     }
   });
 
-  const weekLabel = `${format(days[0], 'd. MMM', { locale: de })} – ${format(days[6], 'd. MMM yyyy', { locale: de })}`;
+  const weekLabel = `${format(days[0], 'd. MMM', { locale: dateLocale })} – ${format(days[6], 'd. MMM yyyy', { locale: dateLocale })}`;
 
   return (
     <View style={styles.calendarContainer}>
@@ -888,7 +907,7 @@ function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
               activeOpacity={0.7}
             >
               <Text style={[styles.weekDayName, isToday_ && { color: colors.brand }, !isToday_ && holiday && { color: '#EF4444' }]}>
-                {format(day, 'EEE', { locale: de }).slice(0, 2).toUpperCase()}
+                {format(day, 'EEE', { locale: dateLocale }).slice(0, 2).toUpperCase()}
               </Text>
               <View style={[
                 styles.weekDayNumWrap,
@@ -932,6 +951,9 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
   tasks: Task[]; onDayPress: (date: Date) => void; selectedDate: Date | null; mealPlans: MealPlan[];
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const monthStart = startOfMonth(currentMonth);
@@ -939,11 +961,11 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
   const days = eachDayOfInterval({ start: calStart, end: addDays(endOfMonth(currentMonth), 6 - endOfMonth(currentMonth).getDay()) });
 
   const tasksByDate: Record<string, Task[]> = {};
-  tasks.forEach(t => {
-    if (t.due_date) {
-      const key = t.due_date.substring(0, 10);
+  tasks.forEach(task => {
+    if (task.due_date) {
+      const key = task.due_date.substring(0, 10);
       if (!tasksByDate[key]) tasksByDate[key] = [];
-      tasksByDate[key].push(t);
+      tasksByDate[key].push(task);
     }
   });
 
@@ -951,11 +973,11 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
     <View style={styles.calendarContainer}>
       <View style={styles.monthNav}>
         <TouchableOpacity onPress={() => setCurrentMonth(m => subMonths(m, 1))} style={styles.monthNavBtn}><Text style={styles.monthNavIcon}>‹</Text></TouchableOpacity>
-        <Text style={styles.monthTitle}>{format(currentMonth, 'MMMM yyyy', { locale: de })}</Text>
+        <Text style={styles.monthTitle}>{format(currentMonth, 'MMMM yyyy', { locale: dateLocale })}</Text>
         <TouchableOpacity onPress={() => setCurrentMonth(m => addMonths(m, 1))} style={styles.monthNavBtn}><Text style={styles.monthNavIcon}>›</Text></TouchableOpacity>
       </View>
       <View style={styles.weekdayRow}>
-        {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(d => <Text key={d} style={styles.weekdayLabel}>{d}</Text>)}
+        {[t('tasksTab.weekdayMon'), t('tasksTab.weekdayTue'), t('tasksTab.weekdayWed'), t('tasksTab.weekdayThu'), t('tasksTab.weekdayFri'), t('tasksTab.weekdaySat'), t('tasksTab.weekdaySun')].map((d, i) => <Text key={i} style={styles.weekdayLabel}>{d}</Text>)}
       </View>
       <View style={styles.daysGrid}>
         {days.map(day => {
@@ -966,7 +988,7 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
           const isToday_ = isToday(day);
           const holiday = holidayName(key);
           const barColors = [
-            ...dayTasks.map(t => t.completed_at ? colors.textMuted : catColor(t.category)),
+            ...dayTasks.map(task => task.completed_at ? colors.textMuted : catColor(task.category)),
             ...(mealPlans.some(m => m.planned_date === key) ? ['#FF6B35'] : []),
           ];
           const visibleBars = barColors.slice(0, 3);
@@ -1002,16 +1024,19 @@ function MemberDayView({ tasks, members, date, onDateChange }: {
   tasks: Task[]; members: any[]; date: Date; onDateChange: (d: Date) => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const dateKey = format(date, 'yyyy-MM-dd');
   const hours = Array.from({ length: DAY_END_HOUR - DAY_START_HOUR + 1 }, (_, i) => DAY_START_HOUR + i);
   const holiday = holidayName(dateKey);
 
   const tasksByMember: Record<string, Task[]> = {};
-  tasks.forEach(t => {
-    if (!t.assigned_to || !(t as any).due_time || t.due_date !== dateKey || t.completed_at) return;
-    if (!tasksByMember[t.assigned_to]) tasksByMember[t.assigned_to] = [];
-    tasksByMember[t.assigned_to].push(t);
+  tasks.forEach(task => {
+    if (!task.assigned_to || !(task as any).due_time || task.due_date !== dateKey || task.completed_at) return;
+    if (!tasksByMember[task.assigned_to]) tasksByMember[task.assigned_to] = [];
+    tasksByMember[task.assigned_to].push(task);
   });
 
   const topFor = (time: string) => {
@@ -1025,14 +1050,14 @@ function MemberDayView({ tasks, members, date, onDateChange }: {
       <View style={styles.monthNav}>
         <TouchableOpacity onPress={() => onDateChange(addDays(date, -1))} style={styles.monthNavBtn}><Text style={styles.monthNavIcon}>‹</Text></TouchableOpacity>
         <TouchableOpacity onPress={() => onDateChange(new Date())}>
-          <Text style={styles.monthTitle}>{isToday(date) ? 'Heute' : format(date, 'EEEE, d. MMM', { locale: de })}</Text>
+          <Text style={styles.monthTitle}>{isToday(date) ? t('recipes.today') : format(date, 'EEEE, d. MMM', { locale: dateLocale })}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => onDateChange(addDays(date, 1))} style={styles.monthNavBtn}><Text style={styles.monthNavIcon}>›</Text></TouchableOpacity>
       </View>
       {holiday && <Text style={[styles.weekHolidayLabel, { fontSize: 12, marginBottom: spacing.sm }]}>🎉 {holiday}</Text>}
 
       {members.length === 0 ? (
-        <Text style={styles.emptyBody}>Keine Haushaltsmitglieder.</Text>
+        <Text style={styles.emptyBody}>{t('tasksTab.noMembers')}</Text>
       ) : (
         <View style={{ flexDirection: 'row' }}>
           <View style={{ width: 34 }}>
@@ -1059,10 +1084,10 @@ function MemberDayView({ tasks, members, date, onDateChange }: {
                 {members.map(m => (
                   <View key={m.id} style={[styles.dayViewCol, { width: MEMBER_COL_WIDTH }]}>
                     {hours.map(h => <View key={h} style={[styles.dayViewHourLine, { top: (h - DAY_START_HOUR) * HOUR_HEIGHT }]} />)}
-                    {(tasksByMember[m.id] || []).map(t => (
-                      <View key={t.id} style={[styles.dayViewBlock, { top: topFor((t as any).due_time), backgroundColor: catColor(t.category) }]}>
-                        <Text style={styles.dayViewBlockTime}>{(t as any).due_time}</Text>
-                        <Text style={styles.dayViewBlockTitle} numberOfLines={2}>{t.title}</Text>
+                    {(tasksByMember[m.id] || []).map(task => (
+                      <View key={task.id} style={[styles.dayViewBlock, { top: topFor((task as any).due_time), backgroundColor: catColor(task.category) }]}>
+                        <Text style={styles.dayViewBlockTime}>{(task as any).due_time}</Text>
+                        <Text style={styles.dayViewBlockTitle} numberOfLines={2}>{task.title}</Text>
                       </View>
                     ))}
                   </View>
@@ -1079,6 +1104,7 @@ function MemberDayView({ tasks, members, date, onDateChange }: {
 // ─── POINTS TOAST ─────────────────────────────────────────────
 function PointsToast({ points, visible }: { points: number; visible: boolean }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -1098,7 +1124,7 @@ function PointsToast({ points, visible }: { points: number; visible: boolean }) 
       opacity: anim,
       transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [30, -10] }) }, { scale: anim }]
     }]}>
-      <Text style={styles.pointsToastText}>+{points} Punkte 🏆</Text>
+      <Text style={styles.pointsToastText}>{t('tasksTab.pointsToast', { points })}</Text>
     </Animated.View>
   );
 }
@@ -1106,9 +1132,11 @@ function PointsToast({ points, visible }: { points: number; visible: boolean }) 
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function TasksScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const { household, currentMember, members, tasks, setTasks, completeTask, weekScores, loadWeekScores, items, setItems, themeId, language } = useStore();
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { household, currentMember, members, tasks, setTasks, completeTask, weekScores, loadWeekScores, items, setItems, themeId } = useStore();
-  const activeTheme = APP_THEMES.find(t => t.id === themeId);
+  const activeTheme = APP_THEMES.find(theme => theme.id === themeId);
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [dayViewDate, setDayViewDate] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
@@ -1135,7 +1163,7 @@ export default function TasksScreen() {
   const handledTaskParam = useRef<string | null>(null);
   useEffect(() => {
     if (!params.taskId || params.taskId === handledTaskParam.current) return;
-    const found = tasks.find(t => t.id === params.taskId);
+    const found = tasks.find(task => task.id === params.taskId);
     if (!found) return;
     handledTaskParam.current = params.taskId;
     setSelectedTask(found);
@@ -1190,8 +1218,8 @@ export default function TasksScreen() {
       await AsyncStorage.setItem(storeKey, key);
       if (winner && winner.points > 0) {
         Alert.alert(
-          '🏆 Heimlig-Haushälter:in des Monats!',
-          `Im ${format(prevMonth, 'MMMM', { locale: de })} war es ${winner.member.display_name} mit ${winner.points} Punkten! 🎉\n\nNeuer Monat, neue Chance – auf geht's!`
+          t('tasksTab.monthWinnerTitle'),
+          t('tasksTab.monthWinnerBody', { month: format(prevMonth, 'MMMM', { locale: dateLocale }), name: winner.member.display_name, points: winner.points })
         );
       }
     })();
@@ -1227,7 +1255,7 @@ export default function TasksScreen() {
     const { data } = await supabase.from('tasks')
       .update({ ...rest, due_time: due_time || null })
       .eq('id', editingTask.id).select().single();
-    if (data) setTasks(tasks.map(t => (t.id === editingTask.id ? data : t)));
+    if (data) setTasks(tasks.map(task => (task.id === editingTask.id ? data : task)));
     setEditingTask(null);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
     if (notify && data?.due_date) await scheduleTaskNotification(data.id, data.title, data.due_date, due_time, data.remind_time);
@@ -1239,10 +1267,10 @@ export default function TasksScreen() {
   // Quickstart entry) as duplicates.
   const isDuplicateTask = (candidate: { title: string; date?: string; time?: string; recurrence?: string | null }): boolean => {
     const title = candidate.title.toLowerCase().trim();
-    return tasks.some(t => {
-      if (t.title.toLowerCase().trim() !== title) return false;
-      if (candidate.recurrence) return t.recurrence === candidate.recurrence;
-      return (t.due_date || null) === (candidate.date || null) && (t.due_time || null) === (candidate.time || null);
+    return tasks.some(task => {
+      if (task.title.toLowerCase().trim() !== title) return false;
+      if (candidate.recurrence) return task.recurrence === candidate.recurrence;
+      return (task.due_date || null) === (candidate.date || null) && (task.due_time || null) === (candidate.time || null);
     });
   };
 
@@ -1252,7 +1280,7 @@ export default function TasksScreen() {
       if (res.canceled || !res.assets?.[0]) return;
       const content = await new File(res.assets[0].uri).text();
       const parsed = parseICS(content);
-      if (parsed.length === 0) { Alert.alert('Keine Termine', 'In der Datei wurden keine Termine gefunden. Erwartet wird eine .ics-Datei (z.B. Export aus Google Kalender).'); return; }
+      if (parsed.length === 0) { Alert.alert(t('tasksTab.noEventsTitle'), t('tasksTab.icsNoEventsBody')); return; }
 
       const seen = new Set<string>();
       const events = parsed.filter(e => {
@@ -1265,14 +1293,14 @@ export default function TasksScreen() {
       const skipped = parsed.length - events.length;
 
       if (events.length === 0) {
-        Alert.alert('Schon importiert', `Alle ${parsed.length} Termine aus der Datei sind bereits im Kalender vorhanden — nichts Neues zu importieren.`);
+        Alert.alert(t('tasksTab.alreadyImportedTitle'), t('tasksTab.icsAllExistBody', { count: parsed.length }));
         return;
       }
 
-      const skippedNote = skipped > 0 ? ` (${skipped} bereits vorhanden, werden übersprungen)` : '';
-      Alert.alert('Kalender importieren', `${events.length} neue Termine aus der Datei in den Heimlig-Kalender übernehmen?${skippedNote}`, [
-        { text: 'Abbrechen', style: 'cancel' },
-        { text: 'Importieren', onPress: async () => {
+      const skippedNote = skipped > 0 ? t('tasksTab.skippedExistingNote', { count: skipped }) : '';
+      Alert.alert(t('tasksTab.importConfirmTitle'), t('tasksTab.importConfirmBody', { count: events.length, note: skippedNote }), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('tasksTab.importButton'), onPress: async () => {
             if (!household || !currentMember) return;
             const rows = events.map(e => {
               const isBirthday = /geburtstag|glückwunsch/i.test(e.title);
@@ -1292,14 +1320,14 @@ export default function TasksScreen() {
               };
             });
             const { data, error } = await supabase.from('tasks').insert(rows).select();
-            if (error) { Alert.alert('Fehler', error.message); return; }
+            if (error) { Alert.alert(t('common.error'), error.message); return; }
             if (data) setTasks([...tasks, ...data]);
             hapticNotification(Haptics.NotificationFeedbackType.Success);
-            Alert.alert('✓ Importiert', `${data?.length ?? events.length} Termine wurden in den Kalender übernommen.`);
+            Alert.alert(t('tasksTab.importedTitle'), t('tasksTab.icsImportedBody', { count: data?.length ?? events.length }));
           } },
       ]);
     } catch (e: any) {
-      Alert.alert('Fehler', e?.message ?? 'Import fehlgeschlagen.');
+      Alert.alert(t('common.error'), e?.message ?? t('tasksTab.icsImportFailedBody'));
     }
   };
 
@@ -1316,7 +1344,7 @@ export default function TasksScreen() {
     const skipped = entries.length - fresh.length;
     if (fresh.length === 0) {
       setShowQuickstart(false);
-      Alert.alert('Schon vorhanden', 'Alle eingegebenen Termine gibt es bereits im Kalender.');
+      Alert.alert(t('tasksTab.alreadyExistTitle'), t('tasksTab.quickstartAllExistBody'));
       return;
     }
     const rows = fresh.map(e => {
@@ -1334,12 +1362,12 @@ export default function TasksScreen() {
       };
     });
     const { data, error } = await supabase.from('tasks').insert(rows).select();
-    if (error) { Alert.alert('Fehler', error.message); return; }
+    if (error) { Alert.alert(t('common.error'), error.message); return; }
     if (data) setTasks([...tasks, ...data]);
     setShowQuickstart(false);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
-    const skippedNote = skipped > 0 ? ` (${skipped} gab es schon)` : '';
-    Alert.alert('✓ Übernommen', `${data?.length ?? fresh.length} Termine wurden angelegt.${skippedNote}`);
+    const skippedNote = skipped > 0 ? t('tasksTab.quickstartAlreadyNote', { count: skipped }) : '';
+    Alert.alert(t('tasksTab.adoptedTitle'), t('tasksTab.quickstartAddedBody', { count: data?.length ?? fresh.length, note: skippedNote }));
   };
 
   const handlePhotoEvent = async () => {
@@ -1357,7 +1385,7 @@ export default function TasksScreen() {
       });
       if (error || !data) throw error || new Error('no data');
       if (!data.title) {
-        Alert.alert('Nichts erkannt', 'Aus dem Foto konnten keine Termin-Infos gelesen werden. Du kannst den Termin auch manuell anlegen.');
+        Alert.alert(t('tasksTab.photoNothingTitle'), t('tasksTab.photoNothingBody'));
         return;
       }
       setPhotoPrefill({
@@ -1369,7 +1397,7 @@ export default function TasksScreen() {
       });
       setShowModal(true);
     } catch {
-      Alert.alert('Fehler', 'Termin konnte nicht aus dem Foto erkannt werden.');
+      Alert.alert(t('common.error'), t('tasksTab.photoFailedBody'));
     } finally {
       setExtractingPhoto(false);
     }
@@ -1380,7 +1408,7 @@ export default function TasksScreen() {
     const parsed: IcsEvent[] = mapTimeTreeEvents(raw);
     if (parsed.length === 0) {
       setShowTimeTreeLogin(false);
-      Alert.alert('Keine Termine', 'In deinem TimeTree-Kalender wurden keine Termine gefunden.');
+      Alert.alert(t('tasksTab.noEventsTitle'), t('tasksTab.timetreeNoEventsBody'));
       return;
     }
 
@@ -1396,7 +1424,7 @@ export default function TasksScreen() {
 
     if (events.length === 0) {
       setShowTimeTreeLogin(false);
-      Alert.alert('Schon importiert', `Alle ${parsed.length} Termine aus TimeTree sind bereits im Kalender vorhanden.`);
+      Alert.alert(t('tasksTab.alreadyImportedTitle'), t('tasksTab.timetreeAllExistBody', { count: parsed.length }));
       return;
     }
 
@@ -1418,30 +1446,30 @@ export default function TasksScreen() {
       };
     });
     const { data: inserted, error: insertError } = await supabase.from('tasks').insert(rows).select();
-    if (insertError) { Alert.alert('Fehler', insertError.message); return; }
+    if (insertError) { Alert.alert(t('common.error'), insertError.message); return; }
     if (inserted) setTasks([...tasks, ...inserted]);
     setShowTimeTreeLogin(false);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
-    const skippedNote = skipped > 0 ? ` (${skipped} bereits vorhanden)` : '';
-    Alert.alert('✓ Importiert', `${inserted?.length ?? events.length} Termine aus TimeTree übernommen.${skippedNote}`);
+    const skippedNote = skipped > 0 ? t('tasksTab.timetreeExistingNote', { count: skipped }) : '';
+    Alert.alert(t('tasksTab.importedTitle'), t('tasksTab.timetreeImportedBody', { count: inserted?.length ?? events.length, note: skippedNote }));
   };
 
   const handleTogglePin = async (id: string) => {
-    const task = tasks.find(t => t.id === id);
+    const task = tasks.find(task => task.id === id);
     if (!task) return;
     const pinned = !task.pinned;
-    setTasks(tasks.map(t => t.id === id ? { ...t, pinned } : t));
+    setTasks(tasks.map(task => task.id === id ? { ...task, pinned } : task));
     setSelectedTask(sel => sel && sel.id === id ? { ...sel, pinned } : sel);
     await supabase.from('tasks').update({ pinned }).eq('id', id);
   };
 
   const handleDelete = (id: string) => {
-    const task = tasks.find(t => t.id === id);
-    Alert.alert('Löschen', 'Aufgabe wirklich löschen?', [
-      { text: 'Abbrechen', style: 'cancel' },
+    const task = tasks.find(task => task.id === id);
+    Alert.alert(t('common.delete'), t('tasksTab.deleteTaskBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Löschen', style: 'destructive', onPress: async () => {
-          setTasks(tasks.filter(t => t.id !== id));
+        text: t('common.delete'), style: 'destructive', onPress: async () => {
+          setTasks(tasks.filter(task => task.id !== id));
           await supabase.from('tasks').delete().eq('id', id);
           if (task?.attachment_path) deleteTaskAttachment(task.attachment_path);
         }
@@ -1451,7 +1479,7 @@ export default function TasksScreen() {
 
   const availableYears = useMemo(() => {
     const years = new Set<number>([new Date().getFullYear()]);
-    tasks.forEach(t => { if (t.due_date) years.add(parseISO(t.due_date).getFullYear()); });
+    tasks.forEach(task => { if (task.due_date) years.add(parseISO(task.due_date).getFullYear()); });
     return Array.from(years).sort();
   }, [tasks]);
 
@@ -1459,22 +1487,22 @@ export default function TasksScreen() {
   // including keystrokes in unrelated modals) so it only reruns when something it actually
   // depends on changes.
   const { openTasks, openTasksWithDate, openTasksNoDate, completedTasks, overdueTasks } = useMemo(() => {
-    const filteredTasks = tasks.filter(t => {
-      if (!showCompleted && t.completed_at) return false;
-      if (filterCategory && t.category !== filterCategory) return false;
-      if (selectedDate && viewMode !== 'list') return t.due_date && isSameDay(parseISO(t.due_date), selectedDate);
-      if (!selectedDate && t.due_date && parseISO(t.due_date).getFullYear() !== selectedYear) return false;
+    const filteredTasks = tasks.filter(task => {
+      if (!showCompleted && task.completed_at) return false;
+      if (filterCategory && task.category !== filterCategory) return false;
+      if (selectedDate && viewMode !== 'list') return task.due_date && isSameDay(parseISO(task.due_date), selectedDate);
+      if (!selectedDate && task.due_date && parseISO(task.due_date).getFullYear() !== selectedYear) return false;
       return true;
     });
 
-    const openTasks = filteredTasks.filter(t => !t.completed_at);
+    const openTasks = filteredTasks.filter(task => !task.completed_at);
     const byPinnedFirst = (a: Task, b: Task) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
     return {
       openTasks,
-      openTasksWithDate: openTasks.filter(t => t.due_date).sort(byPinnedFirst),
-      openTasksNoDate: openTasks.filter(t => !t.due_date).sort(byPinnedFirst),
-      completedTasks: filteredTasks.filter(t => !!t.completed_at),
-      overdueTasks: tasks.filter(t => t.due_date && !t.completed_at && isBefore(parseISO(t.due_date), new Date()) && !isToday(parseISO(t.due_date))),
+      openTasksWithDate: openTasks.filter(task => task.due_date).sort(byPinnedFirst),
+      openTasksNoDate: openTasks.filter(task => !task.due_date).sort(byPinnedFirst),
+      completedTasks: filteredTasks.filter(task => !!task.completed_at),
+      overdueTasks: tasks.filter(task => task.due_date && !task.completed_at && isBefore(parseISO(task.due_date), new Date()) && !isToday(parseISO(task.due_date))),
     };
   }, [tasks, showCompleted, filterCategory, selectedDate, viewMode, selectedYear]);
   const myScore = monthScores[currentMember?.id ?? ''] || 0;
@@ -1486,10 +1514,10 @@ export default function TasksScreen() {
       <View style={styles.header}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Text style={styles.headerTitle}>📋 Aufgaben</Text>
+            <Text style={styles.headerTitle}>{t('tasksTab.headerTitle')}</Text>
             <ThemeMotif />
           </View>
-          <Text style={styles.headerSub}>{openTasks.length} offen{overdueTasks.length > 0 ? ` · ${overdueTasks.length} überfällig` : ''}</Text>
+          <Text style={styles.headerSub}>{t('tasksTab.headerSubOpen', { count: openTasks.length })}{overdueTasks.length > 0 ? t('tasksTab.headerSubOverdue', { count: overdueTasks.length }) : ''}</Text>
         </View>
         {gamificationOn && (
           <TouchableOpacity style={[styles.scoreBadge, isLeading && styles.scoreBadgeLeading]} onPress={() => setShowScoreboard(true)}>
@@ -1539,7 +1567,7 @@ export default function TasksScreen() {
 
       {overdueTasks.length > 0 && (
         <View style={styles.overdueBanner}>
-          <Text style={styles.overdueBannerText}>⚠️ {overdueTasks.length} überfällige Aufgabe{overdueTasks.length > 1 ? 'n' : ''}</Text>
+          <Text style={styles.overdueBannerText}>{t(overdueTasks.length === 1 ? 'tasksTab.overdueBanner_one' : 'tasksTab.overdueBanner_other', { count: overdueTasks.length })}</Text>
         </View>
       )}
 
@@ -1570,7 +1598,7 @@ export default function TasksScreen() {
         <>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
           <TouchableOpacity style={[styles.filterChip, !filterCategory && styles.filterChipActive]} onPress={() => setFilterCategory(null)}>
-            <Text style={[styles.filterChipText, !filterCategory && styles.filterChipTextActive]}>Alle</Text>
+            <Text style={[styles.filterChipText, !filterCategory && styles.filterChipTextActive]}>{t('common.all')}</Text>
           </TouchableOpacity>
           {Object.keys(CATEGORY_EMOJIS).map(cat => (
             <TouchableOpacity key={cat} style={[styles.filterChip, filterCategory === cat && styles.filterChipActive]} onPress={() => setFilterCategory(filterCategory === cat ? null : cat)}>
@@ -1583,23 +1611,23 @@ export default function TasksScreen() {
         {selectedDate && (
           <View style={styles.selectedDateHeader}>
             <View>
-              <Text style={styles.selectedDateText}>{isToday(selectedDate) ? 'Heute' : format(selectedDate, 'EEEE, dd. MMMM', { locale: de })}</Text>
+              <Text style={styles.selectedDateText}>{isToday(selectedDate) ? t('recipes.today') : format(selectedDate, 'EEEE, dd. MMMM', { locale: dateLocale })}</Text>
               {holidayName(format(selectedDate, 'yyyy-MM-dd')) && (
                 <Text style={styles.selectedDateHoliday}>🎉 {holidayName(format(selectedDate, 'yyyy-MM-dd'))}</Text>
               )}
             </View>
             <TouchableOpacity onPress={() => { setPhotoPrefill(null); setShowModal(true); }}>
-              <Text style={styles.addForDayText}>+ Aufgabe</Text>
+              <Text style={styles.addForDayText}>{t('tasksTab.addForDay')}</Text>
             </TouchableOpacity>
           </View>
         )}
         {selectedDate && mealPlans.filter(m => m.planned_date === format(selectedDate, 'yyyy-MM-dd')).length > 0 && (
           <View style={styles.mealPlanSection}>
-            <Text style={styles.mealPlanTitle}>🍽️ Mahlzeiten</Text>
+            <Text style={styles.mealPlanTitle}>{t('tasksTab.mealsTitle')}</Text>
             {(['fruehstueck', 'mittag', 'abendessen'] as MealType[]).map(type => {
               const meal = mealPlans.find(m => m.planned_date === format(selectedDate, 'yyyy-MM-dd') && m.meal_type === type);
               if (!meal) return null;
-              const labels: Record<MealType, string> = { fruehstueck: '🌅 Frühstück', mittag: '☀️ Mittagessen', abendessen: '🌙 Abendessen' };
+              const labels: Record<MealType, string> = { fruehstueck: t('recipes.mealBreakfast'), mittag: t('recipes.mealLunch'), abendessen: t('recipes.mealDinner') };
               const sourceUrl = (meal as any).recipes?.source_url;
               return (
                 <View key={type} style={styles.mealPlanRow}>
@@ -1608,9 +1636,9 @@ export default function TasksScreen() {
                     <Text style={styles.mealPlanName}>{meal.recipe_name}{sourceUrl ? ' 🔗' : ''}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.mealDeleteBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => {
-                    Alert.alert('Mahlzeit entfernen?', `"${meal.recipe_name}" aus dem Kalender löschen? Die zugehörigen Zutaten werden auch aus dem Einkaufskorb entfernt.`, [
-                      { text: 'Abbrechen', style: 'cancel' },
-                      { text: 'Löschen', style: 'destructive', onPress: async () => {
+                    Alert.alert(t('tasksTab.removeMealTitle'), t('tasksTab.removeMealBody', { name: meal.recipe_name }), [
+                      { text: t('common.cancel'), style: 'cancel' },
+                      { text: t('common.delete'), style: 'destructive', onPress: async () => {
                         // Deleting the meal plan cascades to its linked shopping_items in the DB
                         await supabase.from('meal_plans').delete().eq('id', meal.id);
                         setMealPlans(prev => prev.filter(m => m.id !== meal.id));
@@ -1634,24 +1662,24 @@ export default function TasksScreen() {
               ) : (
                 <Text style={styles.emptyEmoji}>{selectedDate ? '✨' : '🎉'}</Text>
               )}
-              <Text style={styles.emptyTitle}>{selectedDate ? 'Kein Plan für diesen Tag' : 'Alles erledigt!'}</Text>
-              <Text style={styles.emptyBody}>{selectedDate ? 'Tippe auf + Aufgabe.' : 'Genieß den freien Tag. 🌿'}</Text>
+              <Text style={styles.emptyTitle}>{selectedDate ? t('tasksTab.emptyTitleDay') : t('tasksTab.emptyTitleAll')}</Text>
+              <Text style={styles.emptyBody}>{selectedDate ? t('tasksTab.emptyBodyDay') : t('tasksTab.emptyBodyAll')}</Text>
             </View>
           )}
           {selectedDate || openTasksNoDate.length === 0 || openTasksWithDate.length === 0 ? (
             openTasks.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} onOpen={setSelectedTask} />)
           ) : (
             <>
-              <Text style={styles.taskSectionLabel}>Termine ({openTasksWithDate.length})</Text>
+              <Text style={styles.taskSectionLabel}>{t('tasksTab.sectionWithDate', { count: openTasksWithDate.length })}</Text>
               {openTasksWithDate.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} onOpen={setSelectedTask} />)}
-              <Text style={styles.taskSectionLabel}>Ohne Datum ({openTasksNoDate.length})</Text>
+              <Text style={styles.taskSectionLabel}>{t('tasksTab.sectionNoDate', { count: openTasksNoDate.length })}</Text>
               {openTasksNoDate.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} onOpen={setSelectedTask} />)}
             </>
           )}
           {completedTasks.length > 0 && (
             <>
               <TouchableOpacity style={styles.completedHeader} onPress={() => setShowCompleted(v => !v)}>
-                <Text style={styles.completedHeaderText}>✓ Erledigt ({completedTasks.length})</Text>
+                <Text style={styles.completedHeaderText}>{t('tasksTab.completedHeader', { count: completedTasks.length })}</Text>
                 <Text style={styles.completedToggle}>{showCompleted ? '▲' : '▼'}</Text>
               </TouchableOpacity>
               {showCompleted && completedTasks.map(task => <TaskCard key={task.id} task={task as any} onComplete={handleComplete} onDelete={handleDelete} members={members} showPoints={gamificationOn} onOpen={setSelectedTask} />)}
