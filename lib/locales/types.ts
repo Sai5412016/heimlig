@@ -332,4 +332,18 @@ export interface AppTranslations {
     deleteConfirmTitle: string;
     messagePlaceholder: string;
   };
+  split: {
+    title: string;
+    subtitle: string;
+    balanceLabel: string;
+    settled: string;
+    getsBack: string;
+    owes: string;
+    suggestionLabel: string;
+    settleButton: string;
+    allEven: string;
+    historyLabel: string;
+    confirmTitle: string;
+    confirmBody: string;
+  };
 }

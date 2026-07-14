@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable } from 'react-native';
 import { Alert } from '../lib/alert';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
@@ -12,6 +13,7 @@ const eur = (n: number) => `€${n.toFixed(2).replace('.', ',')}`;
 
 export default function BudgetSplitModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { transactions, members, settlements, loadSettlements, addSettlement } = useStore();
 
@@ -23,14 +25,14 @@ export default function BudgetSplitModal({ visible, onClose }: { visible: boolea
     // including it in the shared total would inflate everyone else's share with no way to
     // net it out.
     const currentIds = new Set(members.map(m => m.id));
-    const expenses = transactions.filter(t => t.type === 'expense' && (t as any).member_id && currentIds.has((t as any).member_id));
-    const total = expenses.reduce((s, t) => s + Number(t.amount), 0);
+    const expenses = transactions.filter(tx => tx.type === 'expense' && (tx as any).member_id && currentIds.has((tx as any).member_id));
+    const total = expenses.reduce((s, tx) => s + Number(tx.amount), 0);
     const N = members.length || 1;
     const share = total / N;
 
     const net: Record<string, number> = {};
     members.forEach(m => { net[m.id] = -share; });
-    expenses.forEach(t => { const mid = (t as any).member_id; if (net[mid] !== undefined) net[mid] += Number(t.amount); });
+    expenses.forEach(tx => { const mid = (tx as any).member_id; if (net[mid] !== undefined) net[mid] += Number(tx.amount); });
     settlements.forEach(s => {
       if (net[s.from_member] !== undefined) net[s.from_member] += Number(s.amount);
       if (net[s.to_member] !== undefined) net[s.to_member] -= Number(s.amount);
@@ -54,9 +56,9 @@ export default function BudgetSplitModal({ visible, onClose }: { visible: boolea
   const name = (id: string) => members.find(m => m.id === id)?.display_name ?? '?';
 
   const settle = (from: string, to: string, amount: number) => {
-    Alert.alert('Als ausgeglichen markieren?', `${name(from)} zahlt ${name(to)} ${eur(amount)}.`, [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Ausgeglichen', onPress: () => addSettlement(from, to, amount) },
+    Alert.alert(t('split.confirmTitle'), t('split.confirmBody', { from: name(from), to: name(to), amount: eur(amount) }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('split.settleButton'), onPress: () => addSettlement(from, to, amount) },
     ]);
   };
 
@@ -66,11 +68,11 @@ export default function BudgetSplitModal({ visible, onClose }: { visible: boolea
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} onPress={onClose} />
         <View style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.title}>💸 Ausgleich</Text>
-          <Text style={styles.subtitle}>Alle Ausgaben gleichmäßig geteilt – je nachdem, wer sie eingetragen hat.</Text>
+          <Text style={styles.title}>{t('split.title')}</Text>
+          <Text style={styles.subtitle}>{t('split.subtitle')}</Text>
 
           <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-            <Text style={styles.sectionLabel}>SALDO</Text>
+            <Text style={styles.sectionLabel}>{t('split.balanceLabel')}</Text>
             {members.map(m => {
               const v = net[m.id] ?? 0;
               const settled = Math.abs(v) < 0.01;
@@ -78,7 +80,7 @@ export default function BudgetSplitModal({ visible, onClose }: { visible: boolea
                 <View key={m.id} style={styles.balanceRow}>
                   <Text style={styles.balanceName}>{m.display_name}</Text>
                   <Text style={[styles.balanceVal, { color: settled ? colors.textMuted : v > 0 ? '#2D9E57' : '#E5573F' }]}>
-                    {settled ? 'ausgeglichen' : v > 0 ? `bekommt ${eur(v)}` : `schuldet ${eur(-v)}`}
+                    {settled ? t('split.settled') : v > 0 ? t('split.getsBack', { amount: eur(v) }) : t('split.owes', { amount: eur(-v) })}
                   </Text>
                 </View>
               );
@@ -86,7 +88,7 @@ export default function BudgetSplitModal({ visible, onClose }: { visible: boolea
 
             {suggestions.length > 0 ? (
               <>
-                <Text style={styles.sectionLabel}>VORSCHLAG ZUM AUSGLEICHEN</Text>
+                <Text style={styles.sectionLabel}>{t('split.suggestionLabel')}</Text>
                 {suggestions.map((s, i) => (
                   <View key={i} style={styles.suggRow}>
                     <View style={{ flex: 1 }}>
@@ -94,18 +96,18 @@ export default function BudgetSplitModal({ visible, onClose }: { visible: boolea
                       <Text style={styles.suggAmount}>{eur(s.amount)}</Text>
                     </View>
                     <TouchableOpacity style={styles.settleBtn} onPress={() => settle(s.from, s.to, s.amount)}>
-                      <Text style={styles.settleBtnText}>Ausgeglichen</Text>
+                      <Text style={styles.settleBtnText}>{t('split.settleButton')}</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
               </>
             ) : (
-              <Text style={styles.allEven}>🎉 Alles ausgeglichen!</Text>
+              <Text style={styles.allEven}>{t('split.allEven')}</Text>
             )}
 
             {settlements.length > 0 && (
               <>
-                <Text style={styles.sectionLabel}>LETZTE AUSGLEICHE</Text>
+                <Text style={styles.sectionLabel}>{t('split.historyLabel')}</Text>
                 {settlements.slice(0, 8).map(s => (
                   <View key={s.id} style={styles.histRow}>
                     <Text style={styles.histText}>{name(s.from_member)} → {name(s.to_member)}</Text>
@@ -117,7 +119,7 @@ export default function BudgetSplitModal({ visible, onClose }: { visible: boolea
           </ScrollView>
 
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>Schließen</Text>
+            <Text style={styles.closeBtnText}>{t('common.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>

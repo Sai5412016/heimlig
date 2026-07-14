@@ -333,4 +333,18 @@ export const de: AppTranslations = {
     deleteConfirmTitle: 'Nachricht löschen?',
     messagePlaceholder: 'Nachricht schreiben…',
   },
+  split: {
+    title: '💸 Ausgleich',
+    subtitle: 'Alle Ausgaben gleichmäßig geteilt – je nachdem, wer sie eingetragen hat.',
+    balanceLabel: 'SALDO',
+    settled: 'ausgeglichen',
+    getsBack: 'bekommt {{amount}}',
+    owes: 'schuldet {{amount}}',
+    suggestionLabel: 'VORSCHLAG ZUM AUSGLEICHEN',
+    settleButton: 'Ausgeglichen',
+    allEven: '🎉 Alles ausgeglichen!',
+    historyLabel: 'LETZTE AUSGLEICHE',
+    confirmTitle: 'Als ausgeglichen markieren?',
+    confirmBody: '{{from}} zahlt {{to}} {{amount}}.',
+  },
 };

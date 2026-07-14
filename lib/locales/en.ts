@@ -334,4 +334,18 @@ export const en: AppTranslations = {
     deleteConfirmTitle: 'Delete message?',
     messagePlaceholder: 'Write a message…',
   },
+  split: {
+    title: '💸 Settle up',
+    subtitle: 'All expenses split evenly – based on who logged them.',
+    balanceLabel: 'BALANCE',
+    settled: 'settled',
+    getsBack: 'gets back {{amount}}',
+    owes: 'owes {{amount}}',
+    suggestionLabel: 'SUGGESTED SETTLEMENTS',
+    settleButton: 'Settled',
+    allEven: '🎉 All settled up!',
+    historyLabel: 'RECENT SETTLEMENTS',
+    confirmTitle: 'Mark as settled?',
+    confirmBody: '{{from}} pays {{to}} {{amount}}.',
+  },
 };
