@@ -6,6 +6,8 @@ import {
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useStore } from '../../store/useStore';
@@ -13,8 +15,8 @@ import { categoryForItem } from '../../lib/groceries';
 import ThemeMotif from '../../components/ThemeMotif';
 import ProductScanner from '../../components/ProductScanner';
 import type { PantryItem } from '../../lib/supabase';
-import { format, parseISO, addDays } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { format, parseISO, addDays, type Locale } from 'date-fns';
+import { de, enUS } from 'date-fns/locale';
 
 function scoreColor(score?: number | null): string {
   if (score == null) return '#9AB5A0';
@@ -30,25 +32,30 @@ function daysUntil(d: string): number {
   return Math.round((e.getTime() - today.getTime()) / 86400000);
 }
 
-function expiryInfo(d: string | undefined, colors: ColorPalette): { text: string; color: string } {
-  if (!d) return { text: 'Kein Ablaufdatum', color: colors.textMuted };
+function expiryInfo(d: string | undefined, colors: ColorPalette, t: TFunction, dateLocale: Locale): { text: string; color: string } {
+  if (!d) return { text: t('scanTab.noExpiry'), color: colors.textMuted };
   const n = daysUntil(d);
-  if (n < 0) return { text: `Abgelaufen (${Math.abs(n)} T)`, color: '#E5573F' };
-  if (n === 0) return { text: 'Läuft heute ab', color: '#F5A623' };
-  if (n <= 3) return { text: `in ${n} Tag${n === 1 ? '' : 'en'}`, color: '#F5A623' };
-  return { text: format(parseISO(d), 'dd.MM.yyyy', { locale: de }), color: colors.textSecondary };
+  if (n < 0) return { text: t('scanTab.expiredDays', { days: Math.abs(n) }), color: '#E5573F' };
+  if (n === 0) return { text: t('scanTab.expiresToday'), color: '#F5A623' };
+  if (n <= 3) return { text: t(n === 1 ? 'scanTab.expiresInDays_one' : 'scanTab.expiresInDays_other', { count: n }), color: '#F5A623' };
+  return { text: format(parseISO(d), 'dd.MM.yyyy', { locale: dateLocale }), color: colors.textSecondary };
 }
 
-const EXPIRY_OPTIONS: { label: string; days: number | null }[] = [
-  { label: 'Kein', days: null },
-  { label: '+3 Tage', days: 3 },
-  { label: '+1 Woche', days: 7 },
-  { label: '+2 Wochen', days: 14 },
-  { label: '+1 Monat', days: 30 },
-];
+function expiryOptions(t: TFunction): { label: string; days: number | null }[] {
+  return [
+    { label: t('scanTab.expiryNone'), days: null },
+    { label: t('scanTab.expiry3days'), days: 3 },
+    { label: t('scanTab.expiry1week'), days: 7 },
+    { label: t('scanTab.expiry2weeks'), days: 14 },
+    { label: t('scanTab.expiry1month'), days: 30 },
+  ];
+}
 
 export default function ScanScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const {
     scanHistory, loadScanHistory, deleteScan, activeListId, addItem,
@@ -85,9 +92,9 @@ export default function ScanScreen() {
   };
 
   const confirmDeleteScan = (id: string, name: string) => {
-    Alert.alert('Aus Verlauf entfernen?', name, [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Entfernen', style: 'destructive', onPress: () => deleteScan(id) },
+    Alert.alert(t('scanTab.removeFromHistoryTitle'), name, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('household.removeButton'), style: 'destructive', onPress: () => deleteScan(id) },
     ]);
   };
 
@@ -102,10 +109,10 @@ export default function ScanScreen() {
     scanHistory.length === 0 ? (
       <View style={styles.empty}>
         <Text style={styles.emptyEmoji}>🔍</Text>
-        <Text style={styles.emptyTitle}>Noch nichts gescannt</Text>
-        <Text style={styles.emptyBody}>Scanne dein erstes Produkt, um die Gesundheitsbewertung zu sehen.</Text>
+        <Text style={styles.emptyTitle}>{t('scanTab.historyEmptyTitle')}</Text>
+        <Text style={styles.emptyBody}>{t('scanTab.historyEmptyBody')}</Text>
         <TouchableOpacity style={styles.emptyCta} onPress={openScanner}>
-          <Text style={styles.emptyCtaText}>📷 Jetzt scannen</Text>
+          <Text style={styles.emptyCtaText}>{t('scanTab.scanNowButton')}</Text>
         </TouchableOpacity>
       </View>
     ) : (
@@ -119,7 +126,7 @@ export default function ScanScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.histName} numberOfLines={2}>{h.name}</Text>
             {h.brand ? <Text style={styles.histBrand} numberOfLines={1}>{h.brand}</Text> : null}
-            <Text style={styles.histDate}>{format(parseISO(h.created_at), 'dd. MMM yyyy', { locale: de })}</Text>
+            <Text style={styles.histDate}>{format(parseISO(h.created_at), 'dd. MMM yyyy', { locale: dateLocale })}</Text>
           </View>
           <View style={[styles.histScore, { borderColor: scoreColor(h.score) }]}>
             <Text style={[styles.histScoreNum, { color: scoreColor(h.score) }]}>{h.score ?? '–'}</Text>
@@ -134,7 +141,7 @@ export default function ScanScreen() {
       <View style={styles.pantryAddRow}>
         <TextInput
           style={styles.pantryInput}
-          placeholder="Lebensmittel hinzufügen…"
+          placeholder={t('scanTab.pantryPlaceholder')}
           placeholderTextColor={colors.textMuted}
           value={newItem}
           onChangeText={setNewItem}
@@ -149,19 +156,19 @@ export default function ScanScreen() {
       {pantry.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🧊</Text>
-          <Text style={styles.emptyTitle}>Vorrat ist leer</Text>
-          <Text style={styles.emptyBody}>Füge Lebensmittel hinzu oder scanne sie – mit Ablaufdatum warnt dich die App rechtzeitig.</Text>
+          <Text style={styles.emptyTitle}>{t('scanTab.pantryEmptyTitle')}</Text>
+          <Text style={styles.emptyBody}>{t('scanTab.pantryEmptyBody')}</Text>
         </View>
       ) : (
         pantry.map(p => {
-          const exp = expiryInfo(p.expiry_date, colors);
+          const exp = expiryInfo(p.expiry_date, colors, t, dateLocale);
           return (
             <View key={p.id} style={styles.pantryRow}>
               <Text style={styles.pantryEmoji}>{p.emoji ?? '🍽️'}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={styles.pantryName} numberOfLines={1}>{p.name}</Text>
                 <TouchableOpacity onPress={() => setExpiryTarget(p)}>
-                  <Text style={[styles.pantryExpiry, { color: exp.color }]}>⏳ {exp.text} · ändern</Text>
+                  <Text style={[styles.pantryExpiry, { color: exp.color }]}>⏳ {exp.text} · {t('scanTab.changeLabel')}</Text>
                 </TouchableOpacity>
               </View>
               <TouchableOpacity onPress={() => deletePantryItem(p.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -179,19 +186,19 @@ export default function ScanScreen() {
       <View style={styles.header}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Text style={styles.headerTitle}>🥗 Gesund</Text>
+            <Text style={styles.headerTitle}>🥗 {t('tabs.scan')}</Text>
             <ThemeMotif />
           </View>
-          <Text style={styles.headerSub}>Scannen, bewerten & Vorrat im Blick</Text>
+          <Text style={styles.headerSub}>{t('scanTab.headerSub')}</Text>
         </View>
       </View>
 
       <View style={styles.segment}>
         <TouchableOpacity style={[styles.segBtn, tab === 'history' && styles.segBtnActive]} onPress={() => setTab('history')}>
-          <Text style={[styles.segText, tab === 'history' && styles.segTextActive]}>Verlauf</Text>
+          <Text style={[styles.segText, tab === 'history' && styles.segTextActive]}>{t('scanTab.historyTab')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.segBtn, tab === 'pantry' && styles.segBtnActive]} onPress={() => setTab('pantry')}>
-          <Text style={[styles.segText, tab === 'pantry' && styles.segTextActive]}>Vorrat{pantry.length ? ` (${pantry.length})` : ''}</Text>
+          <Text style={[styles.segText, tab === 'pantry' && styles.segTextActive]}>{t('scanTab.pantryTab')}{pantry.length ? ` (${pantry.length})` : ''}</Text>
         </TouchableOpacity>
       </View>
 
@@ -203,8 +210,8 @@ export default function ScanScreen() {
         <TouchableOpacity style={styles.scanCard} onPress={openScanner} activeOpacity={0.9}>
           <Text style={styles.scanCardEmoji}>📷</Text>
           <View style={{ flex: 1 }}>
-            <Text style={styles.scanCardTitle}>Produkt scannen</Text>
-            <Text style={styles.scanCardSub}>Bewertung 0–100 · in Vorrat oder Liste</Text>
+            <Text style={styles.scanCardTitle}>{t('scanner.topTitle')}</Text>
+            <Text style={styles.scanCardSub}>{t('scanTab.scanCardSub')}</Text>
           </View>
           <Text style={styles.scanCardArrow}>›</Text>
         </TouchableOpacity>
@@ -225,10 +232,10 @@ export default function ScanScreen() {
       <Modal visible={!!expiryTarget} transparent animationType="fade" onRequestClose={() => setExpiryTarget(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setExpiryTarget(null)}>
           <Pressable style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Ablaufdatum für „{expiryTarget?.name}"</Text>
-            {EXPIRY_OPTIONS.map(o => (
+            <Text style={styles.modalTitle}>{t('scanTab.expiryModalTitle', { name: expiryTarget?.name })}</Text>
+            {expiryOptions(t).map(o => (
               <TouchableOpacity key={o.label} style={styles.expOption} onPress={() => pickExpiry(o.days)}>
-                <Text style={styles.expOptionText}>{o.label}{o.days ? ` (${format(addDays(new Date(), o.days), 'dd.MM.', { locale: de })})` : ''}</Text>
+                <Text style={styles.expOptionText}>{o.label}{o.days ? ` (${format(addDays(new Date(), o.days), 'dd.MM.', { locale: dateLocale })})` : ''}</Text>
               </TouchableOpacity>
             ))}
           </Pressable>

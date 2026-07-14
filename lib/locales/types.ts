@@ -430,4 +430,29 @@ export interface AppTranslations {
     body: string;
     retryButton: string;
   };
+  scanTab: {
+    headerSub: string;
+    historyTab: string;
+    pantryTab: string;
+    scanCardSub: string;
+    historyEmptyTitle: string;
+    historyEmptyBody: string;
+    scanNowButton: string;
+    pantryPlaceholder: string;
+    pantryEmptyTitle: string;
+    pantryEmptyBody: string;
+    changeLabel: string;
+    noExpiry: string;
+    expiredDays: string;
+    expiresToday: string;
+    expiresInDays_one: string;
+    expiresInDays_other: string;
+    expiryNone: string;
+    expiry3days: string;
+    expiry1week: string;
+    expiry2weeks: string;
+    expiry1month: string;
+    removeFromHistoryTitle: string;
+    expiryModalTitle: string;
+  };
 }
