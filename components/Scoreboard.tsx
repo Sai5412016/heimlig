@@ -1,12 +1,14 @@
 // components/Scoreboard.tsx — monthly household scoreboard with fun titles
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
+import { useStore } from '../store/useStore';
 import { supabase, Member } from '../lib/supabase';
 import { taskPoints, titleForPoints } from '../lib/gamification';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
 
 interface Row { member: Member; points: number; done: number }
 
@@ -45,6 +47,9 @@ export default function Scoreboard({ visible, onClose, householdId, members, cur
   currentMemberId?: string;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,8 +69,8 @@ export default function Scoreboard({ visible, onClose, householdId, members, cur
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.title}>🏆 Scoreboard</Text>
-          <Text style={styles.sub}>{format(now, 'MMMM yyyy', { locale: de })}</Text>
+          <Text style={styles.title}>{t('scoreboard.title')}</Text>
+          <Text style={styles.sub}>{format(now, 'MMMM yyyy', { locale: dateLocale })}</Text>
 
           {loading ? (
             <ActivityIndicator color={colors.brand} style={{ marginVertical: spacing.xl }} />
@@ -80,22 +85,22 @@ export default function Scoreboard({ visible, onClose, householdId, members, cur
                       <Text style={styles.avatarText}>{r.member.display_name[0]?.toUpperCase()}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.name}>{r.member.display_name}{isMe ? ' (Du)' : ''}</Text>
-                      <Text style={styles.memberTitle}>{titleForPoints(r.points)}</Text>
+                      <Text style={styles.name}>{r.member.display_name}{isMe ? t('scoreboard.youSuffix') : ''}</Text>
+                      <Text style={styles.memberTitle}>{titleForPoints(r.points, t)}</Text>
                     </View>
                     <View style={styles.pointsWrap}>
                       <Text style={styles.points}>{r.points}</Text>
-                      <Text style={styles.pointsLabel}>Pkt · {r.done}✓</Text>
+                      <Text style={styles.pointsLabel}>{t('scoreboard.pointsLabel', { done: r.done })}</Text>
                     </View>
                   </View>
                 );
               })}
-              <Text style={styles.footnote}>Punkte werden jeden Monat zurückgesetzt. Am Monatsende wird der/die Heimlig-Haushälter:in des Monats gekürt! 🎉</Text>
+              <Text style={styles.footnote}>{t('scoreboard.footnote')}</Text>
             </ScrollView>
           )}
 
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>Schließen</Text>
+            <Text style={styles.closeBtnText}>{t('common.close')}</Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>

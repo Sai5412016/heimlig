@@ -1,4 +1,5 @@
 // lib/gamification.ts — points & titles for the household scoreboard
+import type { TFunction } from 'i18next';
 import { Task } from './supabase';
 
 // Points per task, derived from its effort level (priority). Falls back to stored points.
@@ -11,16 +12,19 @@ export function taskPoints(task: Pick<Task, 'points' | 'priority'>): number {
 export const EFFORT_POINTS = { low: 5, normal: 10, high: 20 } as const;
 
 // Fun titles based on a member's monthly points. First match from the top wins.
-const TITLES: { min: number; title: string }[] = [
-  { min: 250, title: 'Heimlig-Legende 👑' },
-  { min: 150, title: 'Ordnungs-Guru 🧘' },
-  { min: 90, title: 'Putz-Profi ✨' },
-  { min: 40, title: 'Haushalts-Held 💪' },
-  { min: 15, title: 'Fleißige Biene 🐝' },
-  { min: 1, title: 'Putzhilfe 🧹' },
-  { min: 0, title: 'Frischling 🐣' },
-];
+function titles(t: TFunction): { min: number; title: string }[] {
+  return [
+    { min: 250, title: t('gamification.titleLegend') },
+    { min: 150, title: t('gamification.titleGuru') },
+    { min: 90, title: t('gamification.titlePro') },
+    { min: 40, title: t('gamification.titleHero') },
+    { min: 15, title: t('gamification.titleBee') },
+    { min: 1, title: t('gamification.titleHelper') },
+    { min: 0, title: t('gamification.titleNewbie') },
+  ];
+}
 
-export function titleForPoints(points: number): string {
-  return (TITLES.find(t => points >= t.min) ?? TITLES[TITLES.length - 1]).title;
+export function titleForPoints(points: number, t: TFunction): string {
+  const list = titles(t);
+  return (list.find(x => points >= x.min) ?? list[list.length - 1]).title;
 }

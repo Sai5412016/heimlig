@@ -402,4 +402,19 @@ export const de: AppTranslations = {
     subheading: 'Das ist seit deinem letzten Update dazugekommen:',
     closeButton: 'Alles klar!',
   },
+  scoreboard: {
+    title: '🏆 Scoreboard',
+    youSuffix: ' (Du)',
+    pointsLabel: 'Pkt · {{done}}✓',
+    footnote: 'Punkte werden jeden Monat zurückgesetzt. Am Monatsende wird der/die Heimlig-Haushälter:in des Monats gekürt! 🎉',
+  },
+  gamification: {
+    titleLegend: 'Heimlig-Legende 👑',
+    titleGuru: 'Ordnungs-Guru 🧘',
+    titlePro: 'Putz-Profi ✨',
+    titleHero: 'Haushalts-Held 💪',
+    titleBee: 'Fleißige Biene 🐝',
+    titleHelper: 'Putzhilfe 🧹',
+    titleNewbie: 'Frischling 🐣',
+  },
 };

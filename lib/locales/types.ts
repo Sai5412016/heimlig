@@ -401,4 +401,19 @@ export interface AppTranslations {
     subheading: string;
     closeButton: string;
   };
+  scoreboard: {
+    title: string;
+    youSuffix: string;
+    pointsLabel: string;
+    footnote: string;
+  };
+  gamification: {
+    titleLegend: string;
+    titleGuru: string;
+    titlePro: string;
+    titleHero: string;
+    titleBee: string;
+    titleHelper: string;
+    titleNewbie: string;
+  };
 }

@@ -403,4 +403,19 @@ export const en: AppTranslations = {
     subheading: "Here's what's been added since your last update:",
     closeButton: 'Got it!',
   },
+  scoreboard: {
+    title: '🏆 Scoreboard',
+    youSuffix: ' (You)',
+    pointsLabel: 'pts · {{done}}✓',
+    footnote: 'Points reset every month. At the end of the month, the Heimlig housekeeper of the month gets crowned! 🎉',
+  },
+  gamification: {
+    titleLegend: 'Heimlig Legend 👑',
+    titleGuru: 'Tidiness Guru 🧘',
+    titlePro: 'Cleaning Pro ✨',
+    titleHero: 'Household Hero 💪',
+    titleBee: 'Busy Bee 🐝',
+    titleHelper: 'Cleaning Helper 🧹',
+    titleNewbie: 'Newbie 🐣',
+  },
 };
