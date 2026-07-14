@@ -3,13 +3,14 @@ import React, { useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { useStore } from '../../store/useStore';
 import { supabase } from '../../lib/supabase';
 import { fetchRecentTransactions } from '../../repositories/budgetRepository';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
 import { nextYearlyOccurrence } from '../../lib/dateMath';
 import ChatModal from '../../components/ChatModal';
 import BirthdayListModal from '../../components/BirthdayListModal';
@@ -41,11 +42,14 @@ function StatCard({ emoji, label, value, sub, trend, onPress, color = colors.bra
 
 function TaskRow({ task, onPress }: any) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const dueText = task.due_date
-    ? isToday(parseISO(task.due_date)) ? 'Heute'
-    : isTomorrow(parseISO(task.due_date)) ? 'Morgen'
-    : format(parseISO(task.due_date), 'dd. MMM', { locale: de })
+    ? isToday(parseISO(task.due_date)) ? t('recipes.today')
+    : isTomorrow(parseISO(task.due_date)) ? t('recipes.tomorrow')
+    : format(parseISO(task.due_date), 'dd. MMM', { locale: dateLocale })
     : null;
 
   return (
@@ -62,15 +66,17 @@ function TaskRow({ task, onPress }: any) {
   );
 }
 
-const QUICK_ACTIONS = [
-  { emoji: '🛒', label: 'Einkauf', route: '/(tabs)/shopping' },
-  { emoji: '✅', label: 'Aufgaben', route: '/(tabs)/tasks' },
-  { emoji: '💶', label: 'Budget', route: '/(tabs)/budget' },
-  { emoji: '👥', label: 'Haushalt', route: '/(tabs)/household' },
-];
-
 export default function DashboardScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
+  const quickActions = [
+    { emoji: '🛒', label: t('tabs.shopping'), route: '/(tabs)/shopping' },
+    { emoji: '✅', label: t('home.quickTasks'), route: '/(tabs)/tasks' },
+    { emoji: '💶', label: t('tabs.budget'), route: '/(tabs)/budget' },
+    { emoji: '👥', label: t('tabs.household'), route: '/(tabs)/household' },
+  ];
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const router = useRouter();
   const { household, currentMember, members, tasks, items, transactions, setTasks, setTransactions } = useStore();
@@ -146,9 +152,9 @@ export default function DashboardScreen() {
 
   const greeting = () => {
     const h = new Date().getHours();
-    if (h < 12) return 'Guten Morgen';
-    if (h < 18) return 'Hallo';
-    return 'Guten Abend';
+    if (h < 12) return t('home.morningGreeting');
+    if (h < 18) return t('home.afternoonGreeting');
+    return t('home.eveningGreeting');
   };
 
   return (
@@ -163,7 +169,7 @@ export default function DashboardScreen() {
           <View>
             <Text style={styles.greeting}>{greeting()},</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <Text style={styles.name}>{currentMember?.display_name ?? 'Zuhause'} 👋</Text>
+              <Text style={styles.name}>{currentMember?.display_name ?? t('home.defaultName')} 👋</Text>
               <ThemeMotif />
             </View>
           </View>
@@ -178,7 +184,7 @@ export default function DashboardScreen() {
 
         {/* Household badge */}
         <View style={styles.householdBadge}>
-          <Text style={styles.householdName}>🏡 {household?.name ?? 'Mein Haushalt'}</Text>
+          <Text style={styles.householdName}>🏡 {household?.name ?? t('shopping.defaultHouseholdName')}</Text>
         </View>
 
         {/* Next birthday */}
@@ -187,12 +193,12 @@ export default function DashboardScreen() {
             <Text style={styles.birthdayEmoji}>🎂</Text>
             <View style={{ flex: 1 }}>
               {nextBirthday.days === 0 ? (
-                <Text style={styles.birthdayToday}>{birthdayName(nextBirthday.task.title)} hat heute Geburtstag! 🎉</Text>
+                <Text style={styles.birthdayToday}>{t('home.birthdayToday', { name: birthdayName(nextBirthday.task.title) })}</Text>
               ) : (
                 <>
-                  <Text style={styles.birthdayLabel}>Nächster Geburtstag</Text>
+                  <Text style={styles.birthdayLabel}>{t('home.nextBirthdayLabel')}</Text>
                   <Text style={styles.birthdayName}>
-                    {birthdayName(nextBirthday.task.title)} · {nextBirthday.days === 1 ? 'morgen' : `noch ${nextBirthday.days} Tage`}
+                    {birthdayName(nextBirthday.task.title)} · {nextBirthday.days === 1 ? t('home.birthdayTomorrow') : t('home.birthdayDaysLeft', { days: nextBirthday.days })}
                   </Text>
                 </>
               )}
@@ -203,20 +209,20 @@ export default function DashboardScreen() {
         {/* Stats */}
         <View style={styles.statsRow}>
           <StatCard
-            emoji="📋" label="Offen" value={openTasksThisMonth.length} sub="diesen Monat"
+            emoji="📋" label={t('home.statOpen')} value={openTasksThisMonth.length} sub={t('home.statThisMonth')}
             onPress={() => router.push('/(tabs)/tasks')}
-            trend={overdueCount > 0 ? { text: `⚠️ ${overdueCount} überfällig`, color: colors.error } : undefined}
+            trend={overdueCount > 0 ? { text: t('home.statOverdue', { count: overdueCount }), color: colors.error } : undefined}
           />
-          <StatCard emoji="🛒" label="Fehlt" value={uncheckedItems.length} sub="Artikel" onPress={() => router.push('/(tabs)/shopping')} color={colors.accent} />
+          <StatCard emoji="🛒" label={t('home.statMissing')} value={uncheckedItems.length} sub={t('home.statItems')} onPress={() => router.push('/(tabs)/shopping')} color={colors.accent} />
           <StatCard
-            emoji="💶" label="Ausgaben" value={`€ ${monthlyExpenses.toFixed(0)}`} sub="diesen Monat"
+            emoji="💶" label={t('budget.expenses')} value={`€ ${monthlyExpenses.toFixed(0)}`} sub={t('home.statThisMonth')}
             onPress={() => router.push('/(tabs)/budget')} color={colors.info}
             trend={
               prevMonthExpenses != null && prevMonthExpenses > 0
                 ? (() => {
                     const diff = Math.round(((monthlyExpenses - prevMonthExpenses) / prevMonthExpenses) * 100);
-                    if (diff === 0) return { text: '= wie letzten Monat', color: colors.textMuted };
-                    return { text: `${diff > 0 ? '+' : ''}${diff}% ggü. Vormonat`, color: diff > 0 ? colors.warning : colors.success };
+                    if (diff === 0) return { text: t('home.trendSameAsLastMonth'), color: colors.textMuted };
+                    return { text: t('home.trendVsLastMonth', { diff: `${diff > 0 ? '+' : ''}${diff}` }), color: diff > 0 ? colors.warning : colors.success };
                   })()
                 : undefined
             }
@@ -227,17 +233,17 @@ export default function DashboardScreen() {
         <TouchableOpacity style={styles.pinboardCard} activeOpacity={0.85} onPress={() => setShowChat(true)}>
           <Text style={styles.pinboardEmoji}>💬</Text>
           <View style={{ flex: 1 }}>
-            <Text style={styles.pinboardTitle}>Pinnwand</Text>
-            <Text style={styles.pinboardSub}>Nachrichten an alle im Haushalt</Text>
+            <Text style={styles.pinboardTitle}>{t('home.pinboardTitle')}</Text>
+            <Text style={styles.pinboardSub}>{t('home.pinboardSub')}</Text>
           </View>
           <Text style={styles.pinboardArrow}>›</Text>
         </TouchableOpacity>
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>Schnellzugriff</Text>
+          <Text style={styles.sectionTitle}>{t('home.quickAccess')}</Text>
           <View style={styles.quickRow}>
-            {QUICK_ACTIONS.map(q => (
+            {quickActions.map(q => (
               <TouchableOpacity
                 key={q.label}
                 style={styles.quickBtn}
@@ -255,9 +261,9 @@ export default function DashboardScreen() {
         {openTasks.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Anstehende Aufgaben</Text>
+              <Text style={styles.sectionTitle}>{t('home.upcomingTasks')}</Text>
               <TouchableOpacity onPress={() => router.push('/(tabs)/tasks')}>
-                <Text style={styles.seeAll}>Alle →</Text>
+                <Text style={styles.seeAll}>{t('home.seeAll')}</Text>
               </TouchableOpacity>
             </View>
             {openTasks.slice(0, 4).map(task => (
@@ -270,9 +276,9 @@ export default function DashboardScreen() {
         {uncheckedItems.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Noch zu kaufen</Text>
+              <Text style={styles.sectionTitle}>{t('home.toBuy')}</Text>
               <TouchableOpacity onPress={() => router.push('/(tabs)/shopping')}>
-                <Text style={styles.seeAll}>Liste öffnen →</Text>
+                <Text style={styles.seeAll}>{t('home.openList')}</Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity style={styles.shoppingPreview} onPress={() => router.push('/(tabs)/shopping')}>

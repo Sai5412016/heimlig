@@ -155,4 +155,29 @@ export interface AppTranslations {
     emptyBody: string;
     ingredientsCount: string;
   };
+  home: {
+    morningGreeting: string;
+    afternoonGreeting: string;
+    eveningGreeting: string;
+    defaultName: string;
+    birthdayToday: string;
+    nextBirthdayLabel: string;
+    birthdayTomorrow: string;
+    birthdayDaysLeft: string;
+    statOpen: string;
+    statThisMonth: string;
+    statOverdue: string;
+    statMissing: string;
+    statItems: string;
+    trendSameAsLastMonth: string;
+    trendVsLastMonth: string;
+    pinboardTitle: string;
+    pinboardSub: string;
+    quickAccess: string;
+    quickTasks: string;
+    upcomingTasks: string;
+    seeAll: string;
+    toBuy: string;
+    openList: string;
+  };
 }
