@@ -4,6 +4,7 @@ import {
   View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, TextInput, Pressable,
 } from 'react-native';
 import { Alert } from '../lib/alert';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
@@ -11,6 +12,7 @@ import type { HouseholdNote } from '../lib/supabase';
 
 export default function NotesModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { notes, loadNotes, saveNote, deleteNote } = useStore();
   const [editing, setEditing] = useState<HouseholdNote | 'new' | null>(null);
@@ -32,9 +34,9 @@ export default function NotesModal({ visible, onClose }: { visible: boolean; onC
   };
 
   const confirmDelete = (note: HouseholdNote) => {
-    Alert.alert('Notiz löschen?', note.title, [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: () => { deleteNote(note.id); setEditing(null); } },
+    Alert.alert(t('notes.deleteConfirmTitle'), note.title, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => { deleteNote(note.id); setEditing(null); } },
     ]);
   };
 
@@ -47,17 +49,17 @@ export default function NotesModal({ visible, onClose }: { visible: boolean; onC
 
           {editing ? (
             <>
-              <Text style={styles.title}>{editing === 'new' ? '📝 Neue Notiz' : '✏️ Notiz bearbeiten'}</Text>
+              <Text style={styles.title}>{editing === 'new' ? t('notes.newNoteTitle') : t('notes.editNoteTitle')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Titel (z. B. WLAN-Passwort)"
+                placeholder={t('notes.titlePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={title}
                 onChangeText={setTitle}
               />
               <TextInput
                 style={[styles.input, styles.inputMultiline]}
-                placeholder="Inhalt / Notiz …"
+                placeholder={t('notes.contentPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={content}
                 onChangeText={setContent}
@@ -66,24 +68,24 @@ export default function NotesModal({ visible, onClose }: { visible: boolean; onC
               />
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 <TouchableOpacity style={[styles.btn, { backgroundColor: colors.border, flex: 1 }]} onPress={() => setEditing(null)}>
-                  <Text style={[styles.btnText, { color: colors.text }]}>Zurück</Text>
+                  <Text style={[styles.btnText, { color: colors.text }]}>{t('common.back')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.btn, { flex: 1 }, !title.trim() && { opacity: 0.5 }]} onPress={handleSave} disabled={!title.trim()}>
-                  <Text style={styles.btnText}>Speichern</Text>
+                  <Text style={styles.btnText}>{t('common.save')}</Text>
                 </TouchableOpacity>
               </View>
               {editing !== 'new' && (
                 <TouchableOpacity style={styles.deleteLink} onPress={() => confirmDelete(editing)}>
-                  <Text style={styles.deleteLinkText}>Löschen</Text>
+                  <Text style={styles.deleteLinkText}>{t('common.delete')}</Text>
                 </TouchableOpacity>
               )}
             </>
           ) : (
             <>
-              <Text style={styles.title}>📒 Notizen & Infos</Text>
+              <Text style={styles.title}>{t('household.notesLabel')}</Text>
               <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
                 {notes.length === 0 && (
-                  <Text style={styles.empty}>Noch keine Notizen. Speichert hier wichtige Haushalts-Infos wie WLAN-Passwort, Versicherungen oder Türcodes.</Text>
+                  <Text style={styles.empty}>{t('notes.emptyBody')}</Text>
                 )}
                 {notes.map(n => (
                   <TouchableOpacity key={n.id} style={styles.noteRow} onPress={() => openEditor(n)} activeOpacity={0.7}>
@@ -95,11 +97,11 @@ export default function NotesModal({ visible, onClose }: { visible: boolean; onC
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity style={styles.newBtn} onPress={() => openEditor('new')}>
-                  <Text style={styles.newBtnText}>+ Neue Notiz</Text>
+                  <Text style={styles.newBtnText}>{t('notes.newNoteButton')}</Text>
                 </TouchableOpacity>
               </ScrollView>
               <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-                <Text style={styles.closeBtnText}>Schließen</Text>
+                <Text style={styles.closeBtnText}>{t('common.close')}</Text>
               </TouchableOpacity>
             </>
           )}

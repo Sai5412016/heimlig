@@ -3,14 +3,18 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Pressable, ActivityIndicator, Linking } from 'react-native';
 import { Alert } from '../lib/alert';
 import * as Location from 'expo-location';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
 
 export default function LocationModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { members, currentMember, locations, loadLocations, shareLocation, stopSharingLocation } = useStore();
   const [busy, setBusy] = useState(false);
@@ -25,21 +29,21 @@ export default function LocationModal({ visible, onClose }: { visible: boolean; 
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Kein Zugriff', 'Standort-Berechtigung wurde nicht erteilt.');
+        Alert.alert(t('location.noAccessTitle'), t('location.noAccessBody'));
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       await shareLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy ?? undefined);
-      Alert.alert('✓ Geteilt', 'Dein aktueller Standort ist jetzt für deinen Haushalt sichtbar.');
+      Alert.alert(t('location.sharedTitle'), t('location.sharedBody'));
     } catch {
-      Alert.alert('Fehler', 'Standort konnte nicht ermittelt werden.');
+      Alert.alert(t('common.error'), t('location.shareFailedBody'));
     } finally { setBusy(false); }
   };
 
   const handleStop = () => {
-    Alert.alert('Teilen beenden?', 'Dein Standort wird für den Haushalt nicht mehr angezeigt.', [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Beenden', style: 'destructive', onPress: () => stopSharingLocation() },
+    Alert.alert(t('location.stopConfirmTitle'), t('location.stopConfirmBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('location.stopButton'), style: 'destructive', onPress: () => stopSharingLocation() },
     ]);
   };
 
@@ -50,19 +54,19 @@ export default function LocationModal({ visible, onClose }: { visible: boolean; 
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.title}>📍 Standort</Text>
-          <Text style={styles.body}>Teile deinen aktuellen Standort einmalig mit deinem Haushalt. Es läuft kein Hintergrund-Tracking – nur wenn du tippst.</Text>
+          <Text style={styles.title}>{t('location.title')}</Text>
+          <Text style={styles.body}>{t('location.body')}</Text>
 
           <TouchableOpacity style={styles.shareBtn} onPress={handleShare} disabled={busy}>
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.shareBtnText}>📍 {myLoc ? 'Standort aktualisieren' : 'Meinen Standort teilen'}</Text>}
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.shareBtnText}>📍 {myLoc ? t('location.updateButton') : t('location.shareButton')}</Text>}
           </TouchableOpacity>
           {myLoc && (
             <TouchableOpacity style={styles.stopBtn} onPress={handleStop} disabled={busy}>
-              <Text style={styles.stopBtnText}>Teilen beenden</Text>
+              <Text style={styles.stopBtnText}>{t('location.stopSharingLink')}</Text>
             </TouchableOpacity>
           )}
 
-          <Text style={styles.sectionLabel}>HAUSHALT</Text>
+          <Text style={styles.sectionLabel}>{t('location.householdSectionLabel')}</Text>
           <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
             {members.map(m => {
               const loc = locOf(m.id);
@@ -72,16 +76,16 @@ export default function LocationModal({ visible, onClose }: { visible: boolean; 
                     <Text style={styles.avatarText}>{m.display_name[0]?.toUpperCase()}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.name}>{m.display_name}{m.id === currentMember?.id ? ' (du)' : ''}</Text>
+                    <Text style={styles.name}>{m.display_name}{m.id === currentMember?.id ? t('location.youSuffix') : ''}</Text>
                     {loc ? (
-                      <Text style={styles.meta}>geteilt {formatDistanceToNow(parseISO(loc.updated_at), { locale: de, addSuffix: true })}</Text>
+                      <Text style={styles.meta}>{t('location.sharedAgo', { time: formatDistanceToNow(parseISO(loc.updated_at), { locale: dateLocale, addSuffix: true }) })}</Text>
                     ) : (
-                      <Text style={styles.metaMuted}>noch nicht geteilt</Text>
+                      <Text style={styles.metaMuted}>{t('location.notSharedYet')}</Text>
                     )}
                   </View>
                   {loc && (
                     <TouchableOpacity style={styles.mapBtn} onPress={() => openMap(loc.lat, loc.lng)}>
-                      <Text style={styles.mapBtnText}>Karte ›</Text>
+                      <Text style={styles.mapBtnText}>{t('location.mapButton')}</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -90,7 +94,7 @@ export default function LocationModal({ visible, onClose }: { visible: boolean; 
           </ScrollView>
 
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>Schließen</Text>
+            <Text style={styles.closeBtnText}>{t('common.close')}</Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>

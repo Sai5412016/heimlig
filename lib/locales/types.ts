@@ -28,6 +28,7 @@ export interface AppTranslations {
     category: string;
     shared: string;
     all: string;
+    back: string;
   };
   shopping: {
     defaultListName: string;
@@ -263,5 +264,34 @@ export interface AppTranslations {
     changePasswordLabelText: string;
     newPasswordPlaceholder: string;
     savePasswordButton: string;
+  };
+  notes: {
+    newNoteTitle: string;
+    editNoteTitle: string;
+    titlePlaceholder: string;
+    contentPlaceholder: string;
+    emptyBody: string;
+    newNoteButton: string;
+    deleteConfirmTitle: string;
+  };
+  location: {
+    noAccessTitle: string;
+    noAccessBody: string;
+    sharedTitle: string;
+    sharedBody: string;
+    shareFailedBody: string;
+    stopConfirmTitle: string;
+    stopConfirmBody: string;
+    stopButton: string;
+    title: string;
+    body: string;
+    updateButton: string;
+    shareButton: string;
+    stopSharingLink: string;
+    householdSectionLabel: string;
+    youSuffix: string;
+    sharedAgo: string;
+    notSharedYet: string;
+    mapButton: string;
   };
 }
