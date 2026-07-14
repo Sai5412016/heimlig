@@ -5,14 +5,14 @@ import {
   Modal, Pressable, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Alert } from '../lib/alert';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
+import { useStore } from '../store/useStore';
 import { supabase, RecipeIngredient, MealType } from '../lib/supabase';
 import { format, addDays } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
 import * as ImagePicker from 'expo-image-picker';
-
-const MEAL_LABELS: Record<MealType, string> = { fruehstueck: '🌅 Frühstück', mittag: '☀️ Mittagessen', abendessen: '🌙 Abendessen' };
 
 export interface RecipeAddOpts { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }
 
@@ -22,6 +22,10 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
   onAdd: (ingredients: RecipeIngredient[], recipeName: string, opts: RecipeAddOpts) => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(state => state.language);
+  const dateLocale = language === 'en' ? enUS : de;
+  const mealLabels: Record<MealType, string> = { fruehstueck: t('recipes.mealBreakfast'), mittag: t('recipes.mealLunch'), abendessen: t('recipes.mealDinner') };
   const s = useMemo(() => makeStyles(colors), [colors]);
   const [inputMode, setInputMode] = useState<'url' | 'text' | 'image'>('url');
   const [input, setInput] = useState('');
@@ -67,12 +71,12 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
         : { imageBase64: imageB64, imageMediaType: imageMime };
       const { data, error } = await supabase.functions.invoke('extract-recipe', { body });
       if (error) throw error;
-      setRecipeName(data.name || 'Rezept');
+      setRecipeName(data.name || t('recipeImport.defaultName'));
       // Pre-select ALL ingredients (incl. basics like salt/pepper) — user can deselect
       setIngredients((data.ingredients || []).map((i: RecipeIngredient) => ({ ...i, include: true })));
       setStep('review');
     } catch (e) {
-      Alert.alert('Fehler', 'Zutaten konnten nicht extrahiert werden. Bitte prüfe den Link oder den Text.');
+      Alert.alert(t('common.error'), t('recipeImport.extractErrorBody'));
     } finally {
       setLoading(false);
     }
@@ -103,7 +107,7 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
   const quickDates = Array.from({ length: 14 }, (_, i) => {
     const d = addDays(new Date(), i);
     return {
-      label: i === 0 ? 'Heute' : i === 1 ? 'Morgen' : format(d, 'EEE dd.MM.', { locale: de }),
+      label: i === 0 ? t('recipes.today') : i === 1 ? t('recipes.tomorrow') : format(d, 'EEE dd.MM.', { locale: dateLocale }),
       value: format(d, 'yyyy-MM-dd'),
     };
   });
@@ -117,14 +121,14 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
           <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} onPress={onClose} />
           <View style={[s.sheet, { maxHeight: Platform.OS === 'web' ? '100%' : '90%' }]}>
             <View style={s.handle} />
-            <Text style={s.title}>🍳 Rezept importieren</Text>
+            <Text style={s.title}>{t('recipeImport.title')}</Text>
 
             {step === 'input' ? (
               <>
                 <View style={s.tabRow}>
                   {(['url', 'text', 'image'] as const).map(mode => (
                     <TouchableOpacity key={mode} style={[s.tab, inputMode === mode && s.tabActive]} onPress={() => setInputMode(mode)}>
-                      <Text style={[s.tabText, inputMode === mode && s.tabTextActive]}>{mode === 'url' ? '🔗 Link' : mode === 'text' ? '📝 Text' : '📷 Foto'}</Text>
+                      <Text style={[s.tabText, inputMode === mode && s.tabTextActive]}>{mode === 'url' ? t('recipeImport.tabUrl') : mode === 'text' ? t('recipeImport.tabText') : t('recipeImport.tabImage')}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -132,14 +136,14 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
                 {inputMode === 'image' ? (
                   <>
                     <TouchableOpacity style={s.imagePick} onPress={pickImage}>
-                      <Text style={s.imagePickText}>{imageB64 ? '✓ Bild ausgewählt – tippen zum Ändern' : '📷 Screenshot / Foto auswählen'}</Text>
+                      <Text style={s.imagePickText}>{imageB64 ? t('recipeImport.imagePickSelected') : t('recipeImport.imagePickPlaceholder')}</Text>
                     </TouchableOpacity>
-                    <Text style={s.hint}>Tipp: Screenshot vom Rezept (Instagram, TikTok, WhatsApp …) machen und hier auswählen – die Zutaten werden aus dem Bild erkannt.</Text>
+                    <Text style={s.hint}>{t('recipeImport.imageHint')}</Text>
                   </>
                 ) : (
                   <TextInput
                     style={[s.input, inputMode === 'text' && { height: 120, textAlignVertical: 'top' }]}
-                    placeholder={inputMode === 'url' ? 'https://www.chefkoch.de/rezepte/...' : 'Rezepttext hier einfügen...'}
+                    placeholder={inputMode === 'url' ? t('recipeImport.urlPlaceholder') : t('recipeImport.textPlaceholder')}
                     placeholderTextColor={colors.textMuted}
                     value={input} onChangeText={setInput}
                     multiline={inputMode === 'text'} autoCapitalize="none" autoCorrect={false}
@@ -147,7 +151,7 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
                 )}
 
                 <TouchableOpacity style={[s.addBtn, (!canExtract || loading) && s.addBtnDisabled]} onPress={handleExtract} disabled={!canExtract || loading}>
-                  <Text style={s.addBtnText}>{loading ? '⏳ Zutaten werden erkannt...' : 'Zutaten extrahieren →'}</Text>
+                  <Text style={s.addBtnText}>{loading ? t('recipeImport.extracting') : t('recipeImport.extractButton')}</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -155,9 +159,9 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
                 <TextInput style={[s.input, { marginBottom: spacing.md, fontWeight: '700' }]} value={recipeName} onChangeText={setRecipeName} placeholderTextColor={colors.textMuted} />
 
                 <View style={s.ingHeader}>
-                  <Text style={s.sectionLabel}>ZUTATEN ({selectedCount} ausgewählt)</Text>
+                  <Text style={s.sectionLabel}>{t('recipeImport.ingredientsLabel', { count: selectedCount })}</Text>
                   <TouchableOpacity onPress={toggleAll}>
-                    <Text style={s.toggleAll}>{ingredients.every(i => i.include) ? 'Alle abwählen' : 'Alle auswählen'}</Text>
+                    <Text style={s.toggleAll}>{ingredients.every(i => i.include) ? t('recipeImport.deselectAll') : t('recipeImport.selectAll')}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -171,12 +175,12 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
 
                 <TouchableOpacity style={s.toggleRow} onPress={() => setAddToCart(v => !v)}>
                   <View style={[s.checkbox, addToCart && s.checkboxChecked]}>{addToCart && <Text style={s.checkmark}>✓</Text>}</View>
-                  <Text style={s.toggleText}>Zutaten zum Einkaufskorb hinzufügen</Text>
+                  <Text style={s.toggleText}>{t('recipeImport.addToCartToggle')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={s.toggleRow} onPress={() => setPlanEnabled(v => !v)}>
                   <View style={[s.checkbox, planEnabled && s.checkboxChecked]}>{planEnabled && <Text style={s.checkmark}>✓</Text>}</View>
-                  <Text style={s.toggleText}>Als Mahlzeit im Kalender eintragen</Text>
+                  <Text style={s.toggleText}>{t('recipeImport.planToggle')}</Text>
                 </TouchableOpacity>
 
                 {planEnabled && (
@@ -189,7 +193,7 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
                       ))}
                     </ScrollView>
                     <View style={s.mealTypeRow}>
-                      {(Object.entries(MEAL_LABELS) as [MealType, string][]).map(([type, label]) => (
+                      {(Object.entries(mealLabels) as [MealType, string][]).map(([type, label]) => (
                         <TouchableOpacity key={type} style={[s.mealChip, mealType === type && s.chipActive]} onPress={() => setMealType(type)}>
                           <Text style={[s.chipText, mealType === type && s.chipTextActive]}>{label}</Text>
                         </TouchableOpacity>
@@ -203,7 +207,9 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
                   onPress={handleAdd} disabled={!addToCart && !planEnabled}
                 >
                   <Text style={s.addBtnText}>
-                    {addToCart ? `${selectedCount} Zutaten hinzufügen${planEnabled ? ' + Kalender' : ''} ✓` : planEnabled ? 'Nur in Kalender eintragen ✓' : 'Bitte Option wählen'}
+                    {addToCart
+                      ? t(planEnabled ? 'recipeImport.addIngredientsCalendarButton' : 'recipeImport.addIngredientsButton', { count: selectedCount })
+                      : planEnabled ? t('recipeImport.calendarOnlyButton') : t('recipeImport.chooseOptionButton')}
                   </Text>
                 </TouchableOpacity>
               </ScrollView>

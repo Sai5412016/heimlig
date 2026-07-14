@@ -346,4 +346,28 @@ export interface AppTranslations {
     confirmTitle: string;
     confirmBody: string;
   };
+  recipeImport: {
+    title: string;
+    tabUrl: string;
+    tabText: string;
+    tabImage: string;
+    imagePickSelected: string;
+    imagePickPlaceholder: string;
+    imageHint: string;
+    urlPlaceholder: string;
+    textPlaceholder: string;
+    extracting: string;
+    extractButton: string;
+    extractErrorBody: string;
+    defaultName: string;
+    ingredientsLabel: string;
+    deselectAll: string;
+    selectAll: string;
+    addToCartToggle: string;
+    planToggle: string;
+    addIngredientsButton: string;
+    addIngredientsCalendarButton: string;
+    calendarOnlyButton: string;
+    chooseOptionButton: string;
+  };
 }
