@@ -7,6 +7,7 @@ import {
 import { Alert } from '../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, radius, typography, shadow, AVATAR_COLORS } from '../constants/theme';
 import { supabase } from '../lib/supabase';
@@ -15,16 +16,16 @@ import { useStore } from '../store/useStore';
 type Step = 'welcome' | 'type' | 'auth' | 'verify' | 'name';
 type HouseholdType = 'couple' | 'wg' | 'family' | 'solo';
 
-const HOUSEHOLD_TYPES: { key: HouseholdType; emoji: string; label: string; sub: string }[] = [
-  { key: 'couple', emoji: '💑', label: 'Paar',    sub: 'Zu zweit wirtschaften' },
-  { key: 'wg',     emoji: '🏠', label: 'WG',      sub: 'Shared Apartment' },
-  { key: 'family', emoji: '👨‍👩‍👧‍👦', label: 'Familie', sub: 'Mit Kids & Co.' },
-  { key: 'solo',   emoji: '🧘', label: 'Solo',    sub: 'Für mich allein' },
-];
-
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems } = useStore();
+  const HOUSEHOLD_TYPES: { key: HouseholdType; emoji: string; label: string; sub: string }[] = [
+    { key: 'couple', emoji: '💑', label: t('onboarding.typeCouple'), sub: t('onboarding.typeCoupleSub') },
+    { key: 'wg',     emoji: '🏠', label: t('onboarding.typeWg'),     sub: t('onboarding.typeWgSub') },
+    { key: 'family', emoji: '👨‍👩‍👧‍👦', label: t('onboarding.typeFamily'), sub: t('onboarding.typeFamilySub') },
+    { key: 'solo',   emoji: '🧘', label: t('onboarding.typeSolo'),   sub: t('onboarding.typeSoloSub') },
+  ];
   const [step, setStep] = useState<Step>('welcome');
   const [householdType, setHouseholdType] = useState<HouseholdType | null>(null);
   const [email, setEmail] = useState('');
@@ -77,7 +78,7 @@ export default function OnboardingScreen() {
 
   // ─── FORGOT PASSWORD ─────────────────────────────────────
   const handleForgotPassword = async () => {
-    if (!email) { setErrorMsg('Bitte gib zuerst deine E-Mail-Adresse ein.'); return; }
+    if (!email) { setErrorMsg(t('onboarding.forgotPasswordNeedsEmail')); return; }
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -85,9 +86,9 @@ export default function OnboardingScreen() {
         redirectTo: 'https://heimlig.vercel.app/reset-password',
       });
       if (error) throw error;
-      Alert.alert('E-Mail gesendet 📧', `Wir haben dir an ${email} einen Link zum Zurücksetzen deines Passworts geschickt. Schau auch im Spam-Ordner.`);
+      Alert.alert(t('onboarding.resetEmailSentTitle'), t('onboarding.resetEmailSentBody', { email }));
     } catch (e: any) {
-      setErrorMsg(e.message || 'Konnte E-Mail nicht senden.');
+      setErrorMsg(e.message || t('onboarding.resetEmailFailedGeneric'));
     } finally {
       setLoading(false);
     }
@@ -118,7 +119,7 @@ export default function OnboardingScreen() {
     if (!lists || lists.length === 0) {
       const { data: newList } = await supabase
         .from('shopping_lists')
-        .insert({ household_id: household.id, name: 'Einkaufsliste', emoji: '🛒', created_by: myMember.id })
+        .insert({ household_id: household.id, name: t('shopping.defaultListName'), emoji: '🛒', created_by: myMember.id })
         .select().single();
       if (newList) lists = [newList];
     }
@@ -211,29 +212,29 @@ export default function OnboardingScreen() {
       <SafeAreaView style={styles.centered}>
         <Text style={styles.logo}>🏡</Text>
         <Text style={styles.appName}>Heimlig</Text>
-        <Text style={styles.tagline}>Euer gemeinsamer Haushalt.</Text>
-        <Text style={styles.taglineSub}>Budget · Einkauf · Aufgaben · AI</Text>
+        <Text style={styles.tagline}>{t('onboarding.tagline')}</Text>
+        <Text style={styles.taglineSub}>{t('onboarding.taglineSub')}</Text>
         <View style={styles.btnGroup}>
           <TouchableOpacity style={styles.primaryBtn} onPress={() => { setIsLogin(false); setStep('type'); }}>
-            <Text style={styles.primaryBtnText}>Loslegen →</Text>
+            <Text style={styles.primaryBtnText}>{t('onboarding.getStarted')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => { setIsLogin(true); setStep('auth'); }}>
-            <Text style={styles.secondaryBtnText}>Ich habe schon einen Account</Text>
+            <Text style={styles.secondaryBtnText}>{t('onboarding.haveAccount')}</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.legalRow}>
           <TouchableOpacity onPress={() => router.push('/impressum')}>
-            <Text style={styles.legalLink}>Impressum</Text>
+            <Text style={styles.legalLink}>{t('onboarding.imprint')}</Text>
           </TouchableOpacity>
           <Text style={styles.legalDivider}>·</Text>
           <TouchableOpacity onPress={() => router.push('/datenschutz')}>
-            <Text style={styles.legalLink}>Datenschutz</Text>
+            <Text style={styles.legalLink}>{t('onboarding.privacy')}</Text>
           </TouchableOpacity>
         </View>
         {Platform.OS !== 'web' && (
           <TouchableOpacity onPress={() => Linking.openURL('https://heimlig.vercel.app')} style={styles.webHintRow}>
             <Text style={styles.webHintText}>
-              🌐 Kein Android? Nutzt <Text style={styles.webHintLink}>heimlig.vercel.app</Text> am PC oder iPhone
+              {t('onboarding.webHintPrefix')} <Text style={styles.webHintLink}>heimlig.vercel.app</Text> {t('onboarding.webHintSuffix')}
             </Text>
           </TouchableOpacity>
         )}
@@ -245,18 +246,18 @@ export default function OnboardingScreen() {
   if (step === 'type') return (
     <SafeAreaView style={styles.container}>
       <View style={styles.stepContent}>
-        <Text style={styles.stepTitle}>Wer seid ihr?</Text>
-        <Text style={styles.stepSub}>Wir passen die App an euren Haushalt an.</Text>
+        <Text style={styles.stepTitle}>{t('onboarding.typeStepTitle')}</Text>
+        <Text style={styles.stepSub}>{t('onboarding.typeStepSub')}</Text>
         <View style={styles.typeGrid}>
-          {HOUSEHOLD_TYPES.map(t => (
+          {HOUSEHOLD_TYPES.map(opt => (
             <TouchableOpacity
-              key={t.key}
-              style={[styles.typeCard, householdType === t.key && styles.typeCardActive]}
-              onPress={() => setHouseholdType(t.key)}
+              key={opt.key}
+              style={[styles.typeCard, householdType === opt.key && styles.typeCardActive]}
+              onPress={() => setHouseholdType(opt.key)}
             >
-              <Text style={styles.typeEmoji}>{t.emoji}</Text>
-              <Text style={[styles.typeLabel, householdType === t.key && styles.typeLabelActive]}>{t.label}</Text>
-              <Text style={styles.typeSub}>{t.sub}</Text>
+              <Text style={styles.typeEmoji}>{opt.emoji}</Text>
+              <Text style={[styles.typeLabel, householdType === opt.key && styles.typeLabelActive]}>{opt.label}</Text>
+              <Text style={styles.typeSub}>{opt.sub}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -265,7 +266,7 @@ export default function OnboardingScreen() {
           onPress={() => householdType && setStep('auth')}
           disabled={!householdType}
         >
-          <Text style={styles.primaryBtnText}>Weiter →</Text>
+          <Text style={styles.primaryBtnText}>{t('onboarding.continueButton')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -276,15 +277,15 @@ export default function OnboardingScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.stepContent}>
-          <Text style={styles.stepTitle}>{isLogin ? 'Willkommen zurück' : 'Account erstellen'}</Text>
+          <Text style={styles.stepTitle}>{isLogin ? t('onboarding.welcomeBack') : t('onboarding.createAccount')}</Text>
           <TextInput
-            style={styles.textInput} placeholder="E-Mail" value={email}
+            style={styles.textInput} placeholder={t('onboarding.emailPlaceholder')} value={email}
             onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none"
             placeholderTextColor={colors.textMuted}
           />
           <View style={styles.passwordRow}>
             <TextInput
-              style={styles.passwordInput} placeholder="Passwort" value={password}
+              style={styles.passwordInput} placeholder={t('onboarding.passwordPlaceholder')} value={password}
               onChangeText={setPassword} secureTextEntry={!showPassword} placeholderTextColor={colors.textMuted}
             />
             <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={styles.eyeBtn}>
@@ -296,11 +297,11 @@ export default function OnboardingScreen() {
             style={[styles.primaryBtn, loading && styles.disabled]}
             onPress={handleAuth} disabled={loading}
           >
-            <Text style={styles.primaryBtnText}>{loading ? 'Lädt...' : isLogin ? 'Einloggen' : 'Weiter →'}</Text>
+            <Text style={styles.primaryBtnText}>{loading ? t('onboarding.loadingButton') : isLogin ? t('onboarding.loginButton') : t('onboarding.continueButton')}</Text>
           </TouchableOpacity>
           {isLogin && (
             <TouchableOpacity style={styles.forgotBtn} onPress={handleForgotPassword} disabled={loading}>
-              <Text style={styles.forgotBtnText}>Passwort vergessen?</Text>
+              <Text style={styles.forgotBtnText}>{t('onboarding.forgotPassword')}</Text>
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -312,15 +313,13 @@ export default function OnboardingScreen() {
   if (step === 'verify') return (
     <SafeAreaView style={styles.container}>
       <View style={styles.stepContent}>
-        <Text style={styles.stepTitle}>Fast geschafft 📧</Text>
-        <Text style={styles.stepSub}>
-          Wir haben dir einen Bestätigungslink an {email} geschickt. Klick den Link in der Mail, dann kannst du dich hier einloggen.
-        </Text>
+        <Text style={styles.stepTitle}>{t('onboarding.verifyTitle')}</Text>
+        <Text style={styles.stepSub}>{t('onboarding.verifyBody', { email })}</Text>
         <TouchableOpacity
           style={styles.primaryBtn}
           onPress={() => { setIsLogin(true); setErrorMsg(null); setStep('auth'); }}
         >
-          <Text style={styles.primaryBtnText}>Zum Login →</Text>
+          <Text style={styles.primaryBtnText}>{t('onboarding.goToLoginButton')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -331,11 +330,11 @@ export default function OnboardingScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.stepContent}>
-          <Text style={styles.stepTitle}>Fast geschafft! 🎉</Text>
-          <Text style={styles.stepSub}>Wie heißt du?</Text>
-          <Text style={styles.inputLabel}>Dein Name</Text>
-          <TextInput style={styles.textInput} placeholder="Dein Name" value={displayName} onChangeText={setDisplayName} placeholderTextColor={colors.textMuted} />
-          <Text style={styles.inputLabel}>Deine Farbe</Text>
+          <Text style={styles.stepTitle}>{t('onboarding.nameStepTitle')}</Text>
+          <Text style={styles.stepSub}>{t('onboarding.nameStepSub')}</Text>
+          <Text style={styles.inputLabel}>{t('onboarding.nameLabel')}</Text>
+          <TextInput style={styles.textInput} placeholder={t('onboarding.namePlaceholder')} value={displayName} onChangeText={setDisplayName} placeholderTextColor={colors.textMuted} />
+          <Text style={styles.inputLabel}>{t('onboarding.colorLabel')}</Text>
           <View style={styles.colorRow}>
             {AVATAR_COLORS.map(c => (
               <TouchableOpacity
@@ -347,36 +346,36 @@ export default function OnboardingScreen() {
           </View>
           <View style={styles.joinTabRow}>
             <TouchableOpacity style={[styles.joinTab, !joinMode && styles.joinTabActive]} onPress={() => { setJoinMode(false); setErrorMsg(null); }}>
-              <Text style={[styles.joinTabText, !joinMode && styles.joinTabTextActive]}>🏡 Neu erstellen</Text>
+              <Text style={[styles.joinTabText, !joinMode && styles.joinTabTextActive]}>{t('onboarding.createNewTab')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.joinTab, joinMode && styles.joinTabActive]} onPress={() => { setJoinMode(true); setErrorMsg(null); }}>
-              <Text style={[styles.joinTabText, joinMode && styles.joinTabTextActive]}>🔑 Code eingeben</Text>
+              <Text style={[styles.joinTabText, joinMode && styles.joinTabTextActive]}>{t('onboarding.enterCodeTab')}</Text>
             </TouchableOpacity>
           </View>
           {!joinMode ? (
             <>
-              <Text style={styles.inputLabel}>Haushaltsname</Text>
-              <TextInput style={styles.textInput} placeholder="z.B. Unser Zuhause" value={householdName} onChangeText={setHouseholdName} placeholderTextColor={colors.textMuted} />
+              <Text style={styles.inputLabel}>{t('onboarding.householdNameLabel')}</Text>
+              <TextInput style={styles.textInput} placeholder={t('onboarding.householdNamePlaceholder')} value={householdName} onChangeText={setHouseholdName} placeholderTextColor={colors.textMuted} />
               {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
               <TouchableOpacity
                 style={[styles.primaryBtn, (!displayName || !householdName || loading) && styles.disabled]}
                 onPress={handleCreateHousehold}
                 disabled={!displayName || !householdName || loading}
               >
-                <Text style={styles.primaryBtnText}>{loading ? 'Erstelle Haushalt...' : 'Haushalt erstellen 🏡'}</Text>
+                <Text style={styles.primaryBtnText}>{loading ? t('onboarding.creatingHousehold') : t('onboarding.createHouseholdButton')}</Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
-              <Text style={styles.inputLabel}>Einladungscode</Text>
-              <TextInput style={styles.textInput} placeholder="z.B. ABC12345" value={inviteCode} onChangeText={setInviteCode} autoCapitalize="characters" placeholderTextColor={colors.textMuted} />
+              <Text style={styles.inputLabel}>{t('onboarding.inviteCodeLabel')}</Text>
+              <TextInput style={styles.textInput} placeholder={t('onboarding.inviteCodePlaceholder')} value={inviteCode} onChangeText={setInviteCode} autoCapitalize="characters" placeholderTextColor={colors.textMuted} />
               {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
               <TouchableOpacity
                 style={[styles.primaryBtn, (!displayName || !inviteCode || loading) && styles.disabled]}
                 onPress={handleJoinHousehold}
                 disabled={!displayName || !inviteCode || loading}
               >
-                <Text style={styles.primaryBtnText}>{loading ? 'Trete bei...' : 'Haushalt beitreten 🔑'}</Text>
+                <Text style={styles.primaryBtnText}>{loading ? t('onboarding.joining') : t('onboarding.joinHouseholdButton')}</Text>
               </TouchableOpacity>
             </>
           )}
