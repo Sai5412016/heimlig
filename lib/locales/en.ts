@@ -427,4 +427,9 @@ export const en: AppTranslations = {
     parseFailedBody: 'Could not read the response from TimeTree.',
     unknownError: 'unknown error',
   },
+  errorFallback: {
+    title: 'Something went wrong',
+    body: "Heimlig ran into an error. It's been reported automatically — please try again.",
+    retryButton: 'Try again',
+  },
 };

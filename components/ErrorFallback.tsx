@@ -3,19 +3,19 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, radius, typography } from '../constants/theme';
 
 export default function ErrorFallback({ resetError }: { resetError: () => void }) {
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.emoji}>😵</Text>
-        <Text style={styles.title}>Etwas ist schiefgelaufen</Text>
-        <Text style={styles.body}>
-          Heimlig ist auf einen Fehler gestoßen. Der Fehler wurde automatisch gemeldet — probier's noch mal.
-        </Text>
+        <Text style={styles.title}>{t('errorFallback.title')}</Text>
+        <Text style={styles.body}>{t('errorFallback.body')}</Text>
         <TouchableOpacity style={styles.button} onPress={resetError} activeOpacity={0.85}>
-          <Text style={styles.buttonText}>Nochmal versuchen</Text>
+          <Text style={styles.buttonText}>{t('errorFallback.retryButton')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

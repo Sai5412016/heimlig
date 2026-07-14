@@ -425,4 +425,9 @@ export interface AppTranslations {
     parseFailedBody: string;
     unknownError: string;
   };
+  errorFallback: {
+    title: string;
+    body: string;
+    retryButton: string;
+  };
 }

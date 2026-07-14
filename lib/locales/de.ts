@@ -426,4 +426,9 @@ export const de: AppTranslations = {
     parseFailedBody: 'Antwort von TimeTree konnte nicht gelesen werden.',
     unknownError: 'unbekannter Fehler',
   },
+  errorFallback: {
+    title: 'Etwas ist schiefgelaufen',
+    body: "Heimlig ist auf einen Fehler gestoßen. Der Fehler wurde automatisch gemeldet — probier's noch mal.",
+    retryButton: 'Nochmal versuchen',
+  },
 };
