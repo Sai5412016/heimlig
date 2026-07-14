@@ -318,4 +318,18 @@ export interface AppTranslations {
     exportButton: string;
     exportHint: string;
   };
+  birthdays: {
+    title: string;
+    subtitle: string;
+    emptyBody: string;
+    today: string;
+    inDays: string;
+  };
+  chat: {
+    longPressHint: string;
+    emptyBody: string;
+    someone: string;
+    deleteConfirmTitle: string;
+    messagePlaceholder: string;
+  };
 }

@@ -319,4 +319,18 @@ export const de: AppTranslations = {
     exportButton: '⬆️ Aufgaben exportieren',
     exportHint: 'Trägt deine Heimlig-Aufgaben mit Datum in den Google Kalender ein.',
   },
+  birthdays: {
+    title: '🎂 Geburtstage',
+    subtitle: 'Die nächsten 12 Monate',
+    emptyBody: 'Keine Geburtstage hinterlegt. Leg sie unter Aufgaben mit der Kategorie „Geburtstag" an.',
+    today: 'Heute! 🎉',
+    inDays: 'in {{days}} Tagen',
+  },
+  chat: {
+    longPressHint: 'Lange drücken zum Löschen',
+    emptyBody: 'Noch keine Nachrichten. Schreibt hier, was alle im Haushalt sehen sollen – Einkaufswünsche, Erinnerungen, kurze Absprachen.',
+    someone: 'Jemand',
+    deleteConfirmTitle: 'Nachricht löschen?',
+    messagePlaceholder: 'Nachricht schreiben…',
+  },
 };

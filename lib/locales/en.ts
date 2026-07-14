@@ -320,4 +320,18 @@ export const en: AppTranslations = {
     exportButton: '⬆️ Export tasks',
     exportHint: 'Adds your Heimlig tasks with a date to Google Calendar.',
   },
+  birthdays: {
+    title: '🎂 Birthdays',
+    subtitle: 'The next 12 months',
+    emptyBody: 'No birthdays saved. Add them under Tasks with the "Birthday" category.',
+    today: 'Today! 🎉',
+    inDays: 'in {{days}} days',
+  },
+  chat: {
+    longPressHint: 'Long press to delete',
+    emptyBody: 'No messages yet. Write here what everyone in the household should see – shopping requests, reminders, quick notes.',
+    someone: 'Someone',
+    deleteConfirmTitle: 'Delete message?',
+    messagePlaceholder: 'Write a message…',
+  },
 };

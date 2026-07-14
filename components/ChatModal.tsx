@@ -6,15 +6,19 @@ import {
 } from 'react-native';
 import { Alert } from '../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 import { format, parseISO, isToday } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
 
 export default function ChatModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { household, currentMember, members, messages, loadMessages, sendMessage, deleteMessage } = useStore();
   const [text, setText] = useState('');
@@ -41,16 +45,16 @@ export default function ChatModal({ visible, onClose }: { visible: boolean; onCl
   const memberOf = (id?: string) => members.find(m => m.id === id);
 
   const handleSend = async () => {
-    const t = text.trim();
-    if (!t) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
     setText('');
-    await sendMessage(t);
+    await sendMessage(trimmed);
   };
 
   const confirmDelete = (id: string, preview: string) => {
-    Alert.alert('Nachricht löschen?', preview.length > 80 ? preview.slice(0, 80) + '…' : preview, [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: () => deleteMessage(id) },
+    Alert.alert(t('chat.deleteConfirmTitle'), preview.length > 80 ? preview.slice(0, 80) + '…' : preview, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteMessage(id) },
     ]);
   };
 
@@ -59,8 +63,8 @@ export default function ChatModal({ visible, onClose }: { visible: boolean; onCl
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
           <View>
-            <Text style={styles.topTitle}>💬 Pinnwand</Text>
-            <Text style={styles.topSub}>Lange drücken zum Löschen</Text>
+            <Text style={styles.topTitle}>💬 {t('home.pinboardTitle')}</Text>
+            <Text style={styles.topSub}>{t('chat.longPressHint')}</Text>
           </View>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Text style={styles.closeX}>✕</Text>
@@ -70,12 +74,12 @@ export default function ChatModal({ visible, onClose }: { visible: boolean; onCl
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}>
           <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             {messages.length === 0 && (
-              <Text style={styles.empty}>Noch keine Nachrichten. Schreibt hier, was alle im Haushalt sehen sollen – Einkaufswünsche, Erinnerungen, kurze Absprachen.</Text>
+              <Text style={styles.empty}>{t('chat.emptyBody')}</Text>
             )}
             {messages.map(m => {
               const mine = m.member_id === currentMember?.id;
               const mem = memberOf(m.member_id);
-              const time = format(parseISO(m.created_at), isToday(parseISO(m.created_at)) ? 'HH:mm' : 'dd.MM. HH:mm', { locale: de });
+              const time = format(parseISO(m.created_at), isToday(parseISO(m.created_at)) ? 'HH:mm' : 'dd.MM. HH:mm', { locale: dateLocale });
               return (
                 <View key={m.id} style={[styles.row, mine ? styles.rowMine : styles.rowOther]}>
                   <TouchableOpacity
@@ -85,7 +89,7 @@ export default function ChatModal({ visible, onClose }: { visible: boolean; onCl
                     activeOpacity={0.8}
                   >
                     {!mine && (
-                      <Text style={[styles.author, { color: mem?.avatar_color ?? colors.brand }]}>{mem?.display_name ?? 'Jemand'}</Text>
+                      <Text style={[styles.author, { color: mem?.avatar_color ?? colors.brand }]}>{mem?.display_name ?? t('chat.someone')}</Text>
                     )}
                     <Text style={[styles.msgText, mine && { color: '#fff' }]}>{m.text}</Text>
                     <Text style={[styles.time, mine && { color: 'rgba(255,255,255,0.7)' }]}>{time}</Text>
@@ -98,7 +102,7 @@ export default function ChatModal({ visible, onClose }: { visible: boolean; onCl
           <View style={styles.inputBar}>
             <TextInput
               style={styles.input}
-              placeholder="Nachricht schreiben…"
+              placeholder={t('chat.messagePlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={text}
               onChangeText={setText}
