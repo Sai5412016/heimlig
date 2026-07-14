@@ -370,4 +370,30 @@ export interface AppTranslations {
     calendarOnlyButton: string;
     chooseOptionButton: string;
   };
+  scanner: {
+    topTitle: string;
+    checking: string;
+    cameraAccessTitle: string;
+    cameraAccessBody: string;
+    allowCamera: string;
+    scanHint: string;
+    enterBarcodeTitle: string;
+    enterBarcodeBody: string;
+    manualPlaceholder: string;
+    searchButton: string;
+    notFoundTitle: string;
+    notFoundBody: string;
+    scanAgain: string;
+    limitedDataNote: string;
+    negativeLabel: string;
+    positiveLabel: string;
+    additivesLabel: string;
+    ingredientsLabel: string;
+    disclaimer: string;
+    addToPantry: string;
+    addToList: string;
+    nutriScoreLabel: string;
+    novaLabel: string;
+    organicLabel: string;
+  };
 }

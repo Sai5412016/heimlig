@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, shadow, type ColorPalette } from '../constants/theme';
 import { fetchAndScore, type ScanResult } from '../lib/productScore';
@@ -24,6 +25,7 @@ export default function ProductScanner({ visible, onClose, onAddToList, onAddToP
   initialBarcode?: string;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const saveScan = useStore(s => s.saveScan);
   const [permission, requestPermission] = useCameraPermissions();
@@ -85,10 +87,10 @@ export default function ProductScanner({ visible, onClose, onAddToList, onAddToP
       return (
         <View style={styles.centered}>
           <Text style={styles.bigEmoji}>📷</Text>
-          <Text style={styles.title}>Kamera-Zugriff</Text>
-          <Text style={styles.subtle}>Heimlig braucht die Kamera, um Produkt-Barcodes zu scannen.</Text>
+          <Text style={styles.title}>{t('scanner.cameraAccessTitle')}</Text>
+          <Text style={styles.subtle}>{t('scanner.cameraAccessBody')}</Text>
           <TouchableOpacity style={styles.primaryBtn} onPress={requestPermission}>
-            <Text style={styles.primaryBtnText}>Kamera erlauben</Text>
+            <Text style={styles.primaryBtnText}>{t('scanner.allowCamera')}</Text>
           </TouchableOpacity>
           <ManualEntry />
         </View>
@@ -105,13 +107,13 @@ export default function ProductScanner({ visible, onClose, onAddToList, onAddToP
               barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128'] }}
             />
             <View style={styles.scanFrame} />
-            <Text style={styles.scanHint}>Barcode in den Rahmen halten</Text>
+            <Text style={styles.scanHint}>{t('scanner.scanHint')}</Text>
           </View>
         ) : (
           <View style={styles.centered}>
             <Text style={styles.bigEmoji}>🔍</Text>
-            <Text style={styles.title}>Barcode eingeben</Text>
-            <Text style={styles.subtle}>Im Browser bitte die Barcode-Nummer manuell eingeben.</Text>
+            <Text style={styles.title}>{t('scanner.enterBarcodeTitle')}</Text>
+            <Text style={styles.subtle}>{t('scanner.enterBarcodeBody')}</Text>
           </View>
         )}
         <ManualEntry />
@@ -123,7 +125,7 @@ export default function ProductScanner({ visible, onClose, onAddToList, onAddToP
     <View style={styles.manualBox}>
       <TextInput
         style={styles.manualInput}
-        placeholder="Barcode-Nummer eingeben…"
+        placeholder={t('scanner.manualPlaceholder')}
         placeholderTextColor={colors.textMuted}
         value={manualCode}
         onChangeText={setManualCode}
@@ -136,7 +138,7 @@ export default function ProductScanner({ visible, onClose, onAddToList, onAddToP
         onPress={handleManual}
         disabled={!manualCode.trim()}
       >
-        <Text style={styles.manualBtnText}>Suchen</Text>
+        <Text style={styles.manualBtnText}>{t('scanner.searchButton')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -148,10 +150,10 @@ export default function ProductScanner({ visible, onClose, onAddToList, onAddToP
       return (
         <View style={styles.centered}>
           <Text style={styles.bigEmoji}>🤷</Text>
-          <Text style={styles.title}>Produkt nicht gefunden</Text>
-          <Text style={styles.subtle}>Dieses Produkt ist (noch) nicht in der Datenbank. Du kannst es trotzdem manuell zur Liste hinzufügen.</Text>
+          <Text style={styles.title}>{t('scanner.notFoundTitle')}</Text>
+          <Text style={styles.subtle}>{t('scanner.notFoundBody')}</Text>
           <TouchableOpacity style={styles.primaryBtn} onPress={reset}>
-            <Text style={styles.primaryBtnText}>Erneut scannen</Text>
+            <Text style={styles.primaryBtnText}>{t('scanner.scanAgain')}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -179,20 +181,20 @@ export default function ProductScanner({ visible, onClose, onAddToList, onAddToP
           </View>
           <View style={styles.flex}>
             <Text style={[styles.ratingLabel, { color: rating.color }]}>{rating.label}</Text>
-            {rating.limited && <Text style={styles.limitedNote}>⚠️ Wenig Daten – Bewertung unsicher</Text>}
+            {rating.limited && <Text style={styles.limitedNote}>{t('scanner.limitedDataNote')}</Text>}
             <View style={styles.badgeRow}>
               {info.nutriScore && (
                 <View style={[styles.nutriBadge, { backgroundColor: nutriColor(info.nutriScore) }]}>
-                  <Text style={styles.nutriBadgeText}>Nutri-Score {info.nutriScore.toUpperCase()}</Text>
+                  <Text style={styles.nutriBadgeText}>{t('scanner.nutriScoreLabel', { grade: info.nutriScore.toUpperCase() })}</Text>
                 </View>
               )}
               {info.novaGroup ? (
                 <View style={styles.novaBadge}>
-                  <Text style={styles.novaBadgeText}>NOVA {info.novaGroup}</Text>
+                  <Text style={styles.novaBadgeText}>{t('scanner.novaLabel', { group: info.novaGroup })}</Text>
                 </View>
               ) : null}
               {info.organic && (
-                <View style={styles.bioBadge}><Text style={styles.bioBadgeText}>🌱 Bio</Text></View>
+                <View style={styles.bioBadge}><Text style={styles.bioBadgeText}>{t('scanner.organicLabel')}</Text></View>
               )}
             </View>
           </View>
@@ -201,49 +203,49 @@ export default function ProductScanner({ visible, onClose, onAddToList, onAddToP
         {/* Breakdown */}
         {rating.negatives.length > 0 && (
           <View style={styles.breakSection}>
-            <Text style={styles.breakTitle}>Negativ</Text>
-            {rating.negatives.map((t, i) => (
-              <View key={i} style={styles.breakRow}><Text style={styles.breakBad}>✕</Text><Text style={styles.breakText}>{t}</Text></View>
+            <Text style={styles.breakTitle}>{t('scanner.negativeLabel')}</Text>
+            {rating.negatives.map((neg, i) => (
+              <View key={i} style={styles.breakRow}><Text style={styles.breakBad}>✕</Text><Text style={styles.breakText}>{neg}</Text></View>
             ))}
           </View>
         )}
         {rating.positives.length > 0 && (
           <View style={styles.breakSection}>
-            <Text style={styles.breakTitle}>Positiv</Text>
-            {rating.positives.map((t, i) => (
-              <View key={i} style={styles.breakRow}><Text style={styles.breakGood}>✓</Text><Text style={styles.breakText}>{t}</Text></View>
+            <Text style={styles.breakTitle}>{t('scanner.positiveLabel')}</Text>
+            {rating.positives.map((pos, i) => (
+              <View key={i} style={styles.breakRow}><Text style={styles.breakGood}>✓</Text><Text style={styles.breakText}>{pos}</Text></View>
             ))}
           </View>
         )}
 
         {info.additives.length > 0 && (
           <View style={styles.breakSection}>
-            <Text style={styles.breakTitle}>Zusatzstoffe ({info.additives.length})</Text>
+            <Text style={styles.breakTitle}>{t('scanner.additivesLabel', { count: info.additives.length })}</Text>
             <Text style={styles.additivesText}>{info.additives.join(' · ')}</Text>
           </View>
         )}
 
         {info.ingredients ? (
           <View style={styles.breakSection}>
-            <Text style={styles.breakTitle}>Zutaten</Text>
+            <Text style={styles.breakTitle}>{t('scanner.ingredientsLabel')}</Text>
             <Text style={styles.ingredientsText}>{info.ingredients}</Text>
           </View>
         ) : null}
 
-        <Text style={styles.disclaimer}>Daten: Open Food Facts. Bewertung ist eine unabhängige Orientierung, keine medizinische Beratung.</Text>
+        <Text style={styles.disclaimer}>{t('scanner.disclaimer')}</Text>
 
         <View style={styles.resultBtns}>
           <TouchableOpacity style={[styles.primaryBtn, styles.flex, { backgroundColor: colors.border }]} onPress={reset}>
-            <Text style={[styles.primaryBtnText, { color: colors.text }]}>Erneut scannen</Text>
+            <Text style={[styles.primaryBtnText, { color: colors.text }]}>{t('scanner.scanAgain')}</Text>
           </TouchableOpacity>
           {onAddToPantry && (
             <TouchableOpacity style={[styles.primaryBtn, styles.flex, { backgroundColor: colors.accent }]} onPress={handleAddPantry}>
-              <Text style={styles.primaryBtnText}>In Vorrat</Text>
+              <Text style={styles.primaryBtnText}>{t('scanner.addToPantry')}</Text>
             </TouchableOpacity>
           )}
           {onAddToList && (
             <TouchableOpacity style={[styles.primaryBtn, styles.flex]} onPress={handleAdd}>
-              <Text style={styles.primaryBtnText}>Zur Liste</Text>
+              <Text style={styles.primaryBtnText}>{t('scanner.addToList')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -255,7 +257,7 @@ export default function ProductScanner({ visible, onClose, onAddToList, onAddToP
     <Modal visible={visible} animationType="slide" onRequestClose={handleClose}>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
-          <Text style={styles.topTitle}>Produkt scannen</Text>
+          <Text style={styles.topTitle}>{t('scanner.topTitle')}</Text>
           <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Text style={styles.closeX}>✕</Text>
           </TouchableOpacity>
@@ -263,7 +265,7 @@ export default function ProductScanner({ visible, onClose, onAddToList, onAddToP
         {mode === 'loading' ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={colors.brand} />
-            <Text style={styles.subtle}>Produkt wird geprüft…</Text>
+            <Text style={styles.subtle}>{t('scanner.checking')}</Text>
           </View>
         ) : mode === 'result' ? renderResult() : renderScan()}
       </SafeAreaView>
