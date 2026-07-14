@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 const hapticImpact = (style: Haptics.ImpactFeedbackStyle) => { if (Platform.OS !== 'web') Haptics.impactAsync(style); };
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
@@ -32,6 +33,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
   supermarket: string | null;
 }) => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -135,13 +137,13 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
         <Pressable style={styles.modalOverlay} onPress={onClose}>
           <Pressable style={styles.modalSheet}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Artikel hinzufügen</Text>
+            <Text style={styles.modalTitle}>{t('shopping.addItem.title')}</Text>
 
             <View style={styles.inputRow}>
               <TextInput
                 ref={inputRef}
                 style={[styles.input, styles.inputFlex]}
-                placeholder="Was brauchst du?"
+                placeholder={t('shopping.addItem.namePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={name}
                 onChangeText={applyName}
@@ -150,7 +152,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
               />
               <TextInput
                 style={[styles.input, styles.inputQty]}
-                placeholder="Menge"
+                placeholder={t('shopping.addItem.quantityPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={quantity}
                 onChangeText={setQuantity}
@@ -166,7 +168,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
                   setName(''); setQuantity(''); setBrand(''); setBrandOptions([]);
                 }}
               >
-                <Text style={styles.elsewhereHintText}>{elsewhere.emoji} Meist bei {elsewhere.name} — dort hinzufügen</Text>
+                <Text style={styles.elsewhereHintText}>{t('shopping.addItem.elsewhereHint', { emoji: elsewhere.emoji, name: elsewhere.name })}</Text>
               </TouchableOpacity>
             )}
 
@@ -185,7 +187,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
             {/* Frequently bought — quick add */}
             {!name.trim() && frequent.length > 0 && (
               <>
-                <Text style={styles.sectionLabel}>HÄUFIG GEKAUFT</Text>
+                <Text style={styles.sectionLabel}>{t('shopping.addItem.frequentlyBought')}</Text>
                 <View style={styles.freqWrap}>
                   {frequent.map(f => (
                     <TouchableOpacity key={f.name_key} style={styles.freqChip} onPress={() => quickAdd({ name: f.name, category: f.category })}>
@@ -199,7 +201,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
             {/* Crowdsourced brand picker — only inside a supermarket list */}
             {smKey && name.trim().length > 0 && (
               <>
-                <Text style={styles.sectionLabel}>MARKE BEI {(supermarket ?? '').toUpperCase()} (OPTIONAL)</Text>
+                <Text style={styles.sectionLabel}>{t('shopping.addItem.brandAt', { supermarket: (supermarket ?? '').toUpperCase() })}</Text>
                 {brandOptions.length > 0 && (
                   <View style={styles.freqWrap}>
                     {brandOptions.map(b => {
@@ -218,7 +220,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
                 )}
                 <TextInput
                   style={[styles.input, { marginTop: spacing.sm }]}
-                  placeholder="Eigene Marke eingeben…"
+                  placeholder={t('shopping.addItem.brandPlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   value={brand}
                   onChangeText={setBrand}
@@ -226,7 +228,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
               </>
             )}
 
-            <Text style={styles.sectionLabel}>KATEGORIE</Text>
+            <Text style={styles.sectionLabel}>{t('shopping.addItem.categoryLabel')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
               {SHOPPING_CATEGORIES.map(cat => {
                 const isActive = cat === category;
@@ -248,7 +250,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
               onPress={handleAdd}
               disabled={!name.trim()}
             >
-              <Text style={styles.addBtnText}>Hinzufügen</Text>
+              <Text style={styles.addBtnText}>{t('common.add')}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -500,6 +502,7 @@ const TileItem = React.memo(({ item, onToggle, onDelete }: {
 // ─── LIST PICKER MODAL ────────────────────────────────────────
 const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { shoppingLists, activeListId, switchList, createShoppingList, deleteShoppingList } = useStore();
   const [creating, setCreating] = useState(false);
@@ -528,12 +531,12 @@ const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () =
 
   const handleDelete = (id: string, name: string) => {
     if (shoppingLists.length <= 1) {
-      Alert.alert('Nicht möglich', 'Du brauchst mindestens eine Einkaufsliste.');
+      Alert.alert(t('shopping.lists.cantDeleteTitle'), t('shopping.lists.cantDeleteBody'));
       return;
     }
-    Alert.alert(`"${name}" löschen?`, 'Alle Artikel in dieser Liste werden ebenfalls gelöscht.', [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: () => deleteShoppingList(id) },
+    Alert.alert(t('shopping.lists.deleteConfirmTitle', { name }), t('shopping.lists.deleteConfirmBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteShoppingList(id) },
     ]);
   };
 
@@ -542,7 +545,7 @@ const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () =
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <Pressable style={styles.modalSheet}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>Einkaufslisten</Text>
+          <Text style={styles.modalTitle}>{t('shopping.lists.title')}</Text>
 
           {shoppingLists.map(list => (
             <TouchableOpacity
@@ -568,7 +571,7 @@ const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () =
           ))}
 
           <View style={styles.supermarketSection}>
-            <Text style={styles.supermarketLabel}>Schnell erstellen</Text>
+            <Text style={styles.supermarketLabel}>{t('shopping.lists.quickCreate')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.xs }}>
                 {SUPERMARKETS.map(sm => {
@@ -617,7 +620,7 @@ const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () =
                 <TextInput
                   ref={nameRef}
                   style={[styles.input, styles.inputFlex]}
-                  placeholder="Name der Liste"
+                  placeholder={t('shopping.lists.namePlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   value={newName}
                   onChangeText={setNewName}
@@ -627,20 +630,20 @@ const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () =
               </View>
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 <TouchableOpacity style={[styles.addBtn, { flex: 1, backgroundColor: colors.border }]} onPress={() => setCreating(false)}>
-                  <Text style={[styles.addBtnText, { color: colors.text }]}>Abbrechen</Text>
+                  <Text style={[styles.addBtnText, { color: colors.text }]}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.addBtn, { flex: 1 }, !newName.trim() && styles.addBtnDisabled]}
                   onPress={handleCreate}
                   disabled={!newName.trim()}
                 >
-                  <Text style={styles.addBtnText}>Erstellen</Text>
+                  <Text style={styles.addBtnText}>{t('common.create')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
             <TouchableOpacity style={styles.newListBtn} onPress={() => setCreating(true)}>
-              <Text style={styles.newListBtnText}>+ Neue Liste</Text>
+              <Text style={styles.newListBtnText}>{t('shopping.lists.newList')}</Text>
             </TouchableOpacity>
           )}
         </Pressable>
@@ -652,8 +655,9 @@ const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () =
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 export default function ShoppingScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe, loadItemCatalog, createShoppingList, switchList, themeId } = useStore();
+  const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe, loadItemCatalog, createShoppingList, switchList, themeId, language } = useStore();
   const activeTheme = APP_THEMES.find(t => t.id === themeId);
   const [showModal, setShowModal] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
@@ -721,7 +725,7 @@ export default function ShoppingScreen() {
     await addItem(targetId, name, quantity || undefined, category, undefined, brand);
     setShowModal(false);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
-    Alert.alert(`${info.emoji} ${info.name}`, `"${name}" wurde zur ${info.name}-Liste hinzugefügt.`);
+    Alert.alert(`${info.emoji} ${info.name}`, t('shopping.addedToListBody', { name, list: info.name }));
   };
 
   const handleScanAdd = async (name: string, brand?: string) => {
@@ -735,15 +739,15 @@ export default function ShoppingScreen() {
     const { added, planned } = await saveRecipe(ingredients, recipeName, opts);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
     const parts = [];
-    if (added > 0) parts.push(`${added} Zutaten im Einkauf`);
-    if (planned) parts.push('im Kalender eingetragen');
-    Alert.alert('✓ Fertig', `"${recipeName}" – ${parts.join(' & ') || 'gespeichert'}.`);
+    if (added > 0) parts.push(t('shopping.recipeAddedIngredients', { count: added }));
+    if (planned) parts.push(t('shopping.recipeAddedPlanned'));
+    Alert.alert(t('shopping.recipeAddedTitle'), `"${recipeName}" – ${parts.join(' & ') || t('shopping.recipeAddedSaved')}.`);
   };
 
   const handleClearChecked = () => {
-    Alert.alert('Erledigte löschen', `${checked.length} abgehakte Artikel entfernen?`, [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: () => checked.forEach(i => deleteItem(i.id)) }
+    Alert.alert(t('shopping.clearCheckedTitle'), t('shopping.clearCheckedBody', { count: checked.length }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => checked.forEach(i => deleteItem(i.id)) }
     ]);
   };
 
@@ -759,15 +763,15 @@ export default function ShoppingScreen() {
       <View style={styles.header}>
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Text style={styles.headerTitle}>{activeList?.emoji ?? '🛒'} {activeList?.name ?? 'Einkaufsliste'}</Text>
+            <Text style={styles.headerTitle}>{activeList?.emoji ?? '🛒'} {activeList?.name ?? t('shopping.defaultListName')}</Text>
             <ThemeMotif />
           </View>
           <Text style={styles.headerSub}>
-            {household?.name ?? 'Mein Haushalt'}
+            {household?.name ?? t('shopping.defaultHouseholdName')}
           </Text>
         </View>
         <TouchableOpacity style={styles.listSwitchBtn} onPress={() => setShowListPicker(true)}>
-          <Text style={styles.listSwitchText}>Listen ▾</Text>
+          <Text style={styles.listSwitchText}>{t('shopping.listsButton')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -785,10 +789,17 @@ export default function ShoppingScreen() {
                 width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] })
               }]} />
             </View>
-            <Text style={styles.progressText}>{checked.length} von {items.length} erledigt</Text>
+            <Text style={styles.progressText}>{t('shopping.progressDone', { checked: checked.length, total: items.length })}</Text>
             {costEstimate.pricedCount > 0 && (
               <Text style={styles.costEstimateText}>
-                ≈ {costEstimate.total.toFixed(2).replace('.', ',')} €{costEstimate.pricedCount < costEstimate.totalCount ? ` (${costEstimate.pricedCount} von ${costEstimate.totalCount} Artikeln geschätzt)` : ' geschätzt'}
+                {costEstimate.pricedCount < costEstimate.totalCount
+                  ? t('shopping.costEstimatePartial', {
+                      total: language === 'en' ? costEstimate.total.toFixed(2) : costEstimate.total.toFixed(2).replace('.', ','),
+                      priced: costEstimate.pricedCount, totalCount: costEstimate.totalCount,
+                    })
+                  : t('shopping.costEstimate', {
+                      total: language === 'en' ? costEstimate.total.toFixed(2) : costEstimate.total.toFixed(2).replace('.', ','),
+                    })}
               </Text>
             )}
           </View>
@@ -818,8 +829,8 @@ export default function ShoppingScreen() {
             ) : (
               <Text style={styles.emptyEmoji}>🛒</Text>
             )}
-            <Text style={styles.emptyTitle}>Liste ist leer</Text>
-            <Text style={styles.emptyBody}>Füge deinen ersten Artikel hinzu.</Text>
+            <Text style={styles.emptyTitle}>{t('shopping.emptyTitle')}</Text>
+            <Text style={styles.emptyBody}>{t('shopping.emptyBody')}</Text>
           </View>
         )}
 
@@ -828,11 +839,11 @@ export default function ShoppingScreen() {
           <View style={styles.checkedSection}>
             <View style={styles.checkedHeader}>
               <TouchableOpacity onPress={() => setShowChecked(v => !v)} style={styles.checkedToggle}>
-                <Text style={styles.checkedHeaderText}>✓ Erledigt ({checked.length})</Text>
+                <Text style={styles.checkedHeaderText}>{t('shopping.checkedHeader', { count: checked.length })}</Text>
                 <Text style={styles.checkedToggleIcon}>{showChecked ? '▲' : '▼'}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleClearChecked}>
-                <Text style={styles.clearCheckedText}>Löschen</Text>
+                <Text style={styles.clearCheckedText}>{t('common.delete')}</Text>
               </TouchableOpacity>
             </View>
             {showChecked && (
