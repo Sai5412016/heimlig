@@ -6,18 +6,12 @@ import {
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 import { format, subMonths, addMonths, parseISO, isSameMonth } from 'date-fns';
 import { advanceFromAnchor, stepsBetween, type RecurrenceUnit } from '../../lib/dateMath';
-
-const TX_RECURRENCE_OPTIONS = [
-  { key: null, label: 'Einmalig' },
-  { key: 'weekly', label: 'Wöchentlich' },
-  { key: 'monthly', label: 'Monatlich' },
-  { key: 'yearly', label: 'Jährlich' },
-];
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
 import { colors, spacing, radius, typography, shadow, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { Transaction } from '../../lib/supabase';
@@ -65,6 +59,13 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
   members: any[]; currentMemberId: string;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const txRecurrenceOptions = [
+    { key: null, label: t('budget.recurrenceOnce') },
+    { key: 'weekly', label: t('budget.recurrenceWeekly') },
+    { key: 'monthly', label: t('budget.recurrenceMonthly') },
+    { key: 'yearly', label: t('budget.recurrenceYearly') },
+  ];
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -106,13 +107,13 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <View style={styles.typeToggle}>
                 <TouchableOpacity style={[styles.typeBtn, type === 'expense' && styles.typeBtnExpense]} onPress={() => setType('expense')}>
-                  <Text style={[styles.typeBtnText, type === 'expense' && { color: colors.textInverse }]}>- Ausgabe</Text>
+                  <Text style={[styles.typeBtnText, type === 'expense' && { color: colors.textInverse }]}>{t('budget.expenseType')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.typeBtn, type === 'income' && styles.typeBtnIncome]} onPress={() => setType('income')}>
-                  <Text style={[styles.typeBtnText, type === 'income' && { color: colors.textInverse }]}>+ Einnahme</Text>
+                  <Text style={[styles.typeBtnText, type === 'income' && { color: colors.textInverse }]}>{t('budget.incomeType')}</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.fieldLabel}>SCHNELLAUSWAHL</Text>
+              <Text style={styles.fieldLabel}>{t('budget.quickSelect')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
                 {QUICK_PRESETS.map(p => (
                   <TouchableOpacity key={p.label} style={[styles.presetChip, category === p.cat && description === p.desc && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => { setCategory(p.cat); setDescription(p.desc); }}>
@@ -122,11 +123,11 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
               </ScrollView>
               <View style={styles.amountRow}>
                 <Text style={styles.currencySymbol}>€</Text>
-                <TextInput style={styles.amountInput} placeholder="0,00" placeholderTextColor={colors.textMuted} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
+                <TextInput style={styles.amountInput} placeholder={t('budget.amountPlaceholder')} placeholderTextColor={colors.textMuted} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
               </View>
-              <TextInput style={styles.input} placeholder="Beschreibung (optional)" placeholderTextColor={colors.textMuted} value={description} onChangeText={setDescription} />
-              <TextInput style={styles.input} placeholder="Datum (JJJJ-MM-TT)" placeholderTextColor={colors.textMuted} value={date} onChangeText={setDate} />
-              <Text style={styles.fieldLabel}>KATEGORIE</Text>
+              <TextInput style={styles.input} placeholder={t('budget.descriptionPlaceholder')} placeholderTextColor={colors.textMuted} value={description} onChangeText={setDescription} />
+              <TextInput style={styles.input} placeholder={t('budget.datePlaceholder')} placeholderTextColor={colors.textMuted} value={date} onChangeText={setDate} />
+              <Text style={styles.fieldLabel}>{t('common.category')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
                 {ALL_CATEGORIES.map(cat => {
                   const isActive = cat === category;
@@ -139,7 +140,7 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
                   );
                 })}
               </ScrollView>
-              <Text style={styles.fieldLabel}>BEZAHLT VON</Text>
+              <Text style={styles.fieldLabel}>{t('budget.paidByLabel')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
                 {members.map(m => (
                   <TouchableOpacity key={m.id} style={[styles.memberChip, paidBy === m.id && { backgroundColor: m.avatar_color, borderColor: m.avatar_color }]} onPress={() => setPaidBy(m.id)}>
@@ -152,13 +153,13 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
                 {members.length > 1 && (
                   <TouchableOpacity style={[styles.memberChip, paidBy === '' && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setPaidBy('')}>
                     <Text style={{ fontSize: 14 }}>🤝</Text>
-                    <Text style={[styles.memberChipText, paidBy === '' && { color: colors.textInverse }]}>Gemeinsam</Text>
+                    <Text style={[styles.memberChipText, paidBy === '' && { color: colors.textInverse }]}>{t('common.shared')}</Text>
                   </TouchableOpacity>
                 )}
               </ScrollView>
-              <Text style={styles.fieldLabel}>WIEDERKEHREND</Text>
+              <Text style={styles.fieldLabel}>{t('budget.recurringLabel')}</Text>
               <View style={styles.recurrenceWrap}>
-                {TX_RECURRENCE_OPTIONS.map(r => (
+                {txRecurrenceOptions.map(r => (
                   <TouchableOpacity key={String(r.key)} style={[styles.catChip, recurrence === r.key && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setRecurrence(r.key)}>
                     <Text style={[styles.catChipText, recurrence === r.key && { color: colors.textInverse }]}>{r.label}</Text>
                   </TouchableOpacity>
@@ -167,7 +168,7 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
 
               {recurrence && (
                 <View style={styles.intervalRow}>
-                  <Text style={styles.intervalLabel}>Alle</Text>
+                  <Text style={styles.intervalLabel}>{t('budget.every')}</Text>
                   <TouchableOpacity style={styles.intervalBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={() => setRecurrenceInterval(n => Math.max(1, n - 1))}>
                     <Text style={styles.intervalBtnText}>−</Text>
                   </TouchableOpacity>
@@ -176,15 +177,15 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
                     <Text style={styles.intervalBtnText}>+</Text>
                   </TouchableOpacity>
                   <Text style={styles.intervalLabel}>
-                    {recurrence === 'weekly' ? (recurrenceInterval === 1 ? 'Woche' : 'Wochen')
-                      : recurrence === 'yearly' ? (recurrenceInterval === 1 ? 'Jahr' : 'Jahre')
-                      : (recurrenceInterval === 1 ? 'Monat' : 'Monate')}
+                    {recurrence === 'weekly' ? (recurrenceInterval === 1 ? t('budget.unitWeek') : t('budget.unitWeeks'))
+                      : recurrence === 'yearly' ? (recurrenceInterval === 1 ? t('budget.unitYear') : t('budget.unitYears'))
+                      : (recurrenceInterval === 1 ? t('budget.unitMonth') : t('budget.unitMonths'))}
                   </Text>
                 </View>
               )}
 
               <TouchableOpacity style={[styles.saveBtn, !amount && { opacity: 0.4 }]} onPress={handleSave} disabled={!amount}>
-                <Text style={styles.saveBtnText}>{recurrence ? 'Wiederkehrend eintragen ✓' : 'Eintragen ✓'}</Text>
+                <Text style={styles.saveBtnText}>{recurrence ? t('budget.saveRecurring') : t('budget.saveEntry')}</Text>
               </TouchableOpacity>
               <View style={{ height: 20 }} />
             </ScrollView>
@@ -201,6 +202,9 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
   members: any[]; transactions: Transaction[];
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const progress = total > 0 ? Math.min(amount / total, 1) : 0;
   const animWidth = useRef(new Animated.Value(0)).current;
@@ -208,21 +212,21 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
     Animated.timing(animWidth, { toValue: progress, duration: 600, useNativeDriver: false }).start();
   }, [progress]);
 
-  // Who paid most in this category — "Gemeinsam" (kein member_id) zaehlt zu gleichen Teilen
-  // fuer alle mit, damit z.B. eine gemeinsam bezahlte Miete sich sichtbar auf beide aufteilt.
-  const catTx = transactions.filter(t => t.category === label && t.type === 'expense');
+  // Who paid most in this category — "shared" (no member_id) counts equally toward everyone,
+  // so e.g. a jointly-paid rent visibly splits across both instead of showing as no one's.
+  const catTx = transactions.filter(tx => tx.category === label && tx.type === 'expense');
   const sharedShare = members.length > 0
-    ? catTx.filter(t => !t.member_id).reduce((s, t) => s + Number(t.amount), 0) / members.length
+    ? catTx.filter(tx => !tx.member_id).reduce((s, tx) => s + Number(tx.amount), 0) / members.length
     : 0;
   const memberTotals = members.map(m => ({
     member: m,
-    total: catTx.filter(t => t.member_id === m.id).reduce((s, t) => s + Number(t.amount), 0) + sharedShare
+    total: catTx.filter(tx => tx.member_id === m.id).reduce((s, tx) => s + Number(tx.amount), 0) + sharedShare
   })).filter(mt => mt.total > 0).sort((a, b) => b.total - a.total);
 
   // Last transaction for this category
   const lastTx = catTx.sort((a, b) => b.transaction_date.localeCompare(a.transaction_date))[0];
   const lastPayer = lastTx ? members.find(m => m.id === lastTx.member_id) : null;
-  const lastPayerLabel = lastTx ? (lastPayer ? lastPayer.display_name : 'Gemeinsam') : null;
+  const lastPayerLabel = lastTx ? (lastPayer ? lastPayer.display_name : t('common.shared')) : null;
 
   return (
     <View style={styles.catBarRow}>
@@ -249,7 +253,7 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
           </View>
           {lastTx && (
             <Text style={styles.catBarLastPayer}>
-              Zuletzt: {lastPayerLabel} · {format(parseISO(lastTx.transaction_date), 'dd. MMM', { locale: de })}
+              {t('budget.lastPayer', { payer: lastPayerLabel, date: format(parseISO(lastTx.transaction_date), 'dd. MMM', { locale: dateLocale }) })}
             </Text>
           )}
         </View>
@@ -260,6 +264,9 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
 
 function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: (id: string) => void; members: any[] }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const catColor = CAT_COLORS[tx.category] || colors.brand;
   const payer = members.find(m => m.id === tx.member_id);
@@ -272,7 +279,7 @@ function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: 
       <View style={styles.txInfo}>
         <Text style={styles.txTitle}>{tx.description || tx.category}{tx.recurrence ? ' 🔄' : ''}</Text>
         <View style={styles.txMetaRow}>
-          <Text style={styles.txDate}>{format(parseISO(tx.transaction_date), 'dd. MMM', { locale: de })}</Text>
+          <Text style={styles.txDate}>{format(parseISO(tx.transaction_date), 'dd. MMM', { locale: dateLocale })}</Text>
           {payer && (
             <View style={styles.txPayerBadge}>
               <View style={[styles.txPayerAvatar, { backgroundColor: payer.avatar_color }]}>
@@ -286,7 +293,7 @@ function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: 
               <View style={[styles.txPayerAvatar, { backgroundColor: colors.brand }]}>
                 <Text style={styles.txPayerAvatarText}>🤝</Text>
               </View>
-              <Text style={styles.txPayerName}>Gemeinsam</Text>
+              <Text style={styles.txPayerName}>{t('common.shared')}</Text>
             </View>
           )}
         </View>
@@ -305,8 +312,10 @@ function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: 
 
 export default function BudgetScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { household, currentMember, members, transactions, setTransactions } = useStore();
+  const { household, currentMember, members, transactions, setTransactions, language } = useStore();
+  const dateLocale = language === 'en' ? enUS : de;
   const [showModal, setShowModal] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -320,21 +329,21 @@ export default function BudgetScreen() {
     const templates = await budgetRepo.fetchDueRecurringTemplates(household.id, today);
     if (templates.length === 0) return;
 
-    for (const t of templates) {
-      const unit = (t.recurrence || 'monthly') as RecurrenceUnit;
-      const interval = t.recurrence_interval || 1;
-      const anchor = t.transaction_date; // fixed, never mutated by this loop
+    for (const tmpl of templates) {
+      const unit = (tmpl.recurrence || 'monthly') as RecurrenceUnit;
+      const interval = tmpl.recurrence_interval || 1;
+      const anchor = tmpl.transaction_date; // fixed, never mutated by this loop
       // Seed the step counter from the currently-stored recurrence_next (so we don't replay
       // the whole history), then always compute each occurrence fresh from the anchor date
       // instead of chaining — see advanceFromAnchor for why that matters.
-      let step = Math.max(1, Math.round(stepsBetween(anchor, t.recurrence_next as string, unit) / interval));
+      let step = Math.max(1, Math.round(stepsBetween(anchor, tmpl.recurrence_next as string, unit) / interval));
       let next = advanceFromAnchor(anchor, unit, interval * step);
       const inserts: any[] = [];
       let guard = 0;
       while (next && next <= today && guard < 120) {
         inserts.push({
-          household_id: household.id, amount: t.amount, type: t.type,
-          category: t.category, description: t.description, member_id: t.member_id,
+          household_id: household.id, amount: tmpl.amount, type: tmpl.type,
+          category: tmpl.category, description: tmpl.description, member_id: tmpl.member_id,
           transaction_date: next,
         });
         step++;
@@ -342,7 +351,7 @@ export default function BudgetScreen() {
         guard++;
       }
       await budgetRepo.insertTransactions(inserts);
-      await budgetRepo.updateRecurrenceNext(t.id, next);
+      await budgetRepo.updateRecurrenceNext(tmpl.id, next);
     }
   }, [household]);
 
@@ -403,24 +412,24 @@ export default function BudgetScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Löschen', 'Eintrag wirklich löschen?', [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: async () => { setTransactions(transactions.filter(t => t.id !== id)); await budgetRepo.deleteTransaction(id); } }
+    Alert.alert(t('budget.deleteConfirmTitle'), t('budget.deleteConfirmBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: async () => { setTransactions(transactions.filter(tx => tx.id !== id)); await budgetRepo.deleteTransaction(id); } }
     ]);
   };
 
-  const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: de });
+  const monthLabel = format(currentMonth, 'MMMM yyyy', { locale: dateLocale });
 
   // ─── EXPORT ───────────────────────────────────────────────
   const handleExport = async () => {
-    if (transactions.length === 0) { Alert.alert('Keine Daten', 'Es gibt noch keine Einträge zum Exportieren.'); return; }
+    if (transactions.length === 0) { Alert.alert(t('budget.noDataTitle'), t('budget.noDataBody')); return; }
     try {
       const nameById: Record<string, string> = {};
       members.forEach(m => { nameById[m.id] = m.display_name; });
       const csv = buildTransactionsCsv(transactions, nameById);
       await exportCsv(`heimlig-budget-${format(new Date(), 'yyyy-MM-dd')}.csv`, csv);
     } catch (e: any) {
-      Alert.alert('Fehler', e?.message ?? 'Export fehlgeschlagen.');
+      Alert.alert(t('common.error'), e?.message ?? t('budget.exportFailed'));
     }
   };
 
@@ -431,10 +440,10 @@ export default function BudgetScreen() {
       if (res.canceled || !res.assets?.[0]) return;
       const content = await new File(res.assets[0].uri).text();
       const rows = parseTransactionsCsv(content);
-      if (rows.length === 0) { Alert.alert('Keine Einträge', 'In der Datei wurden keine gültigen Einträge gefunden. Erwartet werden Spalten wie Datum, Typ, Kategorie, Betrag.'); return; }
-      Alert.alert('Import bestätigen', `${rows.length} Einträge aus der Datei importieren?`, [
-        { text: 'Abbrechen', style: 'cancel' },
-        { text: 'Importieren', onPress: async () => {
+      if (rows.length === 0) { Alert.alert(t('budget.noRowsTitle'), t('budget.noRowsBody')); return; }
+      Alert.alert(t('budget.importConfirmTitle'), t('budget.importConfirmBody', { count: rows.length }), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('budget.importButton'), onPress: async () => {
             if (!household) return;
             const payload = rows.map(r => ({
               household_id: household.id,
@@ -446,14 +455,14 @@ export default function BudgetScreen() {
               member_id: memberIdByName(members, r.memberName),
             }));
             const { data, error } = await budgetRepo.insertTransactionsChecked(payload);
-            if (error) { Alert.alert('Fehler', error); return; }
+            if (error) { Alert.alert(t('common.error'), error); return; }
             if (data) setTransactions([...data, ...transactions]);
             hapticNotification(Haptics.NotificationFeedbackType.Success);
-            Alert.alert('✓ Importiert', `${data?.length ?? rows.length} Einträge wurden hinzugefügt.`);
+            Alert.alert(t('budget.importedTitle'), t('budget.importedBody', { count: data?.length ?? rows.length }));
           } },
       ]);
     } catch (e: any) {
-      Alert.alert('Fehler', e?.message ?? 'Import fehlgeschlagen.');
+      Alert.alert(t('common.error'), e?.message ?? t('budget.importFailed'));
     }
   };
 
@@ -461,7 +470,7 @@ export default function BudgetScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          <Text style={styles.headerTitle}>💶 Budget</Text>
+          <Text style={styles.headerTitle}>💶 {t('tabs.budget')}</Text>
           <ThemeMotif />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
@@ -477,7 +486,7 @@ export default function BudgetScreen() {
             <Text style={styles.ioBtnText}>📥</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
-            <Text style={styles.addBtnText}>+ Eintrag</Text>
+            <Text style={styles.addBtnText}>{t('budget.addEntry')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -500,10 +509,10 @@ export default function BudgetScreen() {
             </View>
             <View>
               <Text style={[styles.whoNextTitle, isMyTurn && { color: colors.brand }]}>
-                {isMyTurn ? '💡 Du bist als nächstes dran' : `💡 ${whoIsNext.display_name} ist als nächstes dran`}
+                {isMyTurn ? t('budget.yourTurn') : t('budget.theirTurn', { name: whoIsNext.display_name })}
               </Text>
               <Text style={styles.whoNextSub}>
-                Differenz: € {Math.abs((memberExpenses[members[0]?.id] || 0) - (memberExpenses[members[1]?.id] || 0)).toFixed(0)}
+                {t('budget.difference', { amount: Math.abs((memberExpenses[members[0]?.id] || 0) - (memberExpenses[members[1]?.id] || 0)).toFixed(0) })}
               </Text>
             </View>
           </View>
@@ -511,15 +520,15 @@ export default function BudgetScreen() {
 
         <View style={styles.summaryRow}>
           <View style={[styles.summaryCard, { borderTopColor: colors.error }]}>
-            <Text style={styles.summaryLabel}>Ausgaben</Text>
+            <Text style={styles.summaryLabel}>{t('budget.expenses')}</Text>
             <Text style={[styles.summaryAmount, { color: colors.error }]}>€ {totalExpenses.toFixed(2)}</Text>
           </View>
           <View style={[styles.summaryCard, { borderTopColor: colors.success }]}>
-            <Text style={styles.summaryLabel}>Einnahmen</Text>
+            <Text style={styles.summaryLabel}>{t('budget.income')}</Text>
             <Text style={[styles.summaryAmount, { color: colors.success }]}>€ {totalIncome.toFixed(2)}</Text>
           </View>
           <View style={[styles.summaryCard, { borderTopColor: balance >= 0 ? colors.brand : colors.error }]}>
-            <Text style={styles.summaryLabel}>Bilanz</Text>
+            <Text style={styles.summaryLabel}>{t('budget.balance')}</Text>
             <Text style={[styles.summaryAmount, { color: balance >= 0 ? colors.brand : colors.error }]}>
               {balance >= 0 ? '+' : ''}€ {balance.toFixed(2)}
             </Text>
@@ -528,10 +537,10 @@ export default function BudgetScreen() {
 
         <View style={styles.tabs}>
           <TouchableOpacity style={[styles.tab, activeTab === 'overview' && styles.tabActive]} onPress={() => setActiveTab('overview')}>
-            <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>Übersicht</Text>
+            <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>{t('budget.overviewTab')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.tab, activeTab === 'transactions' && styles.tabActive]} onPress={() => setActiveTab('transactions')}>
-            <Text style={[styles.tabText, activeTab === 'transactions' && styles.tabTextActive]}>Buchungen ({monthTransactions.length})</Text>
+            <Text style={[styles.tabText, activeTab === 'transactions' && styles.tabTextActive]}>{t('budget.transactionsTab', { count: monthTransactions.length })}</Text>
           </TouchableOpacity>
         </View>
 
@@ -540,15 +549,15 @@ export default function BudgetScreen() {
             {catBreakdown.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyEmoji}>💶</Text>
-                <Text style={styles.emptyTitle}>Noch keine Einträge</Text>
-                <Text style={styles.emptyBody}>Trag deine erste Ausgabe oder Einnahme ein.</Text>
+                <Text style={styles.emptyTitle}>{t('budget.emptyTitle')}</Text>
+                <Text style={styles.emptyBody}>{t('budget.emptyBody')}</Text>
                 <TouchableOpacity style={styles.emptyCta} onPress={() => setShowModal(true)}>
-                  <Text style={styles.emptyCtaText}>+ Eintrag</Text>
+                  <Text style={styles.emptyCtaText}>{t('budget.addEntry')}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <>
-                <Text style={styles.sectionTitle}>Ausgaben nach Kategorie</Text>
+                <Text style={styles.sectionTitle}>{t('budget.expensesByCategory')}</Text>
                 {catBreakdown.map(({ cat, amount }) => (
                   <CategoryBar
                     key={cat} label={cat} amount={amount} total={totalExpenses}
@@ -560,9 +569,9 @@ export default function BudgetScreen() {
             )}
             {members.length > 1 && monthTransactions.length > 0 && (
               <View style={styles.memberBreakdown}>
-                <Text style={styles.sectionTitle}>Pro Person</Text>
+                <Text style={styles.sectionTitle}>{t('budget.perPerson')}</Text>
                 {members.map(m => {
-                  const memberTotal = monthTransactions.filter(t => t.member_id === m.id && t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+                  const memberTotal = monthTransactions.filter(tx => tx.member_id === m.id && tx.type === 'expense').reduce((s, tx) => s + Number(tx.amount), 0);
                   if (memberTotal === 0) return null;
                   return (
                     <View key={m.id} style={styles.memberRow}>
@@ -588,7 +597,7 @@ export default function BudgetScreen() {
                   style={[styles.filterChip, !filterCat && styles.filterChipActive]}
                   onPress={() => setFilterCat(null)}
                 >
-                  <Text style={[styles.filterChipText, !filterCat && { color: colors.textInverse }]}>Alle</Text>
+                  <Text style={[styles.filterChipText, !filterCat && { color: colors.textInverse }]}>{t('budget.allFilter')}</Text>
                 </TouchableOpacity>
                 {availableCats.map(cat => (
                   <TouchableOpacity
@@ -606,11 +615,11 @@ export default function BudgetScreen() {
             {filteredTransactions.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyEmoji}>📋</Text>
-                <Text style={styles.emptyTitle}>Keine Buchungen</Text>
-                <Text style={styles.emptyBody}>{filterCat ? `Keine Einträge für ${filterCat}.` : `Noch keine Einträge für ${monthLabel}.`}</Text>
+                <Text style={styles.emptyTitle}>{t('budget.noEntries')}</Text>
+                <Text style={styles.emptyBody}>{filterCat ? t('budget.noEntriesForCat', { category: filterCat }) : t('budget.noEntriesForMonth', { month: monthLabel })}</Text>
                 {!filterCat && (
                   <TouchableOpacity style={styles.emptyCta} onPress={() => setShowModal(true)}>
-                    <Text style={styles.emptyCtaText}>+ Eintrag</Text>
+                    <Text style={styles.emptyCtaText}>{t('budget.addEntry')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
