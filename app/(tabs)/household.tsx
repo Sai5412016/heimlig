@@ -15,7 +15,7 @@ import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { useTheme } from '../../hooks/useTheme';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
 import NotesModal from '../../components/NotesModal';
 import GoogleCalendarModal from '../../components/GoogleCalendarModal';
 import LocationModal from '../../components/LocationModal';
@@ -38,21 +38,22 @@ function InviteModal({ visible, onClose, inviteCode, householdName }: {
   householdName: string;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const handleShare = async () => {
-    const message = `🏡 Ich lade dich zu unserem Haushalt "${householdName}" in Heimlig ein!\n\n👉 Einfach hier tippen, um beizutreten:\nhttps://heimlig.vercel.app/join/${inviteCode}\n\nFalls der Link nicht klappt, gib in der App diesen Code ein:\n🔑 ${inviteCode}`;
+    const message = t('household.inviteMessage', { name: householdName, code: inviteCode });
     if (Platform.OS === 'web') {
-      try { await navigator.clipboard.writeText(message); Alert.alert('Kopiert! ✓', 'Einladungstext in die Zwischenablage kopiert.'); }
-      catch { Alert.alert('Einladungscode', message); }
+      try { await navigator.clipboard.writeText(message); Alert.alert(t('household.copiedTitle'), t('household.copiedClipboardBody')); }
+      catch { Alert.alert(t('household.inviteCodeFallbackTitle'), message); }
     } else {
-      try { await Share.share({ message, title: 'Heimlig Einladung' }); }
-      catch { Alert.alert('Fehler', 'Teilen fehlgeschlagen.'); }
+      try { await Share.share({ message, title: t('household.shareTitle') }); }
+      catch { Alert.alert(t('common.error'), t('household.shareFailedBody')); }
     }
   };
 
   const handleCopy = () => {
     hapticNotification(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Kopiert! ✓', `Code "${inviteCode}" wurde kopiert.`);
+    Alert.alert(t('household.copiedTitle'), t('household.copiedCodeBody', { code: inviteCode }));
   };
 
   return (
@@ -60,27 +61,24 @@ function InviteModal({ visible, onClose, inviteCode, householdName }: {
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <Pressable style={styles.modalSheet}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>Mitglied einladen</Text>
-          <Text style={styles.modalSub}>Teile diesen Code mit deiner Freundin oder Familie.</Text>
+          <Text style={styles.modalTitle}>{t('household.inviteModalTitle')}</Text>
+          <Text style={styles.modalSub}>{t('household.inviteModalSub')}</Text>
 
           {/* Invite Code Display */}
           <TouchableOpacity style={styles.codeBox} onPress={handleCopy} activeOpacity={0.8}>
             <Text style={styles.codeText}>{inviteCode}</Text>
-            <Text style={styles.codeCopyHint}>Tippen zum Kopieren</Text>
+            <Text style={styles.codeCopyHint}>{t('household.tapToCopy')}</Text>
           </TouchableOpacity>
 
           {/* Share Button */}
           <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-            <Text style={styles.shareBtnText}>📤 Einladung teilen</Text>
+            <Text style={styles.shareBtnText}>{t('household.shareInvite')}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.webHint}>
-            💡 Hat die Person kein Android (z.B. iPhone) oder will am PC beitreten? Der Link funktioniert auch
-            im Browser — kein App-Download nötig.
-          </Text>
+          <Text style={styles.webHint}>{t('household.webHint')}</Text>
 
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>Schließen</Text>
+            <Text style={styles.closeBtnText}>{t('common.close')}</Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>
@@ -95,6 +93,7 @@ function JoinModal({ visible, onClose, onJoin }: {
   onJoin: (code: string) => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -113,14 +112,14 @@ function JoinModal({ visible, onClose, onJoin }: {
         <Pressable style={styles.modalOverlay} onPress={onClose}>
           <Pressable style={styles.modalSheet}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Haushalt beitreten</Text>
-            <Text style={styles.modalSub}>Gib den Einladungscode ein den du erhalten hast.</Text>
+            <Text style={styles.modalTitle}>{t('household.joinModalTitle')}</Text>
+            <Text style={styles.modalSub}>{t('household.joinModalSub')}</Text>
             <TextInput
               style={styles.codeInput}
-              placeholder="z.B. AB12CD34"
+              placeholder={t('household.joinCodePlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={code}
-              onChangeText={t => setCode(t.toUpperCase())}
+              onChangeText={val => setCode(val.toUpperCase())}
               autoCapitalize="characters"
               autoFocus
             />
@@ -129,10 +128,10 @@ function JoinModal({ visible, onClose, onJoin }: {
               onPress={handleJoin}
               disabled={!code || loading}
             >
-              <Text style={styles.shareBtnText}>{loading ? 'Suche...' : '🏡 Beitreten'}</Text>
+              <Text style={styles.shareBtnText}>{loading ? t('household.searching') : t('household.joinButton')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-              <Text style={styles.closeBtnText}>Abbrechen</Text>
+              <Text style={styles.closeBtnText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -154,6 +153,7 @@ function EditModal({ visible, title, label, initialValue, secure, placeholder, s
   onSave: (value: string) => Promise<void>;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [value, setValue] = useState(initialValue ?? '');
   const [loading, setLoading] = useState(false);
@@ -185,10 +185,10 @@ function EditModal({ visible, title, label, initialValue, secure, placeholder, s
               autoFocus
             />
             <TouchableOpacity style={[styles.shareBtn, (!value.trim() || loading) && { opacity: 0.4 }]} onPress={handleSave} disabled={!value.trim() || loading}>
-              <Text style={styles.shareBtnText}>{loading ? 'Speichert...' : (saveLabel ?? 'Speichern')}</Text>
+              <Text style={styles.shareBtnText}>{loading ? t('household.savingButton') : (saveLabel ?? t('common.save'))}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-              <Text style={styles.closeBtnText}>Abbrechen</Text>
+              <Text style={styles.closeBtnText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -205,6 +205,7 @@ export default function HouseholdScreen() {
     myHouseholds, loadMyHouseholds, switchHousehold, leaveHousehold, toggleDarkMode, themeId, selectTheme,
     language, selectLanguage } = useStore();
   const { t } = useTranslation();
+  const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [showInvite, setShowInvite] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
@@ -226,9 +227,9 @@ export default function HouseholdScreen() {
 
   const handleLeave = () => {
     if (!household) return;
-    Alert.alert('Haushalt verlassen?', `Möchtest du „${household.name}" wirklich verlassen?`, [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Verlassen', style: 'destructive', onPress: async () => {
+    Alert.alert(t('household.leaveConfirmTitle'), t('household.leaveConfirmBody', { name: household.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('household.leaveButton'), style: 'destructive', onPress: async () => {
           const remaining = await leaveHousehold(household.id);
           if (remaining.length > 0) {
             await switchHousehold(remaining[0].id);
@@ -243,35 +244,35 @@ export default function HouseholdScreen() {
   const handleRenameHousehold = async (name: string) => {
     if (!household) return;
     const { error } = await supabase.from('households').update({ name }).eq('id', household.id);
-    if (error) { Alert.alert('Fehler', error.message); return; }
+    if (error) { Alert.alert(t('common.error'), error.message); return; }
     setHousehold({ ...household, name });
     setShowEditName(false);
   };
 
   const handleToggleGamification = async () => {
     if (!household) return;
-    if (currentMember?.role !== 'admin') { Alert.alert('Keine Berechtigung', 'Nur Admins können das ändern.'); return; }
+    if (currentMember?.role !== 'admin') { Alert.alert(t('household.noPermissionTitle'), t('household.noPermissionChangeSetting')); return; }
     const next = household.gamification_enabled === false; // currently off → turn on
     const { error } = await supabase.from('households').update({ gamification_enabled: next }).eq('id', household.id);
-    if (error) { Alert.alert('Fehler', error.message); return; }
+    if (error) { Alert.alert(t('common.error'), error.message); return; }
     setHousehold({ ...household, gamification_enabled: next });
   };
 
   const handleToggleDigest = async () => {
     if (!household) return;
-    if (currentMember?.role !== 'admin') { Alert.alert('Keine Berechtigung', 'Nur Admins können das ändern.'); return; }
+    if (currentMember?.role !== 'admin') { Alert.alert(t('household.noPermissionTitle'), t('household.noPermissionChangeSetting')); return; }
     const next = !household.digest_enabled;
     const { error } = await supabase.from('households').update({ digest_enabled: next }).eq('id', household.id);
-    if (error) { Alert.alert('Fehler', error.message); return; }
+    if (error) { Alert.alert(t('common.error'), error.message); return; }
     setHousehold({ ...household, digest_enabled: next });
   };
 
   const handleChangePassword = async (password: string) => {
-    if (password.length < 6) { Alert.alert('Zu kurz', 'Das Passwort muss mindestens 6 Zeichen haben.'); return; }
+    if (password.length < 6) { Alert.alert(t('household.passwordTooShortTitle'), t('household.passwordTooShortBody')); return; }
     const { error } = await supabase.auth.updateUser({ password });
-    if (error) { Alert.alert('Fehler', error.message); return; }
+    if (error) { Alert.alert(t('common.error'), error.message); return; }
     setShowChangePw(false);
-    Alert.alert('✓ Geändert', 'Dein Passwort wurde aktualisiert.');
+    Alert.alert(t('household.passwordChangedTitle'), t('household.passwordChangedBody'));
   };
 
   // Calculate this week's scores from completed tasks
@@ -280,11 +281,11 @@ export default function HouseholdScreen() {
     const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
     const scores: Record<string, number> = {};
 
-    tasks.forEach(t => {
-      if (t.completed_at && t.completed_by && t.category !== 'Geburtstag') {
-        const completedDate = new Date(t.completed_at);
+    tasks.forEach(task => {
+      if (task.completed_at && task.completed_by && task.category !== 'Geburtstag') {
+        const completedDate = new Date(task.completed_at);
         if (completedDate >= weekStart && completedDate <= weekEnd) {
-          scores[t.completed_by] = (scores[t.completed_by] || 0) + (t.points || 10);
+          scores[task.completed_by] = (scores[task.completed_by] || 0) + (task.points || 10);
         }
       }
     });
@@ -301,32 +302,32 @@ export default function HouseholdScreen() {
     });
 
     if (error) {
-      Alert.alert('Fehler', error.message || 'Beitreten fehlgeschlagen.');
+      Alert.alert(t('common.error'), error.message || t('household.joinFailed'));
       return;
     }
 
     if (result?.error) {
-      Alert.alert('Nicht gefunden', result.error);
+      Alert.alert(t('household.notFoundTitle'), result.error);
       return;
     }
 
-    Alert.alert('Willkommen! 🎉', `Du bist jetzt Mitglied von "${result.household_name}".`);
+    Alert.alert(t('household.welcomeTitle'), t('household.welcomeBody', { name: result.household_name }));
     setShowJoin(false);
   };
 
   const handleRemoveMember = (memberId: string, memberName: string) => {
     if (currentMember?.role !== 'admin') {
-      Alert.alert('Keine Berechtigung', 'Nur Admins können Mitglieder entfernen.');
+      Alert.alert(t('household.noPermissionTitle'), t('household.noPermissionRemoveMember'));
       return;
     }
     if (memberId === currentMember?.id) {
-      Alert.alert('Nicht möglich', 'Du kannst dich nicht selbst entfernen.');
+      Alert.alert(t('household.cantRemoveSelfTitle'), t('household.cantRemoveSelfBody'));
       return;
     }
-    Alert.alert('Mitglied entfernen', `${memberName} aus dem Haushalt entfernen?`, [
-      { text: 'Abbrechen', style: 'cancel' },
+    Alert.alert(t('household.removeMemberTitle'), t('household.removeMemberBody', { name: memberName }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Entfernen', style: 'destructive', onPress: async () => {
+        text: t('household.removeButton'), style: 'destructive', onPress: async () => {
           await supabase.from('members').delete().eq('id', memberId);
           setMembers(members.filter(m => m.id !== memberId));
           hapticNotification(Haptics.NotificationFeedbackType.Warning);
@@ -359,15 +360,15 @@ export default function HouseholdScreen() {
       <View style={styles.header}>
         <TouchableOpacity disabled={myHouseholds.length <= 1} onPress={() => setShowSwitcher(true)} activeOpacity={0.7}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Text style={styles.headerTitle}>👥 Haushalt</Text>
+            <Text style={styles.headerTitle}>👥 {t('household.headerTitle')}</Text>
             <ThemeMotif />
           </View>
           <Text style={styles.headerSub}>
-            {household?.name ?? 'Mein Haushalt'}{myHouseholds.length > 1 ? '  ▾' : ''}
+            {household?.name ?? t('shopping.defaultHouseholdName')}{myHouseholds.length > 1 ? '  ▾' : ''}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.inviteBtn} onPress={() => setShowInvite(true)}>
-          <Text style={styles.inviteBtnText}>+ Einladen</Text>
+          <Text style={styles.inviteBtnText}>{t('household.inviteButton')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -378,8 +379,8 @@ export default function HouseholdScreen() {
           <View style={styles.inviteBannerLeft}>
             <Text style={styles.inviteBannerEmoji}>📨</Text>
             <View>
-              <Text style={styles.inviteBannerTitle}>Jemanden einladen</Text>
-              <Text style={styles.inviteBannerSub}>Code teilen: <Text style={styles.inviteBannerCode}>{household?.invite_code}</Text></Text>
+              <Text style={styles.inviteBannerTitle}>{t('household.inviteBannerTitle')}</Text>
+              <Text style={styles.inviteBannerSub}>{t('household.inviteBannerSub')}<Text style={styles.inviteBannerCode}>{household?.invite_code}</Text></Text>
             </View>
           </View>
           <Text style={styles.inviteBannerArrow}>›</Text>
@@ -388,8 +389,8 @@ export default function HouseholdScreen() {
         {/* Weekly Score */}
         {household?.gamification_enabled !== false && members.length > 1 && totalWeekPoints > 0 && (
           <View style={styles.scoreCard}>
-            <Text style={styles.scoreTitle}>🏆 Diese Woche</Text>
-            <Text style={styles.scoreWeek}>{format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'dd. MMM', { locale: de })} – {format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'dd. MMM', { locale: de })}</Text>
+            <Text style={styles.scoreTitle}>{t('household.thisWeek')}</Text>
+            <Text style={styles.scoreWeek}>{format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'dd. MMM', { locale: dateLocale })} – {format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'dd. MMM', { locale: dateLocale })}</Text>
             {members.map((m, i) => {
               const score = weekScores[m.id] || 0;
               const maxScore = Math.max(...members.map(mem => weekScores[mem.id] || 0));
@@ -402,7 +403,7 @@ export default function HouseholdScreen() {
                   <View style={styles.scoreBarWrap}>
                     <View style={[styles.scoreBarFill, { width: maxScore > 0 ? `${(score / maxScore) * 100}%` : '0%', backgroundColor: m.avatar_color }]} />
                   </View>
-                  <Text style={styles.scorePoints}>{score} Pkt</Text>
+                  <Text style={styles.scorePoints}>{t('household.points', { count: score })}</Text>
                 </View>
               );
             })}
@@ -410,11 +411,11 @@ export default function HouseholdScreen() {
         )}
 
         {/* Members */}
-        <Text style={styles.sectionTitle}>Mitglieder ({members.length})</Text>
+        <Text style={styles.sectionTitle}>{t('household.membersCount', { count: members.length })}</Text>
         {members.map(m => {
           const isMe = m.id === currentMember?.id;
           const expense = memberExpenses[m.id] || 0;
-          const tasksCompleted = tasks.filter(t => t.completed_by === m.id).length;
+          const tasksCompleted = tasks.filter(task => task.completed_by === m.id).length;
 
           return (
             <View key={m.id} style={styles.memberCard}>
@@ -422,12 +423,12 @@ export default function HouseholdScreen() {
               <View style={styles.memberInfo}>
                 <View style={styles.memberNameRow}>
                   <Text style={styles.memberName}>{m.display_name}</Text>
-                  {isMe && <View style={styles.meBadge}><Text style={styles.meBadgeText}>Du</Text></View>}
-                  {m.role === 'admin' && <View style={styles.adminBadge}><Text style={styles.adminBadgeText}>Admin</Text></View>}
+                  {isMe && <View style={styles.meBadge}><Text style={styles.meBadgeText}>{t('household.youBadge')}</Text></View>}
+                  {m.role === 'admin' && <View style={styles.adminBadge}><Text style={styles.adminBadgeText}>{t('household.adminBadge')}</Text></View>}
                 </View>
                 <View style={styles.memberStats}>
-                  <Text style={styles.memberStat}>✅ {tasksCompleted} erledigt</Text>
-                  {expense > 0 && <Text style={styles.memberStat}>💶 € {expense.toFixed(0)} diesen Monat</Text>}
+                  <Text style={styles.memberStat}>{t('household.tasksCompleted', { count: tasksCompleted })}</Text>
+                  {expense > 0 && <Text style={styles.memberStat}>{t('household.thisMonth', { amount: expense.toFixed(0) })}</Text>}
                 </View>
               </View>
               {!isMe && currentMember?.role === 'admin' && (
@@ -441,30 +442,30 @@ export default function HouseholdScreen() {
 
         {/* Join another household */}
         <TouchableOpacity style={styles.joinBtn} onPress={() => setShowJoin(true)}>
-          <Text style={styles.joinBtnText}>🔑 Anderem Haushalt beitreten</Text>
+          <Text style={styles.joinBtnText}>{t('household.joinOtherHousehold')}</Text>
         </TouchableOpacity>
 
         {/* Household Info */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Haushalt-Info</Text>
+          <Text style={styles.infoTitle}>{t('household.infoTitle')}</Text>
           <TouchableOpacity
             style={styles.infoRow}
-            onPress={() => currentMember?.role === 'admin' ? setShowEditName(true) : Alert.alert('Keine Berechtigung', 'Nur Admins können den Haushaltsnamen ändern.')}
+            onPress={() => currentMember?.role === 'admin' ? setShowEditName(true) : Alert.alert(t('household.noPermissionTitle'), t('household.noPermissionRenameHousehold'))}
             activeOpacity={0.6}
           >
-            <Text style={styles.infoLabel}>Name</Text>
+            <Text style={styles.infoLabel}>{t('household.infoName')}</Text>
             <Text style={styles.infoValue}>{household?.name}{currentMember?.role === 'admin' ? '  ✏️' : ''}</Text>
           </TouchableOpacity>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Plan</Text>
-            <Text style={styles.infoValue}>{household?.plan_tier === 'free' ? 'Kostenlos' : 'Premium'}</Text>
+            <Text style={styles.infoLabel}>{t('household.infoPlan')}</Text>
+            <Text style={styles.infoValue}>{household?.plan_tier === 'free' ? t('household.planFree') : t('household.planPremium')}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Mitglieder</Text>
+            <Text style={styles.infoLabel}>{t('household.infoMembers')}</Text>
             <Text style={styles.infoValue}>{members.length} / {household?.plan_tier === 'free' ? '3' : '6'}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Einladungscode</Text>
+            <Text style={styles.infoLabel}>{t('household.infoInviteCode')}</Text>
             <Text style={[styles.infoValue, { fontFamily: 'monospace', color: colors.brand }]}>{household?.invite_code}</Text>
           </View>
         </View>
@@ -472,7 +473,7 @@ export default function HouseholdScreen() {
         {/* Dark mode toggle */}
         <TouchableOpacity style={styles.settingsBtn} onPress={toggleDarkMode}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <Text style={styles.settingsBtnText}>{isDark ? '☀️' : '🌙'} Dark Mode</Text>
+            <Text style={styles.settingsBtnText}>{isDark ? '☀️' : '🌙'} {t('household.darkMode')}</Text>
             <View style={[styles.toggle, isDark && styles.toggleOn]}>
               <View style={[styles.toggleThumb, isDark && styles.toggleThumbOn]} />
             </View>
@@ -481,7 +482,7 @@ export default function HouseholdScreen() {
 
         {/* Accent theme picker */}
         <View style={styles.settingsBtn}>
-          <Text style={[styles.settingsBtnText, { alignSelf: 'flex-start' }]}>🎨 Design</Text>
+          <Text style={[styles.settingsBtnText, { alignSelf: 'flex-start' }]}>{t('household.designLabel')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.sm, width: '100%' }} contentContainerStyle={{ gap: spacing.sm }}>
             {APP_THEMES.map(theme => (
               <TouchableOpacity
@@ -522,59 +523,59 @@ export default function HouseholdScreen() {
         {/* Gamification toggle */}
         <TouchableOpacity style={styles.settingsBtn} onPress={handleToggleGamification}>
           <Text style={styles.settingsBtnText}>
-            🏆 Punkte & Scoreboard: {household?.gamification_enabled === false ? 'Aus' : 'An'}
+            {t('household.scoreboardLabel', { state: household?.gamification_enabled === false ? t('household.off') : t('household.on') })}
           </Text>
         </TouchableOpacity>
 
         {/* Daily digest push toggle */}
         <TouchableOpacity style={styles.settingsBtn} onPress={handleToggleDigest}>
           <Text style={styles.settingsBtnText}>
-            📅 Tages-Erinnerung (8 Uhr): {household?.digest_enabled ? 'An' : 'Aus'}
+            {t('household.dailyDigestLabel', { state: household?.digest_enabled ? t('household.on') : t('household.off') })}
           </Text>
         </TouchableOpacity>
 
         {/* Household notes */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowNotes(true)}>
-          <Text style={styles.settingsBtnText}>📒 Notizen & Infos</Text>
+          <Text style={styles.settingsBtnText}>{t('household.notesLabel')}</Text>
         </TouchableOpacity>
 
         {/* Google Calendar */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowGCal(true)}>
-          <Text style={styles.settingsBtnText}>📅 Google Kalender verbinden</Text>
+          <Text style={styles.settingsBtnText}>{t('household.googleCalendarLabel')}</Text>
         </TouchableOpacity>
 
         {/* Location sharing */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowLocation(true)}>
-          <Text style={styles.settingsBtnText}>📍 Standort teilen</Text>
+          <Text style={styles.settingsBtnText}>{t('household.locationLabel')}</Text>
         </TouchableOpacity>
 
         {/* Change password */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowChangePw(true)}>
-          <Text style={styles.settingsBtnText}>🔑 Passwort ändern</Text>
+          <Text style={styles.settingsBtnText}>{t('household.changePasswordLabel')}</Text>
         </TouchableOpacity>
 
         {/* Legal */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push('/impressum')}>
-          <Text style={styles.settingsBtnText}>📄 Impressum</Text>
+          <Text style={styles.settingsBtnText}>{t('household.imprintLabel')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push('/datenschutz')}>
-          <Text style={styles.settingsBtnText}>🔒 Datenschutz</Text>
+          <Text style={styles.settingsBtnText}>{t('household.privacyLabel')}</Text>
         </TouchableOpacity>
 
         {/* Leave household */}
         <TouchableOpacity style={styles.settingsBtn} onPress={handleLeave}>
-          <Text style={[styles.settingsBtnText, { color: colors.error }]}>🚪 Haushalt verlassen</Text>
+          <Text style={[styles.settingsBtnText, { color: colors.error }]}>{t('household.leaveHouseholdLabel')}</Text>
         </TouchableOpacity>
 
         {/* Sign out */}
         <TouchableOpacity
           style={styles.signOutBtn}
-          onPress={() => Alert.alert('Abmelden', 'Wirklich abmelden?', [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Abmelden', style: 'destructive', onPress: () => supabase.auth.signOut() }
+          onPress={() => Alert.alert(t('household.signOutConfirmTitle'), t('household.signOutConfirmBody'), [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('household.signOutButton'), style: 'destructive', onPress: () => supabase.auth.signOut() }
           ])}
         >
-          <Text style={styles.signOutBtnText}>Abmelden</Text>
+          <Text style={styles.signOutBtnText}>{t('household.signOutButton')}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />
@@ -596,9 +597,9 @@ export default function HouseholdScreen() {
       />
       <EditModal
         visible={showEditName}
-        title="Haushalt umbenennen"
-        label="Neuer Name für euren Haushalt"
-        placeholder="z.B. Unser Zuhause"
+        title={t('household.renameTitle')}
+        label={t('household.renameLabel')}
+        placeholder={t('household.renamePlaceholder')}
         initialValue={household?.name}
         onClose={() => setShowEditName(false)}
         onSave={handleRenameHousehold}
@@ -607,15 +608,15 @@ export default function HouseholdScreen() {
         <Pressable style={styles.modalOverlay} onPress={() => setShowSwitcher(false)}>
           <Pressable style={styles.modalSheet}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Haushalt wechseln</Text>
+            <Text style={styles.modalTitle}>{t('household.switchHouseholdTitle')}</Text>
             {myHouseholds.map(h => (
               <TouchableOpacity key={h.id} style={styles.switchRow} onPress={() => handleSwitch(h.id)}>
                 <Text style={styles.switchName}>{h.name}</Text>
-                {h.id === household?.id && <Text style={styles.switchActive}>✓ Aktiv</Text>}
+                {h.id === household?.id && <Text style={styles.switchActive}>{t('household.activeLabel')}</Text>}
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={styles.closeBtn} onPress={() => setShowSwitcher(false)}>
-              <Text style={styles.closeBtnText}>Schließen</Text>
+              <Text style={styles.closeBtnText}>{t('common.close')}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -623,11 +624,11 @@ export default function HouseholdScreen() {
 
       <EditModal
         visible={showChangePw}
-        title="Passwort ändern"
-        label="Gib dein neues Passwort ein (mind. 6 Zeichen)"
-        placeholder="Neues Passwort"
+        title={t('household.changePasswordTitle')}
+        label={t('household.changePasswordLabelText')}
+        placeholder={t('household.newPasswordPlaceholder')}
         secure
-        saveLabel="Passwort speichern"
+        saveLabel={t('household.savePasswordButton')}
         onClose={() => setShowChangePw(false)}
         onSave={handleChangePassword}
       />
