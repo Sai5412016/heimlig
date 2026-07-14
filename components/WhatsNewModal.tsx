@@ -1,6 +1,7 @@
 // components/WhatsNewModal.tsx — shows unseen release notes once, after an update.
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, shadow, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
@@ -8,6 +9,7 @@ import { getUnseenChangelog, markChangelogSeen, type ChangelogEntry } from '../l
 
 export default function WhatsNewModal() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const household = useStore(s => s.household);
   const [entries, setEntries] = useState<ChangelogEntry[]>([]);
@@ -35,8 +37,8 @@ export default function WhatsNewModal() {
     <Modal visible transparent animationType="fade" onRequestClose={close}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
-          <Text style={styles.heading}>🎉 Was ist neu</Text>
-          <Text style={styles.subheading}>Das ist seit deinem letzten Update dazugekommen:</Text>
+          <Text style={styles.heading}>{t('whatsNew.heading')}</Text>
+          <Text style={styles.subheading}>{t('whatsNew.subheading')}</Text>
           <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
             {entries.map(e => (
               <View key={e.version_code} style={styles.block}>
@@ -51,7 +53,7 @@ export default function WhatsNewModal() {
             ))}
           </ScrollView>
           <TouchableOpacity style={styles.btn} onPress={close} activeOpacity={0.85}>
-            <Text style={styles.btnText}>Alles klar!</Text>
+            <Text style={styles.btnText}>{t('whatsNew.closeButton')}</Text>
           </TouchableOpacity>
         </View>
       </View>

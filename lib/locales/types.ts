@@ -396,4 +396,9 @@ export interface AppTranslations {
     novaLabel: string;
     organicLabel: string;
   };
+  whatsNew: {
+    heading: string;
+    subheading: string;
+    closeButton: string;
+  };
 }

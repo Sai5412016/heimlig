@@ -397,4 +397,9 @@ export const de: AppTranslations = {
     novaLabel: 'NOVA {{group}}',
     organicLabel: '🌱 Bio',
   },
+  whatsNew: {
+    heading: '🎉 Was ist neu',
+    subheading: 'Das ist seit deinem letzten Update dazugekommen:',
+    closeButton: 'Alles klar!',
+  },
 };
