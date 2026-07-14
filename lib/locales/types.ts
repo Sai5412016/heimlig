@@ -642,4 +642,72 @@ export interface AppTranslations {
     pointsToast: string;
     icsImportFailedBody: string;
   };
+  rewards: {
+    title: string;
+    balanceLabel: string;
+    balanceUnit: string;
+    emptyBody: string;
+    costLabel: string;
+    redeemButton: string;
+    notEnoughTitle: string;
+    notEnoughBody: string;
+    redeemConfirmTitle: string;
+    redeemConfirmBody: string;
+    redeemedTitle: string;
+    redeemedBody: string;
+    deleteConfirmTitle: string;
+    addPlaceholder: string;
+    costFieldLabel: string;
+    addButton: string;
+    newButton: string;
+    historyLabel: string;
+  };
+  joinPage: {
+    title: string;
+    webOpening: string;
+    loginPrompt: string;
+    invitedPrompt: string;
+    joinButton: string;
+    welcomeBody: string;
+    goToApp: string;
+    defaultMemberName: string;
+    joinFailedBody: string;
+  };
+  resetPassword: {
+    title: string;
+    nativeBody: string;
+    invalidBody: string;
+    backToApp: string;
+    confirmPasswordPlaceholder: string;
+    tooShortError: string;
+    mismatchError: string;
+    doneBody: string;
+  };
+  appUpdate: {
+    title: string;
+    defaultBody: string;
+    later: string;
+    updateButton: string;
+  };
+  productScore: {
+    labelExcellent: string;
+    labelGood: string;
+    labelModerate: string;
+    labelPoor: string;
+    tooMuchSugar: string;
+    lowSugar: string;
+    tooMuchSalt: string;
+    lowSalt: string;
+    highSaturatedFat: string;
+    lowSaturatedFat: string;
+    highFiber: string;
+    highProtein: string;
+    highlyProcessed: string;
+    unprocessed: string;
+    noAdditives: string;
+    containsAdditives_one: string;
+    containsAdditives_other: string;
+    organicCertified: string;
+    unknownProduct: string;
+  };
 }

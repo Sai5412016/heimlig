@@ -4,6 +4,7 @@ import {
   View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, TextInput, Pressable,
 } from 'react-native';
 import { Alert } from '../lib/alert';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
@@ -13,6 +14,7 @@ const REWARD_EMOJIS = ['🎁', '🍕', '🍦', '🎮', '📺', '🎬', '💸', '
 
 export default function RewardsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { currentMember, members, rewards, redemptions, loadRewards, addReward, deleteReward, redeemReward, rewardBalance } = useStore();
   const [adding, setAdding] = useState(false);
@@ -33,20 +35,20 @@ export default function RewardsModal({ visible, onClose }: { visible: boolean; o
 
   const handleRedeem = (reward: Reward) => {
     if (!currentMember) return;
-    if (myBalance < reward.cost) { Alert.alert('Nicht genug Punkte', `Du brauchst ${reward.cost} Punkte, hast aber ${myBalance}.`); return; }
-    Alert.alert(`${reward.emoji ?? '🎁'} ${reward.title} einlösen?`, `Das kostet ${reward.cost} Punkte. Du hast ${myBalance}.`, [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Einlösen', onPress: async () => {
+    if (myBalance < reward.cost) { Alert.alert(t('rewards.notEnoughTitle'), t('rewards.notEnoughBody', { cost: reward.cost, balance: myBalance })); return; }
+    Alert.alert(t('rewards.redeemConfirmTitle', { emoji: reward.emoji ?? '🎁', title: reward.title }), t('rewards.redeemConfirmBody', { cost: reward.cost, balance: myBalance }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('rewards.redeemButton'), onPress: async () => {
         const ok = await redeemReward(reward, currentMember.id);
-        if (ok) Alert.alert('🎉 Eingelöst!', `Viel Spaß mit „${reward.title}"!`);
+        if (ok) Alert.alert(t('rewards.redeemedTitle'), t('rewards.redeemedBody', { title: reward.title }));
       } },
     ]);
   };
 
   const confirmDeleteReward = (reward: Reward) => {
-    Alert.alert('Belohnung löschen?', reward.title, [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: () => deleteReward(reward.id) },
+    Alert.alert(t('rewards.deleteConfirmTitle'), reward.title, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteReward(reward.id) },
     ]);
   };
 
@@ -56,16 +58,16 @@ export default function RewardsModal({ visible, onClose }: { visible: boolean; o
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)' }]} onPress={onClose} />
         <View style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.title}>🎁 Belohnungen</Text>
+          <Text style={styles.title}>{t('rewards.title')}</Text>
 
           <View style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>Dein Guthaben</Text>
-            <Text style={styles.balanceValue}>{myBalance} <Text style={styles.balanceUnit}>Punkte</Text></Text>
+            <Text style={styles.balanceLabel}>{t('rewards.balanceLabel')}</Text>
+            <Text style={styles.balanceValue}>{myBalance} <Text style={styles.balanceUnit}>{t('rewards.balanceUnit')}</Text></Text>
           </View>
 
           <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
             {rewards.length === 0 && !adding && (
-              <Text style={styles.empty}>Noch keine Belohnungen. Legt welche an – z. B. „Pizza-Abend" oder „1h Bildschirmzeit".</Text>
+              <Text style={styles.empty}>{t('rewards.emptyBody')}</Text>
             )}
 
             {rewards.map(r => {
@@ -75,7 +77,7 @@ export default function RewardsModal({ visible, onClose }: { visible: boolean; o
                   <Text style={styles.rewardEmoji}>{r.emoji ?? '🎁'}</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.rewardTitle}>{r.title}</Text>
-                    <Text style={styles.rewardCost}>{r.cost} Punkte</Text>
+                    <Text style={styles.rewardCost}>{t('rewards.costLabel', { cost: r.cost })}</Text>
                   </View>
                   <TouchableOpacity onPress={() => confirmDeleteReward(r)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                     <Text style={styles.trash}>🗑</Text>
@@ -85,7 +87,7 @@ export default function RewardsModal({ visible, onClose }: { visible: boolean; o
                     onPress={() => handleRedeem(r)}
                     disabled={!affordable}
                   >
-                    <Text style={[styles.redeemBtnText, !affordable && { color: colors.textMuted }]}>Einlösen</Text>
+                    <Text style={[styles.redeemBtnText, !affordable && { color: colors.textMuted }]}>{t('rewards.redeemButton')}</Text>
                   </TouchableOpacity>
                 </View>
               );
@@ -104,36 +106,36 @@ export default function RewardsModal({ visible, onClose }: { visible: boolean; o
                 </ScrollView>
                 <TextInput
                   style={styles.input}
-                  placeholder="Belohnung (z. B. Pizza-Abend)"
+                  placeholder={t('rewards.addPlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   value={title}
                   onChangeText={setTitle}
                 />
                 <View style={styles.costRow}>
-                  <Text style={styles.costLabel}>Kosten</Text>
+                  <Text style={styles.costLabel}>{t('rewards.costFieldLabel')}</Text>
                   <TouchableOpacity style={styles.stepBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={() => setCost(c => Math.max(5, c - 5))}><Text style={styles.stepBtnText}>−</Text></TouchableOpacity>
                   <Text style={styles.costValue}>{cost}</Text>
                   <TouchableOpacity style={styles.stepBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={() => setCost(c => c + 5)}><Text style={styles.stepBtnText}>+</Text></TouchableOpacity>
-                  <Text style={styles.costLabel}>Punkte</Text>
+                  <Text style={styles.costLabel}>{t('rewards.balanceUnit')}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                   <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.border, flex: 1 }]} onPress={() => setAdding(false)}>
-                    <Text style={[styles.addBtnText, { color: colors.text }]}>Abbrechen</Text>
+                    <Text style={[styles.addBtnText, { color: colors.text }]}>{t('common.cancel')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.addBtn, { flex: 1 }, !title.trim() && { opacity: 0.5 }]} onPress={handleAdd} disabled={!title.trim()}>
-                    <Text style={styles.addBtnText}>Hinzufügen</Text>
+                    <Text style={styles.addBtnText}>{t('rewards.addButton')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ) : (
               <TouchableOpacity style={styles.newBtn} onPress={() => setAdding(true)}>
-                <Text style={styles.newBtnText}>+ Neue Belohnung</Text>
+                <Text style={styles.newBtnText}>{t('rewards.newButton')}</Text>
               </TouchableOpacity>
             )}
 
             {redemptions.length > 0 && (
               <>
-                <Text style={styles.histLabel}>VERLAUF</Text>
+                <Text style={styles.histLabel}>{t('rewards.historyLabel')}</Text>
                 {redemptions.slice(0, 15).map(rd => (
                   <View key={rd.id} style={styles.histRow}>
                     <Text style={styles.histText}>{rd.emoji ?? '🎁'} {rd.title}</Text>
@@ -145,7 +147,7 @@ export default function RewardsModal({ visible, onClose }: { visible: boolean; o
           </ScrollView>
 
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>Schließen</Text>
+            <Text style={styles.closeBtnText}>{t('common.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>

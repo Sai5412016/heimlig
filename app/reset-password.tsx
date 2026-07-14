@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, radius, typography, shadow } from '../constants/theme';
 import { supabase } from '../lib/supabase';
@@ -28,6 +29,7 @@ function parseHashParams(hash: string): Record<string, string> {
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [status, setStatus] = useState<Status>('checking');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -61,8 +63,8 @@ export default function ResetPasswordScreen() {
   }, []);
 
   const handleSubmit = async () => {
-    if (password.length < 10) { setErrorMsg('Mindestens 10 Zeichen.'); return; }
-    if (password !== confirm) { setErrorMsg('Passwörter stimmen nicht überein.'); return; }
+    if (password.length < 10) { setErrorMsg(t('resetPassword.tooShortError')); return; }
+    if (password !== confirm) { setErrorMsg(t('resetPassword.mismatchError')); return; }
     setErrorMsg(null);
     setStatus('saving');
     const { error } = await supabase.auth.updateUser({ password });
@@ -75,19 +77,19 @@ export default function ResetPasswordScreen() {
     <LinearGradient colors={[colors.brandDark, colors.brand, colors.brandLight]} style={styles.fullscreen}>
       <SafeAreaView style={styles.centered}>
         <Text style={styles.logo}>🔑</Text>
-        <Text style={styles.title}>Neues Passwort</Text>
+        <Text style={styles.title}>{t('resetPassword.title')}</Text>
 
         {status === 'checking' && <ActivityIndicator color="#fff" />}
 
         {status === 'native' && (
-          <Text style={styles.sub}>Bitte öffne den Link aus der E-Mail in einem Browser, um dein Passwort zurückzusetzen.</Text>
+          <Text style={styles.sub}>{t('resetPassword.nativeBody')}</Text>
         )}
 
         {status === 'invalid' && (
           <>
-            <Text style={styles.sub}>Der Link ist ungültig oder abgelaufen. Fordere in der App einen neuen Reset-Link an.</Text>
+            <Text style={styles.sub}>{t('resetPassword.invalidBody')}</Text>
             <TouchableOpacity style={styles.primaryBtn} onPress={() => router.replace('/onboarding')}>
-              <Text style={styles.primaryBtnText}>Zurück zur App</Text>
+              <Text style={styles.primaryBtnText}>{t('resetPassword.backToApp')}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -96,7 +98,7 @@ export default function ResetPasswordScreen() {
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center' }}>
             <TextInput
               style={styles.input}
-              placeholder="Neues Passwort"
+              placeholder={t('household.newPasswordPlaceholder')}
               placeholderTextColor="rgba(255,255,255,0.6)"
               secureTextEntry
               value={password}
@@ -104,7 +106,7 @@ export default function ResetPasswordScreen() {
             />
             <TextInput
               style={styles.input}
-              placeholder="Passwort bestätigen"
+              placeholder={t('resetPassword.confirmPasswordPlaceholder')}
               placeholderTextColor="rgba(255,255,255,0.6)"
               secureTextEntry
               value={confirm}
@@ -118,13 +120,13 @@ export default function ResetPasswordScreen() {
             >
               {status === 'saving'
                 ? <ActivityIndicator color={colors.brand} />
-                : <Text style={styles.primaryBtnText}>Speichern</Text>}
+                : <Text style={styles.primaryBtnText}>{t('common.save')}</Text>}
             </TouchableOpacity>
           </KeyboardAvoidingView>
         )}
 
         {status === 'done' && (
-          <Text style={styles.sub}>Passwort gespeichert ✓ Du wirst weitergeleitet…</Text>
+          <Text style={styles.sub}>{t('resetPassword.doneBody')}</Text>
         )}
       </SafeAreaView>
     </LinearGradient>

@@ -8,6 +8,8 @@
 // Note: the exact Yuka algorithm is proprietary; this is an independent approximation built
 // on open data. It is informational, not medical advice.
 
+import i18n from './i18n';
+
 const OFF_ENDPOINT = 'https://world.openfoodfacts.org/api/v2/product';
 const OFF_FIELDS = [
   'code', 'product_name', 'product_name_de', 'brands',
@@ -126,33 +128,33 @@ export function scoreProduct(p: any): HealthRating {
   // ── Breakdown via nutrient levels (low/moderate/high) ──
   const lv = p?.nutrient_levels || {};
   const n = p?.nutriments || {};
-  if (lv.sugars === 'high') negatives.push('Zu viel Zucker');
-  else if (lv.sugars === 'low') positives.push('Wenig Zucker');
-  if (lv.salt === 'high') negatives.push('Zu viel Salz');
-  else if (lv.salt === 'low') positives.push('Wenig Salz');
-  if (lv['saturated-fat'] === 'high') negatives.push('Viele gesättigte Fettsäuren');
-  else if (lv['saturated-fat'] === 'low') positives.push('Wenig gesättigte Fettsäuren');
+  if (lv.sugars === 'high') negatives.push(i18n.t('productScore.tooMuchSugar'));
+  else if (lv.sugars === 'low') positives.push(i18n.t('productScore.lowSugar'));
+  if (lv.salt === 'high') negatives.push(i18n.t('productScore.tooMuchSalt'));
+  else if (lv.salt === 'low') positives.push(i18n.t('productScore.lowSalt'));
+  if (lv['saturated-fat'] === 'high') negatives.push(i18n.t('productScore.highSaturatedFat'));
+  else if (lv['saturated-fat'] === 'low') positives.push(i18n.t('productScore.lowSaturatedFat'));
 
   const fiber = Number(n.fiber_100g);
-  if (!isNaN(fiber) && fiber >= 3) positives.push('Ballaststoffreich');
+  if (!isNaN(fiber) && fiber >= 3) positives.push(i18n.t('productScore.highFiber'));
   const protein = Number(n.proteins_100g);
-  if (!isNaN(protein) && protein >= 8) positives.push('Proteinreich');
+  if (!isNaN(protein) && protein >= 8) positives.push(i18n.t('productScore.highProtein'));
 
   const nova = Number(p?.nova_group);
-  if (nova === 4) negatives.push('Hochverarbeitetes Produkt');
-  else if (nova === 1) positives.push('Unverarbeitet');
+  if (nova === 4) negatives.push(i18n.t('productScore.highlyProcessed'));
+  else if (nova === 1) positives.push(i18n.t('productScore.unprocessed'));
 
-  if (additiveTags.length === 0) positives.push('Keine Zusatzstoffe');
-  else if (highCount > 0) negatives.push(`Enthält ${highCount} bedenkliche${highCount === 1 ? 'n' : ''} Zusatzstoff${highCount === 1 ? '' : 'e'}`);
+  if (additiveTags.length === 0) positives.push(i18n.t('productScore.noAdditives'));
+  else if (highCount > 0) negatives.push(i18n.t(highCount === 1 ? 'productScore.containsAdditives_one' : 'productScore.containsAdditives_other', { count: highCount }));
 
-  if (organic) positives.push('Bio-zertifiziert');
+  if (organic) positives.push(i18n.t('productScore.organicCertified'));
 
   // ── Label + colour band ──
   let label: string, color: string;
-  if (score >= 75) { label = 'Ausgezeichnet'; color = '#2D9E57'; }
-  else if (score >= 50) { label = 'Gut'; color = '#8BC34A'; }
-  else if (score >= 25) { label = 'Mittelmäßig'; color = '#F5A623'; }
-  else { label = 'Schlecht'; color = '#E5573F'; }
+  if (score >= 75) { label = i18n.t('productScore.labelExcellent'); color = '#2D9E57'; }
+  else if (score >= 50) { label = i18n.t('productScore.labelGood'); color = '#8BC34A'; }
+  else if (score >= 25) { label = i18n.t('productScore.labelModerate'); color = '#F5A623'; }
+  else { label = i18n.t('productScore.labelPoor'); color = '#E5573F'; }
 
   const limited = !hasNutri && additiveTags.length === 0 && Object.keys(lv).length === 0;
 
@@ -164,7 +166,7 @@ function parseInfo(p: any, barcode: string): ProductInfo {
     ? p.additives_tags.map(tagToENumber)
     : [];
   const labels: string[] = Array.isArray(p?.labels_tags) ? p.labels_tags : [];
-  const name = (p?.product_name_de || p?.product_name || '').trim() || 'Unbekanntes Produkt';
+  const name = (p?.product_name_de || p?.product_name || '').trim() || i18n.t('productScore.unknownProduct');
   const brand = (typeof p?.brands === 'string' ? p.brands.split(',')[0].trim() : '') || undefined;
   return {
     barcode,

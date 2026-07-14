@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, radius, typography, shadow } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
@@ -14,6 +15,7 @@ export default function JoinByCode() {
   const { code: rawCode } = useLocalSearchParams<{ code: string }>();
   const code = String(rawCode || '').toUpperCase().trim();
   const router = useRouter();
+  const { t } = useTranslation();
   const { currentMember } = useStore();
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
@@ -48,7 +50,7 @@ export default function JoinByCode() {
 
       const { data: result, error } = await supabase.rpc('join_household_by_code', {
         p_invite_code: code,
-        p_display_name: member?.display_name ?? 'Mitglied',
+        p_display_name: member?.display_name ?? t('joinPage.defaultMemberName'),
         p_avatar_color: member?.avatar_color ?? colors.brand,
       });
 
@@ -60,7 +62,7 @@ export default function JoinByCode() {
       setTimeout(() => router.replace('/(tabs)'), 1400);
     } catch (e: any) {
       setStatus('error');
-      setMessage(e?.message ?? 'Beitreten fehlgeschlagen.');
+      setMessage(e?.message ?? t('joinPage.joinFailedBody'));
     }
   };
 
@@ -68,24 +70,24 @@ export default function JoinByCode() {
     <LinearGradient colors={[colors.brandDark, colors.brand, colors.brandLight]} style={styles.fullscreen}>
       <SafeAreaView style={styles.centered}>
         <Text style={styles.logo}>🔑</Text>
-        <Text style={styles.title}>Haushalt beitreten</Text>
+        <Text style={styles.title}>{t('joinPage.title')}</Text>
 
         {status === 'web' && (
-          <Text style={styles.sub}>App wird geöffnet… Falls nichts passiert, installiere zuerst Heimlig.</Text>
+          <Text style={styles.sub}>{t('joinPage.webOpening')}</Text>
         )}
 
         {status === 'login' && (
           <>
-            <Text style={styles.sub}>Bitte logge dich zuerst ein oder erstelle einen Account. Danach kannst du mit dem Code {code} beitreten.</Text>
+            <Text style={styles.sub}>{t('joinPage.loginPrompt', { code })}</Text>
             <TouchableOpacity style={styles.primaryBtn} onPress={() => router.replace('/onboarding')}>
-              <Text style={styles.primaryBtnText}>Zum Login →</Text>
+              <Text style={styles.primaryBtnText}>{t('onboarding.goToLoginButton')}</Text>
             </TouchableOpacity>
           </>
         )}
 
         {(status === 'idle' || status === 'joining') && Platform.OS !== 'web' && (
           <>
-            <Text style={styles.sub}>Du wurdest eingeladen. Mit diesem Code beitreten:</Text>
+            <Text style={styles.sub}>{t('joinPage.invitedPrompt')}</Text>
             <View style={styles.codeBox}><Text style={styles.codeText}>{code}</Text></View>
             <TouchableOpacity
               style={[styles.primaryBtn, status === 'joining' && styles.disabled]}
@@ -94,20 +96,20 @@ export default function JoinByCode() {
             >
               {status === 'joining'
                 ? <ActivityIndicator color={colors.brand} />
-                : <Text style={styles.primaryBtnText}>Beitreten 🎉</Text>}
+                : <Text style={styles.primaryBtnText}>{t('joinPage.joinButton')}</Text>}
             </TouchableOpacity>
           </>
         )}
 
         {status === 'done' && (
-          <Text style={styles.sub}>Willkommen! 🎉 Du bist jetzt Mitglied von „{message}".</Text>
+          <Text style={styles.sub}>{t('joinPage.welcomeBody', { name: message })}</Text>
         )}
 
         {status === 'error' && (
           <>
             <Text style={styles.errorText}>{message}</Text>
             <TouchableOpacity style={styles.secondaryBtn} onPress={() => router.replace('/(tabs)')}>
-              <Text style={styles.secondaryBtnText}>Zur App</Text>
+              <Text style={styles.secondaryBtnText}>{t('joinPage.goToApp')}</Text>
             </TouchableOpacity>
           </>
         )}
