@@ -8,11 +8,11 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, type WebViewNavigation } from 'react-native-webview';
 import { Alert } from '../lib/alert';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
+import { useStore } from '../store/useStore';
 import type { RawTimeTreeEvent } from '../lib/timetreeEvents';
-
-const SIGNIN_URL = 'https://timetreeapp.com/signin?locale=de';
 
 // Runs inside TimeTree's own page after login. `credentials: 'include'` makes the browser
 // attach the session cookie automatically, same as if the user opened these URLs themselves.
@@ -49,6 +49,9 @@ export default function TimeTreeWebViewModal({ visible, onClose, onEvents }: {
   onEvents: (events: RawTimeTreeEvent[]) => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const language = useStore(s => s.language);
+  const signinUrl = `https://timetreeapp.com/signin?locale=${language}`;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const webviewRef = useRef<WebView>(null);
   const [loggedIn, setLoggedIn] = useState(false);
@@ -77,10 +80,10 @@ export default function TimeTreeWebViewModal({ visible, onClose, onEvents }: {
       if (payload.ok) {
         onEvents(payload.events || []);
       } else {
-        Alert.alert('Fehler', `Termine konnten nicht geladen werden: ${payload.error || 'unbekannter Fehler'}`);
+        Alert.alert(t('timetree.loadFailedTitle'), t('timetree.loadFailedBody', { error: payload.error || t('timetree.unknownError') }));
       }
     } catch {
-      Alert.alert('Fehler', 'Antwort von TimeTree konnte nicht gelesen werden.');
+      Alert.alert(t('timetree.loadFailedTitle'), t('timetree.parseFailedBody'));
     }
   };
 
@@ -89,21 +92,15 @@ export default function TimeTreeWebViewModal({ visible, onClose, onEvents }: {
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.headerBtn}>Abbrechen</Text>
+            <Text style={styles.headerBtn}>{t('common.cancel')}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Mit TimeTree anmelden</Text>
+          <Text style={styles.headerTitle}>{t('timetree.headerTitle')}</Text>
           <View style={{ width: 70 }} />
         </View>
-        <Text style={styles.hint}>
-          Melde dich hier mit deinem TimeTree-Konto an — deine Zugangsdaten laufen direkt an TimeTree, nie über
-          Heimlig. Hinweis: Google-Login blockiert Google leider in eingebetteten Ansichten wie dieser („Dieser
-          Browser ist evtl. nicht sicher"). Nutze stattdessen E-Mail + Passwort — falls dein TimeTree-Konto nur
-          per Google angelegt wurde, kannst du bei TimeTree über „Passwort vergessen" eins für dieselbe
-          E-Mail-Adresse setzen.
-        </Text>
+        <Text style={styles.hint}>{t('timetree.hint')}</Text>
         <WebView<{}>
           ref={webviewRef}
-          source={{ uri: SIGNIN_URL }}
+          source={{ uri: signinUrl }}
           onNavigationStateChange={handleNavChange}
           onMessage={handleMessage}
           sharedCookiesEnabled
@@ -114,7 +111,7 @@ export default function TimeTreeWebViewModal({ visible, onClose, onEvents }: {
           <TouchableOpacity style={styles.fetchBtn} onPress={handleFetch} disabled={fetching} activeOpacity={0.85}>
             {fetching
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.fetchBtnText}>📥 Termine importieren</Text>}
+              : <Text style={styles.fetchBtnText}>{t('timetree.importButton')}</Text>}
           </TouchableOpacity>
         )}
       </SafeAreaView>

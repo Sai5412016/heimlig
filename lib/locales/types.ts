@@ -416,4 +416,13 @@ export interface AppTranslations {
     titleHelper: string;
     titleNewbie: string;
   };
+  timetree: {
+    headerTitle: string;
+    hint: string;
+    importButton: string;
+    loadFailedTitle: string;
+    loadFailedBody: string;
+    parseFailedBody: string;
+    unknownError: string;
+  };
 }

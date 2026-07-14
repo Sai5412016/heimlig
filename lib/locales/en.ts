@@ -418,4 +418,13 @@ export const en: AppTranslations = {
     titleHelper: 'Cleaning Helper 🧹',
     titleNewbie: 'Newbie 🐣',
   },
+  timetree: {
+    headerTitle: 'Sign in with TimeTree',
+    hint: 'Sign in here with your TimeTree account — your credentials go straight to TimeTree, never through Heimlig. Note: Google blocks Google sign-in in embedded views like this one ("This browser may not be secure"). Use email + password instead — if your TimeTree account was only ever set up with Google, you can set a password for the same email address via TimeTree\'s "Forgot password".',
+    importButton: '📥 Import events',
+    loadFailedTitle: 'Error',
+    loadFailedBody: 'Could not load events: {{error}}',
+    parseFailedBody: 'Could not read the response from TimeTree.',
+    unknownError: 'unknown error',
+  },
 };

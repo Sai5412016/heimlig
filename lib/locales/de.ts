@@ -417,4 +417,13 @@ export const de: AppTranslations = {
     titleHelper: 'Putzhilfe 🧹',
     titleNewbie: 'Frischling 🐣',
   },
+  timetree: {
+    headerTitle: 'Mit TimeTree anmelden',
+    hint: 'Melde dich hier mit deinem TimeTree-Konto an — deine Zugangsdaten laufen direkt an TimeTree, nie über Heimlig. Hinweis: Google-Login blockiert Google leider in eingebetteten Ansichten wie dieser („Dieser Browser ist evtl. nicht sicher"). Nutze stattdessen E-Mail + Passwort — falls dein TimeTree-Konto nur per Google angelegt wurde, kannst du bei TimeTree über „Passwort vergessen" eins für dieselbe E-Mail-Adresse setzen.',
+    importButton: '📥 Termine importieren',
+    loadFailedTitle: 'Fehler',
+    loadFailedBody: 'Termine konnten nicht geladen werden: {{error}}',
+    parseFailedBody: 'Antwort von TimeTree konnte nicht gelesen werden.',
+    unknownError: 'unbekannter Fehler',
+  },
 };
