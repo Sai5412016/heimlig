@@ -852,7 +852,7 @@ function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
   tasks: Task[]; onDayPress: (date: Date) => void; selectedDate: Date | null; mealPlans: MealPlan[];
 }) {
   const { colors } = useTheme();
-  const language = useStore(s => s.language);
+  const { language, household } = useStore();
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -889,7 +889,7 @@ function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
           const hasMeal = mealPlans.some(m => m.planned_date === key);
           const isSelected = selectedDate && isSameDay(day, selectedDate);
           const isToday_ = isToday(day);
-          const holiday = holidayName(key);
+          const holiday = holidayName(key, household?.country);
 
           const MAX_EMOJIS = 3;
           const allEvents: { emoji: string; color: string }[] = [
@@ -952,7 +952,7 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
 }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const language = useStore(s => s.language);
+  const { language, household } = useStore();
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -986,7 +986,7 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
           const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
           const isSelected = selectedDate && isSameDay(day, selectedDate);
           const isToday_ = isToday(day);
-          const holiday = holidayName(key);
+          const holiday = holidayName(key, household?.country);
           const barColors = [
             ...dayTasks.map(task => task.completed_at ? colors.textMuted : catColor(task.category)),
             ...(mealPlans.some(m => m.planned_date === key) ? ['#FF6B35'] : []),
@@ -1025,12 +1025,12 @@ function MemberDayView({ tasks, members, date, onDateChange }: {
 }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const language = useStore(s => s.language);
+  const { language, household } = useStore();
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const dateKey = format(date, 'yyyy-MM-dd');
   const hours = Array.from({ length: DAY_END_HOUR - DAY_START_HOUR + 1 }, (_, i) => DAY_START_HOUR + i);
-  const holiday = holidayName(dateKey);
+  const holiday = holidayName(dateKey, household?.country);
 
   const tasksByMember: Record<string, Task[]> = {};
   tasks.forEach(task => {
@@ -1612,8 +1612,8 @@ export default function TasksScreen() {
           <View style={styles.selectedDateHeader}>
             <View>
               <Text style={styles.selectedDateText}>{isToday(selectedDate) ? t('recipes.today') : format(selectedDate, 'EEEE, dd. MMMM', { locale: dateLocale })}</Text>
-              {holidayName(format(selectedDate, 'yyyy-MM-dd')) && (
-                <Text style={styles.selectedDateHoliday}>🎉 {holidayName(format(selectedDate, 'yyyy-MM-dd'))}</Text>
+              {holidayName(format(selectedDate, 'yyyy-MM-dd'), household?.country) && (
+                <Text style={styles.selectedDateHoliday}>🎉 {holidayName(format(selectedDate, 'yyyy-MM-dd'), household?.country)}</Text>
               )}
             </View>
             <TouchableOpacity onPress={() => { setPhotoPrefill(null); setShowModal(true); }}>

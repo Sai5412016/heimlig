@@ -15,6 +15,8 @@ export interface AppTranslations {
     languageGerman: string;
     languageEnglish: string;
     currency: string;
+    timezone: string;
+    country: string;
   };
   common: {
     add: string;

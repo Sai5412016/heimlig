@@ -17,6 +17,8 @@ export const en: AppTranslations = {
     languageGerman: 'Deutsch',
     languageEnglish: 'English',
     currency: 'Currency',
+    timezone: 'Timezone',
+    country: 'Country (holidays)',
   },
   common: {
     add: 'Add',

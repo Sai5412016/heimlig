@@ -9,9 +9,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Localization from 'expo-localization';
 import { colors, spacing, radius, typography, shadow, AVATAR_COLORS } from '../constants/theme';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import { CURRENCIES } from '../lib/currency';
+import { TIMEZONES } from '../lib/timezones';
+import { SUPPORTED_COUNTRIES } from '../lib/holidays';
 
 type Step = 'welcome' | 'type' | 'auth' | 'verify' | 'name';
 type HouseholdType = 'couple' | 'wg' | 'family' | 'solo';
@@ -189,9 +193,25 @@ export default function OnboardingScreen() {
       const { household_id, member_id, list_id } = result as any;
 
       // Load the created data for the store
-      const { data: household } = await supabase.from('households').select('*').eq('id', household_id).single();
+      let { data: household } = await supabase.from('households').select('*').eq('id', household_id).single();
       const { data: member } = await supabase.from('members').select('*').eq('id', member_id).single();
       const { data: shoppingList } = await supabase.from('shopping_lists').select('*').eq('id', list_id).single();
+
+      // Guess the household's currency, timezone and country from the device (same idea as the
+      // language auto-detect in app/_layout.tsx) instead of leaving every new household on the
+      // DB defaults of EUR / Europe/Berlin / DE — most of the world matches none of those.
+      const deviceLocale = Localization.getLocales()[0];
+      const deviceCurrency = deviceLocale?.currencyCode;
+      const deviceTimezone = Localization.getCalendars()[0]?.timeZone;
+      const deviceCountry = deviceLocale?.regionCode;
+      const guesses: { currency?: string; timezone?: string; country?: string } = {};
+      if (deviceCurrency && deviceCurrency !== 'EUR' && CURRENCIES.some(c => c.code === deviceCurrency)) guesses.currency = deviceCurrency;
+      if (deviceTimezone && deviceTimezone !== 'Europe/Berlin' && TIMEZONES.includes(deviceTimezone)) guesses.timezone = deviceTimezone;
+      if (deviceCountry && deviceCountry !== 'DE' && SUPPORTED_COUNTRIES.some(c => c.code === deviceCountry)) guesses.country = deviceCountry;
+      if (household && Object.keys(guesses).length > 0) {
+        const { data: updated } = await supabase.from('households').update(guesses).eq('id', household_id).select().single();
+        if (updated) household = updated;
+      }
 
       if (household) setHousehold(household);
       if (member) { setCurrentMember(member); setMembers([member]); }

@@ -13,6 +13,8 @@ const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Pla
 import { colors, spacing, radius, typography, shadow, APP_THEMES, type ColorPalette } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { CURRENCIES, formatCurrency } from '../../lib/currency';
+import { TIMEZONES, timezoneLabel } from '../../lib/timezones';
+import { SUPPORTED_COUNTRIES } from '../../lib/holidays';
 import { useStore } from '../../store/useStore';
 import { useTheme } from '../../hooks/useTheme';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
@@ -274,6 +276,22 @@ export default function HouseholdScreen() {
     const { error } = await supabase.from('households').update({ currency: code }).eq('id', household.id);
     if (error) { Alert.alert(t('common.error'), error.message); return; }
     setHousehold({ ...household, currency: code });
+  };
+
+  const handleSetTimezone = async (tz: string) => {
+    if (!household) return;
+    if (currentMember?.role !== 'admin') { Alert.alert(t('household.noPermissionTitle'), t('household.noPermissionChangeSetting')); return; }
+    const { error } = await supabase.from('households').update({ timezone: tz }).eq('id', household.id);
+    if (error) { Alert.alert(t('common.error'), error.message); return; }
+    setHousehold({ ...household, timezone: tz });
+  };
+
+  const handleSetCountry = async (code: string) => {
+    if (!household) return;
+    if (currentMember?.role !== 'admin') { Alert.alert(t('household.noPermissionTitle'), t('household.noPermissionChangeSetting')); return; }
+    const { error } = await supabase.from('households').update({ country: code }).eq('id', household.id);
+    if (error) { Alert.alert(t('common.error'), error.message); return; }
+    setHousehold({ ...household, country: code });
   };
 
   const handleChangePassword = async (password: string) => {
@@ -542,6 +560,47 @@ export default function HouseholdScreen() {
                   onPress={() => handleSetCurrency(cur.code)}
                 >
                   <Text style={[styles.themeChipText, active && { color: colors.brand, fontWeight: '700' }]}>{cur.symbol} {cur.code}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Timezone picker — used by send_daily_digest() to fire at 8am in the household's own
+            zone instead of a hardcoded Europe/Berlin (also household-wide, same reasoning as
+            currency: one shared digest push per household, not per member). */}
+        <View style={styles.settingsBtn}>
+          <Text style={[styles.settingsBtnText, { alignSelf: 'flex-start' }]}>🕐 {t('settings.timezone')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.sm, width: '100%' }} contentContainerStyle={{ gap: spacing.sm }}>
+            {TIMEZONES.map(tz => {
+              const active = (household?.timezone || 'Europe/Berlin') === tz;
+              return (
+                <TouchableOpacity
+                  key={tz}
+                  style={[styles.themeChip, { width: undefined, paddingHorizontal: spacing.md }, active && { borderColor: colors.brand, backgroundColor: colors.brand + '15' }]}
+                  onPress={() => handleSetTimezone(tz)}
+                >
+                  <Text style={[styles.themeChipText, active && { color: colors.brand, fontWeight: '700' }]}>{timezoneLabel(tz)}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Country picker — drives which public holidays show up in the calendar
+            (lib/holidays.ts, tasks.tsx). Household-wide for the same reason as currency/timezone. */}
+        <View style={styles.settingsBtn}>
+          <Text style={[styles.settingsBtnText, { alignSelf: 'flex-start' }]}>🎉 {t('settings.country')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.sm, width: '100%' }} contentContainerStyle={{ gap: spacing.sm }}>
+            {SUPPORTED_COUNTRIES.map(c => {
+              const active = (household?.country || 'DE') === c.code;
+              return (
+                <TouchableOpacity
+                  key={c.code}
+                  style={[styles.themeChip, { width: undefined, paddingHorizontal: spacing.md }, active && { borderColor: colors.brand, backgroundColor: colors.brand + '15' }]}
+                  onPress={() => handleSetCountry(c.code)}
+                >
+                  <Text style={[styles.themeChipText, active && { color: colors.brand, fontWeight: '700' }]}>{c.flag} {c.code}</Text>
                 </TouchableOpacity>
               );
             })}

@@ -35,6 +35,8 @@ export interface Household {
   timetree_import_enabled?: boolean;
   digest_enabled?: boolean;
   currency?: string;
+  timezone?: string;
+  country?: string;
   created_at: string;
 }
 
