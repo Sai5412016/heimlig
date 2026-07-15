@@ -1277,6 +1277,14 @@ export default function TasksScreen() {
     });
   };
 
+  // Calendar sync endpoints (TimeTree's in particular) return full history, not just upcoming
+  // events — importing those as-is floods the task list with already-happened one-off events
+  // that only show up as overdue and have to be dismissed one by one. Recurring events are kept
+  // regardless of their given date, since the recurrence itself continues going forward.
+  const isPastOneOffEvent = (candidate: { date?: string; recurrence?: string | null }): boolean => {
+    return !candidate.recurrence && !!candidate.date && candidate.date < format(new Date(), 'yyyy-MM-dd');
+  };
+
   const handleImportIcs = async () => {
     try {
       const res = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
@@ -1287,6 +1295,7 @@ export default function TasksScreen() {
 
       const seen = new Set<string>();
       const events = parsed.filter(e => {
+        if (isPastOneOffEvent(e)) return false;
         if (isDuplicateTask(e)) return false;
         const key = `${e.title.toLowerCase().trim()}|${e.recurrence || e.date}|${e.time || ''}`;
         if (seen.has(key)) return false;
@@ -1338,6 +1347,7 @@ export default function TasksScreen() {
     if (!household || !currentMember) return;
     const seen = new Set<string>();
     const fresh = entries.filter(e => {
+      if (isPastOneOffEvent(e)) return false;
       if (isDuplicateTask(e)) return false;
       const key = `${e.title.toLowerCase().trim()}|${e.recurrence || e.date}`;
       if (seen.has(key)) return false;
@@ -1417,6 +1427,7 @@ export default function TasksScreen() {
 
     const seen = new Set<string>();
     const events = parsed.filter(e => {
+      if (isPastOneOffEvent(e)) return false;
       if (isDuplicateTask(e)) return false;
       const key = `${e.title.toLowerCase().trim()}|${e.recurrence || e.date}|${e.time || ''}`;
       if (seen.has(key)) return false;
