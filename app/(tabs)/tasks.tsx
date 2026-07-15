@@ -852,7 +852,8 @@ function WeekView({ tasks, onDayPress, selectedDate, mealPlans }: {
   tasks: Task[]; onDayPress: (date: Date) => void; selectedDate: Date | null; mealPlans: MealPlan[];
 }) {
   const { colors } = useTheme();
-  const { language, household } = useStore();
+  const language = useStore(s => s.language);
+  const household = useStore(s => s.household);
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -952,7 +953,8 @@ function CalendarView({ tasks, onDayPress, selectedDate, mealPlans }: {
 }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const { language, household } = useStore();
+  const language = useStore(s => s.language);
+  const household = useStore(s => s.household);
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -1025,7 +1027,8 @@ function MemberDayView({ tasks, members, date, onDateChange }: {
 }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const { language, household } = useStore();
+  const language = useStore(s => s.language);
+  const household = useStore(s => s.household);
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const dateKey = format(date, 'yyyy-MM-dd');

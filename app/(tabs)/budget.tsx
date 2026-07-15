@@ -62,6 +62,7 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
   const { colors } = useTheme();
   const { t } = useTranslation();
   const household = useStore(s => s.household);
+  const language = useStore(s => s.language);
   const txRecurrenceOptions = [
     { key: null, label: t('budget.recurrenceOnce') },
     { key: 'weekly', label: t('budget.recurrenceWeekly') },
@@ -87,7 +88,12 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
   }, [visible, currentMemberId]);
 
   const handleSave = () => {
-    const num = parseFloat(amount.replace(',', '.'));
+    // German input uses ',' as the decimal separator and '.' for thousands; English input is
+    // the reverse. Only the app-language convention is assumed here (not household.currency),
+    // matching how the amount input itself is presented to the user.
+    const num = language === 'en'
+      ? parseFloat(amount.replace(/,/g, ''))
+      : parseFloat(amount.replace(/\./g, '').replace(',', '.'));
     if (!num || isNaN(num)) return;
     onSave({
       amount: num, description: description.trim() || undefined, category, type,
@@ -205,7 +211,8 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
 }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const { language, household } = useStore();
+  const language = useStore(s => s.language);
+  const household = useStore(s => s.household);
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const progress = total > 0 ? Math.min(amount / total, 1) : 0;
@@ -267,7 +274,8 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
 function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: (id: string) => void; members: any[] }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const { language, household } = useStore();
+  const language = useStore(s => s.language);
+  const household = useStore(s => s.household);
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const catColor = CAT_COLORS[tx.category] || colors.brand;

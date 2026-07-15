@@ -793,13 +793,16 @@ export default function ShoppingScreen() {
             <Text style={styles.progressText}>{t('shopping.progressDone', { checked: checked.length, total: items.length })}</Text>
             {costEstimate.pricedCount > 0 && (
               <Text style={styles.costEstimateText}>
+                {/* lib/pricing.ts's price table is average German supermarket prices in EUR —
+                    always format this in EUR regardless of household.currency, since the number
+                    itself doesn't change (there's no conversion), only the symbol would. */}
                 {costEstimate.pricedCount < costEstimate.totalCount
                   ? t('shopping.costEstimatePartial', {
-                      total: formatCurrency(costEstimate.total, household?.currency, language),
+                      total: formatCurrency(costEstimate.total, 'EUR', language),
                       priced: costEstimate.pricedCount, totalCount: costEstimate.totalCount,
                     })
                   : t('shopping.costEstimate', {
-                      total: formatCurrency(costEstimate.total, household?.currency, language),
+                      total: formatCurrency(costEstimate.total, 'EUR', language),
                     })}
               </Text>
             )}

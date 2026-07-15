@@ -270,28 +270,14 @@ export default function HouseholdScreen() {
     setHousehold({ ...household, digest_enabled: next });
   };
 
-  const handleSetCurrency = async (code: string) => {
+  // Shared by the currency/timezone/country pickers — each just sets one household-wide text
+  // column, admin-gated like the toggle handlers above.
+  const handleSetHouseholdField = async (field: 'currency' | 'timezone' | 'country', value: string) => {
     if (!household) return;
     if (currentMember?.role !== 'admin') { Alert.alert(t('household.noPermissionTitle'), t('household.noPermissionChangeSetting')); return; }
-    const { error } = await supabase.from('households').update({ currency: code }).eq('id', household.id);
+    const { error } = await supabase.from('households').update({ [field]: value }).eq('id', household.id);
     if (error) { Alert.alert(t('common.error'), error.message); return; }
-    setHousehold({ ...household, currency: code });
-  };
-
-  const handleSetTimezone = async (tz: string) => {
-    if (!household) return;
-    if (currentMember?.role !== 'admin') { Alert.alert(t('household.noPermissionTitle'), t('household.noPermissionChangeSetting')); return; }
-    const { error } = await supabase.from('households').update({ timezone: tz }).eq('id', household.id);
-    if (error) { Alert.alert(t('common.error'), error.message); return; }
-    setHousehold({ ...household, timezone: tz });
-  };
-
-  const handleSetCountry = async (code: string) => {
-    if (!household) return;
-    if (currentMember?.role !== 'admin') { Alert.alert(t('household.noPermissionTitle'), t('household.noPermissionChangeSetting')); return; }
-    const { error } = await supabase.from('households').update({ country: code }).eq('id', household.id);
-    if (error) { Alert.alert(t('common.error'), error.message); return; }
-    setHousehold({ ...household, country: code });
+    setHousehold({ ...household, [field]: value });
   };
 
   const handleChangePassword = async (password: string) => {
@@ -557,7 +543,7 @@ export default function HouseholdScreen() {
                 <TouchableOpacity
                   key={cur.code}
                   style={[styles.themeChip, { width: undefined, paddingHorizontal: spacing.md }, active && { borderColor: colors.brand, backgroundColor: colors.brand + '15' }]}
-                  onPress={() => handleSetCurrency(cur.code)}
+                  onPress={() => handleSetHouseholdField('currency', cur.code)}
                 >
                   <Text style={[styles.themeChipText, active && { color: colors.brand, fontWeight: '700' }]}>{cur.symbol} {cur.code}</Text>
                 </TouchableOpacity>
@@ -578,7 +564,7 @@ export default function HouseholdScreen() {
                 <TouchableOpacity
                   key={tz}
                   style={[styles.themeChip, { width: undefined, paddingHorizontal: spacing.md }, active && { borderColor: colors.brand, backgroundColor: colors.brand + '15' }]}
-                  onPress={() => handleSetTimezone(tz)}
+                  onPress={() => handleSetHouseholdField('timezone', tz)}
                 >
                   <Text style={[styles.themeChipText, active && { color: colors.brand, fontWeight: '700' }]}>{timezoneLabel(tz)}</Text>
                 </TouchableOpacity>
@@ -598,7 +584,7 @@ export default function HouseholdScreen() {
                 <TouchableOpacity
                   key={c.code}
                   style={[styles.themeChip, { width: undefined, paddingHorizontal: spacing.md }, active && { borderColor: colors.brand, backgroundColor: colors.brand + '15' }]}
-                  onPress={() => handleSetCountry(c.code)}
+                  onPress={() => handleSetHouseholdField('country', c.code)}
                 >
                   <Text style={[styles.themeChipText, active && { color: colors.brand, fontWeight: '700' }]}>{c.flag} {c.code}</Text>
                 </TouchableOpacity>

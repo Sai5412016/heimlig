@@ -209,7 +209,10 @@ export default function OnboardingScreen() {
       if (deviceTimezone && deviceTimezone !== 'Europe/Berlin' && TIMEZONES.includes(deviceTimezone)) guesses.timezone = deviceTimezone;
       if (deviceCountry && deviceCountry !== 'DE' && SUPPORTED_COUNTRIES.some(c => c.code === deviceCountry)) guesses.country = deviceCountry;
       if (household && Object.keys(guesses).length > 0) {
-        const { data: updated } = await supabase.from('households').update(guesses).eq('id', household_id).select().single();
+        const { data: updated, error: guessError } = await supabase.from('households').update(guesses).eq('id', household_id).select().single();
+        // Non-critical: if this fails, the household just stays on the DB defaults
+        // (EUR/Europe/Berlin/DE) — still log it so a systematic failure doesn't go unnoticed.
+        if (guessError) console.warn('Failed to apply guessed household locale settings:', guessError.message);
         if (updated) household = updated;
       }
 
