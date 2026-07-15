@@ -12,6 +12,7 @@ import { fetchRecentTransactions } from '../../repositories/budgetRepository';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { nextYearlyOccurrence } from '../../lib/dateMath';
+import { formatCurrency } from '../../lib/currency';
 import ChatModal from '../../components/ChatModal';
 import BirthdayListModal from '../../components/BirthdayListModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -215,7 +216,7 @@ export default function DashboardScreen() {
           />
           <StatCard emoji="🛒" label={t('home.statMissing')} value={uncheckedItems.length} sub={t('home.statItems')} onPress={() => router.push('/(tabs)/shopping')} color={colors.accent} />
           <StatCard
-            emoji="💶" label={t('budget.expenses')} value={`€ ${monthlyExpenses.toFixed(0)}`} sub={t('home.statThisMonth')}
+            emoji="💶" label={t('budget.expenses')} value={formatCurrency(monthlyExpenses, household?.currency, language, 0)} sub={t('home.statThisMonth')}
             onPress={() => router.push('/(tabs)/budget')} color={colors.info}
             trend={
               prevMonthExpenses != null && prevMonthExpenses > 0

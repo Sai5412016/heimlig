@@ -20,6 +20,7 @@ import * as budgetRepo from '../../repositories/budgetRepository';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { buildTransactionsCsv, exportCsv, parseTransactionsCsv, memberIdByName } from '../../lib/dataIO';
+import { currencySymbol, formatCurrency } from '../../lib/currency';
 import BudgetSplitModal from '../../components/BudgetSplitModal';
 import ThemeMotif from '../../components/ThemeMotif';
 
@@ -60,6 +61,7 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
 }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const household = useStore(s => s.household);
   const txRecurrenceOptions = [
     { key: null, label: t('budget.recurrenceOnce') },
     { key: 'weekly', label: t('budget.recurrenceWeekly') },
@@ -122,7 +124,7 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
                 ))}
               </ScrollView>
               <View style={styles.amountRow}>
-                <Text style={styles.currencySymbol}>€</Text>
+                <Text style={styles.currencySymbol}>{currencySymbol(household?.currency)}</Text>
                 <TextInput style={styles.amountInput} placeholder={t('budget.amountPlaceholder')} placeholderTextColor={colors.textMuted} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
               </View>
               <TextInput style={styles.input} placeholder={t('budget.descriptionPlaceholder')} placeholderTextColor={colors.textMuted} value={description} onChangeText={setDescription} />
@@ -203,7 +205,7 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
 }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const language = useStore(s => s.language);
+  const { language, household } = useStore();
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const progress = total > 0 ? Math.min(amount / total, 1) : 0;
@@ -234,7 +236,7 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
       <View style={styles.catBarContent}>
         <View style={styles.catBarHeader}>
           <Text style={styles.catBarLabel}>{label}</Text>
-          <Text style={styles.catBarAmount}>€ {amount.toFixed(2)}</Text>
+          <Text style={styles.catBarAmount}>{formatCurrency(amount, household?.currency, language)}</Text>
         </View>
         <View style={styles.catBarTrack}>
           <Animated.View style={[styles.catBarFill, { backgroundColor: color, width: animWidth.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
@@ -247,7 +249,7 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
                 <View style={[styles.catBarAvatar, { backgroundColor: mt.member.avatar_color }]}>
                   <Text style={styles.catBarAvatarText}>{mt.member.display_name[0]}</Text>
                 </View>
-                <Text style={styles.catBarAvatarAmount}>€{mt.total.toFixed(0)}</Text>
+                <Text style={styles.catBarAvatarAmount}>{formatCurrency(mt.total, household?.currency, language, 0)}</Text>
               </View>
             ))}
           </View>
@@ -265,7 +267,7 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
 function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: (id: string) => void; members: any[] }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const language = useStore(s => s.language);
+  const { language, household } = useStore();
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const catColor = CAT_COLORS[tx.category] || colors.brand;
@@ -300,7 +302,7 @@ function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: 
       </View>
       <View style={styles.txRight}>
         <Text style={[styles.txAmount, { color: tx.type === 'income' ? colors.success : colors.error }]}>
-          {tx.type === 'income' ? '+' : '-'} € {Number(tx.amount).toFixed(2)}
+          {tx.type === 'income' ? '+' : '-'} {formatCurrency(Number(tx.amount), household?.currency, language)}
         </Text>
         <TouchableOpacity onPress={() => onDelete(tx.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={styles.txDelete}>×</Text>
@@ -512,7 +514,7 @@ export default function BudgetScreen() {
                 {isMyTurn ? t('budget.yourTurn') : t('budget.theirTurn', { name: whoIsNext.display_name })}
               </Text>
               <Text style={styles.whoNextSub}>
-                {t('budget.difference', { amount: Math.abs((memberExpenses[members[0]?.id] || 0) - (memberExpenses[members[1]?.id] || 0)).toFixed(0) })}
+                {t('budget.difference', { amount: formatCurrency(Math.abs((memberExpenses[members[0]?.id] || 0) - (memberExpenses[members[1]?.id] || 0)), household?.currency, language, 0) })}
               </Text>
             </View>
           </View>
@@ -521,16 +523,16 @@ export default function BudgetScreen() {
         <View style={styles.summaryRow}>
           <View style={[styles.summaryCard, { borderTopColor: colors.error }]}>
             <Text style={styles.summaryLabel}>{t('budget.expenses')}</Text>
-            <Text style={[styles.summaryAmount, { color: colors.error }]}>€ {totalExpenses.toFixed(2)}</Text>
+            <Text style={[styles.summaryAmount, { color: colors.error }]}>{formatCurrency(totalExpenses, household?.currency, language)}</Text>
           </View>
           <View style={[styles.summaryCard, { borderTopColor: colors.success }]}>
             <Text style={styles.summaryLabel}>{t('budget.income')}</Text>
-            <Text style={[styles.summaryAmount, { color: colors.success }]}>€ {totalIncome.toFixed(2)}</Text>
+            <Text style={[styles.summaryAmount, { color: colors.success }]}>{formatCurrency(totalIncome, household?.currency, language)}</Text>
           </View>
           <View style={[styles.summaryCard, { borderTopColor: balance >= 0 ? colors.brand : colors.error }]}>
             <Text style={styles.summaryLabel}>{t('budget.balance')}</Text>
             <Text style={[styles.summaryAmount, { color: balance >= 0 ? colors.brand : colors.error }]}>
-              {balance >= 0 ? '+' : ''}€ {balance.toFixed(2)}
+              {balance >= 0 ? '+' : ''}{formatCurrency(balance, household?.currency, language)}
             </Text>
           </View>
         </View>
@@ -579,7 +581,7 @@ export default function BudgetScreen() {
                         <Text style={styles.memberAvatarText}>{m.display_name[0]}</Text>
                       </View>
                       <Text style={styles.memberName}>{m.display_name}</Text>
-                      <Text style={styles.memberAmount}>€ {memberTotal.toFixed(2)}</Text>
+                      <Text style={styles.memberAmount}>{formatCurrency(memberTotal, household?.currency, language)}</Text>
                     </View>
                   );
                 })}

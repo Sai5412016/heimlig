@@ -21,6 +21,7 @@ import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportM
 import ProductScanner from '../../components/ProductScanner';
 import { searchGroceries, categoryForItem, normalizeKey } from '../../lib/groceries';
 import { estimateCartTotal } from '../../lib/pricing';
+import { formatCurrency } from '../../lib/currency';
 import { searchBrands, bumpBrand, supermarketKey, type BrandEntry } from '../../lib/brands';
 import ThemeMotif from '../../components/ThemeMotif';
 
@@ -794,11 +795,11 @@ export default function ShoppingScreen() {
               <Text style={styles.costEstimateText}>
                 {costEstimate.pricedCount < costEstimate.totalCount
                   ? t('shopping.costEstimatePartial', {
-                      total: language === 'en' ? costEstimate.total.toFixed(2) : costEstimate.total.toFixed(2).replace('.', ','),
+                      total: formatCurrency(costEstimate.total, household?.currency, language),
                       priced: costEstimate.pricedCount, totalCount: costEstimate.totalCount,
                     })
                   : t('shopping.costEstimate', {
-                      total: language === 'en' ? costEstimate.total.toFixed(2) : costEstimate.total.toFixed(2).replace('.', ','),
+                      total: formatCurrency(costEstimate.total, household?.currency, language),
                     })}
               </Text>
             )}

@@ -34,6 +34,7 @@ export interface Household {
   gamification_enabled?: boolean;
   timetree_import_enabled?: boolean;
   digest_enabled?: boolean;
+  currency?: string;
   created_at: string;
 }
 

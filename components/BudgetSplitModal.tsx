@@ -8,14 +8,14 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
-
-const eur = (n: number) => `€${n.toFixed(2).replace('.', ',')}`;
+import { formatCurrency } from '../lib/currency';
 
 export default function BudgetSplitModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { transactions, members, settlements, loadSettlements, addSettlement } = useStore();
+  const { transactions, members, settlements, loadSettlements, addSettlement, household, language } = useStore();
+  const eur = (n: number) => formatCurrency(n, household?.currency, language);
 
   useEffect(() => { if (visible) loadSettlements(); }, [visible]);
 

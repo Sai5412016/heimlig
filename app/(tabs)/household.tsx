@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 import { colors, spacing, radius, typography, shadow, APP_THEMES, type ColorPalette } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
+import { CURRENCIES, formatCurrency } from '../../lib/currency';
 import { useStore } from '../../store/useStore';
 import { useTheme } from '../../hooks/useTheme';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
@@ -267,6 +268,14 @@ export default function HouseholdScreen() {
     setHousehold({ ...household, digest_enabled: next });
   };
 
+  const handleSetCurrency = async (code: string) => {
+    if (!household) return;
+    if (currentMember?.role !== 'admin') { Alert.alert(t('household.noPermissionTitle'), t('household.noPermissionChangeSetting')); return; }
+    const { error } = await supabase.from('households').update({ currency: code }).eq('id', household.id);
+    if (error) { Alert.alert(t('common.error'), error.message); return; }
+    setHousehold({ ...household, currency: code });
+  };
+
   const handleChangePassword = async (password: string) => {
     if (password.length < 6) { Alert.alert(t('household.passwordTooShortTitle'), t('household.passwordTooShortBody')); return; }
     const { error } = await supabase.auth.updateUser({ password });
@@ -428,7 +437,7 @@ export default function HouseholdScreen() {
                 </View>
                 <View style={styles.memberStats}>
                   <Text style={styles.memberStat}>{t('household.tasksCompleted', { count: tasksCompleted })}</Text>
-                  {expense > 0 && <Text style={styles.memberStat}>{t('household.thisMonth', { amount: expense.toFixed(0) })}</Text>}
+                  {expense > 0 && <Text style={styles.memberStat}>{t('household.thisMonth', { amount: formatCurrency(expense, household?.currency, language, 0) })}</Text>}
                 </View>
               </View>
               {!isMe && currentMember?.role === 'admin' && (
@@ -500,8 +509,7 @@ export default function HouseholdScreen() {
         </View>
 
         {/* Language switcher — auto-detected from the device on first launch, manual choice
-            persists from here on (see store/useStore.ts selectLanguage). Pilot i18n rollout:
-            only the tab bar + this row are translated so far, rest follows screen by screen. */}
+            persists from here on (see store/useStore.ts selectLanguage). */}
         <View style={styles.settingsBtn}>
           <Text style={[styles.settingsBtnText, { alignSelf: 'flex-start' }]}>🌐 {t('settings.language')}</Text>
           <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, width: '100%' }}>
@@ -518,6 +526,26 @@ export default function HouseholdScreen() {
               <Text style={[styles.themeChipText, language === 'en' && { color: colors.brand, fontWeight: '700' }]}>🇬🇧 {t('settings.languageEnglish')}</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Currency picker — household-wide (not per-device like language/darkMode), since
+            budget totals/splits are pooled math across members and can't mix currencies. */}
+        <View style={styles.settingsBtn}>
+          <Text style={[styles.settingsBtnText, { alignSelf: 'flex-start' }]}>💱 {t('settings.currency')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.sm, width: '100%' }} contentContainerStyle={{ gap: spacing.sm }}>
+            {CURRENCIES.map(cur => {
+              const active = (household?.currency || 'EUR') === cur.code;
+              return (
+                <TouchableOpacity
+                  key={cur.code}
+                  style={[styles.themeChip, { width: undefined, paddingHorizontal: spacing.md }, active && { borderColor: colors.brand, backgroundColor: colors.brand + '15' }]}
+                  onPress={() => handleSetCurrency(cur.code)}
+                >
+                  <Text style={[styles.themeChipText, active && { color: colors.brand, fontWeight: '700' }]}>{cur.symbol} {cur.code}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
         {/* Gamification toggle */}
