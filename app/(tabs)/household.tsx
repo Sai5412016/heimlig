@@ -25,9 +25,10 @@ import LocationModal from '../../components/LocationModal';
 import ThemeMotif from '../../components/ThemeMotif';
 import { captureScreenshot } from '../../lib/screenshotTool';
 
-// Only this account sees the screenshot tool (web-only, dev use for refreshing store/marketing
-// screenshots) — everyone else's settings screen renders exactly as before.
-const SCREENSHOT_TOOL_OWNER_EMAIL = 'sai5412016@gmail.com';
+// Only these accounts see the screenshot tool (web-only, dev use for refreshing store/marketing
+// screenshots) — everyone else's settings screen renders exactly as before. The test account is
+// listed too since that's the account with populated demo data to screenshot.
+const SCREENSHOT_TOOL_OWNER_EMAILS = ['sai5412016@gmail.com', 'test123@web.de'];
 const SCREENSHOT_TOOL_ROUTES: { path: '/(tabs)' | '/(tabs)/shopping' | '/(tabs)/scan' | '/(tabs)/recipes' | '/(tabs)/tasks' | '/(tabs)/budget' | '/(tabs)/household'; name: string }[] = [
   { path: '/(tabs)', name: 'home' },
   { path: '/(tabs)/shopping', name: 'shopping' },
@@ -665,7 +666,7 @@ export default function HouseholdScreen() {
         </TouchableOpacity>
 
         {/* Screenshot tool — owner-only, web-only dev utility, invisible to everyone else */}
-        {Platform.OS === 'web' && ownerEmail === SCREENSHOT_TOOL_OWNER_EMAIL && (
+        {Platform.OS === 'web' && !!ownerEmail && SCREENSHOT_TOOL_OWNER_EMAILS.includes(ownerEmail) && (
           <TouchableOpacity style={styles.settingsBtn} onPress={handleCaptureAllScreens} disabled={capturingScreens}>
             <Text style={styles.settingsBtnText}>
               {capturingScreens ? t('household.screenshotToolLabelCapturing') : t('household.screenshotToolLabel')}
