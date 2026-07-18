@@ -23,6 +23,20 @@ import NotesModal from '../../components/NotesModal';
 import GoogleCalendarModal from '../../components/GoogleCalendarModal';
 import LocationModal from '../../components/LocationModal';
 import ThemeMotif from '../../components/ThemeMotif';
+import { captureScreenshot } from '../../lib/screenshotTool';
+
+// Only this account sees the screenshot tool (web-only, dev use for refreshing store/marketing
+// screenshots) — everyone else's settings screen renders exactly as before.
+const SCREENSHOT_TOOL_OWNER_EMAIL = 'sai5412016@gmail.com';
+const SCREENSHOT_TOOL_ROUTES: { path: '/(tabs)' | '/(tabs)/shopping' | '/(tabs)/scan' | '/(tabs)/recipes' | '/(tabs)/tasks' | '/(tabs)/budget' | '/(tabs)/household'; name: string }[] = [
+  { path: '/(tabs)', name: 'home' },
+  { path: '/(tabs)/shopping', name: 'shopping' },
+  { path: '/(tabs)/scan', name: 'health' },
+  { path: '/(tabs)/recipes', name: 'recipes' },
+  { path: '/(tabs)/tasks', name: 'tasks' },
+  { path: '/(tabs)/budget', name: 'budget' },
+  { path: '/(tabs)/household', name: 'household' },
+];
 
 // ─── AVATAR ───────────────────────────────────────────────────
 function Avatar({ name, color, size = 48 }: { name: string; color: string; size?: number }) {
@@ -219,8 +233,31 @@ export default function HouseholdScreen() {
   const [showLocation, setShowLocation] = useState(false);
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [weekScores, setWeekScores] = useState<Record<string, number>>({});
+  const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
+  const [capturingScreens, setCapturingScreens] = useState(false);
 
   useEffect(() => { loadMyHouseholds(); }, [household?.id]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    supabase.auth.getUser().then(({ data }) => setOwnerEmail(data.user?.email ?? null));
+  }, []);
+
+  // Walks every tab, giving each one a moment to render/fetch before rasterizing it — the
+  // owner-only web tool for quickly refreshing store/marketing screenshots after UI changes.
+  const handleCaptureAllScreens = async () => {
+    setCapturingScreens(true);
+    try {
+      for (const { path, name } of SCREENSHOT_TOOL_ROUTES) {
+        router.push(path);
+        await new Promise(r => setTimeout(r, 1200));
+        await captureScreenshot(`heimlig-${name}-${language}.png`);
+        await new Promise(r => setTimeout(r, 400));
+      }
+    } finally {
+      setCapturingScreens(false);
+    }
+  };
 
   const handleSwitch = async (id: string) => {
     setShowSwitcher(false);
@@ -626,6 +663,15 @@ export default function HouseholdScreen() {
         <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowChangePw(true)}>
           <Text style={styles.settingsBtnText}>{t('household.changePasswordLabel')}</Text>
         </TouchableOpacity>
+
+        {/* Screenshot tool — owner-only, web-only dev utility, invisible to everyone else */}
+        {Platform.OS === 'web' && ownerEmail === SCREENSHOT_TOOL_OWNER_EMAIL && (
+          <TouchableOpacity style={styles.settingsBtn} onPress={handleCaptureAllScreens} disabled={capturingScreens}>
+            <Text style={styles.settingsBtnText}>
+              {capturingScreens ? t('household.screenshotToolLabelCapturing') : t('household.screenshotToolLabel')}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* Legal */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push('/impressum')}>

@@ -258,6 +258,8 @@ export const en: AppTranslations = {
     googleCalendarLabel: '📅 Connect Google Calendar',
     locationLabel: '📍 Share location',
     changePasswordLabel: '🔑 Change password',
+    screenshotToolLabel: '📸 Capture screenshots of all screens',
+    screenshotToolLabelCapturing: '📸 Capturing… (allow downloads if prompted)',
     imprintLabel: '📄 Imprint',
     privacyLabel: '🔒 Privacy',
     leaveHouseholdLabel: '🚪 Leave household',

@@ -257,6 +257,8 @@ export const de: AppTranslations = {
     googleCalendarLabel: '📅 Google Kalender verbinden',
     locationLabel: '📍 Standort teilen',
     changePasswordLabel: '🔑 Passwort ändern',
+    screenshotToolLabel: '📸 Screenshots aller Ansichten erstellen',
+    screenshotToolLabelCapturing: '📸 Wird erstellt… (Downloads ggf. erlauben)',
     imprintLabel: '📄 Impressum',
     privacyLabel: '🔒 Datenschutz',
     leaveHouseholdLabel: '🚪 Haushalt verlassen',

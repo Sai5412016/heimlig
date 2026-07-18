@@ -256,6 +256,8 @@ export interface AppTranslations {
     googleCalendarLabel: string;
     locationLabel: string;
     changePasswordLabel: string;
+    screenshotToolLabel: string;
+    screenshotToolLabelCapturing: string;
     imprintLabel: string;
     privacyLabel: string;
     leaveHouseholdLabel: string;
