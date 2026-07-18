@@ -272,16 +272,6 @@ export const CATEGORY_COLORS: Record<string, string> = {
 
 export const SHOPPING_CATEGORIES = Object.keys(CATEGORY_COLORS);
 
-export const BUDGET_CATEGORIES = [
-  'Lebensmittel', 'Miete', 'Transport', 'Freizeit',
-  'Gesundheit', 'Kleidung', 'Haushalt', 'Kinder',
-  'Haustiere', 'Sparen', 'Sonstiges'
-];
-
-export const TASK_CATEGORIES = [
-  'Haushalt', 'Einkauf', 'Wartung', 'Garten', 'Büro', 'Familie', 'Sonstiges'
-];
-
 export const spacing = {
   xs:   4,
   sm:   8,
