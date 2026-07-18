@@ -201,6 +201,16 @@ export interface AppTranslations {
     emptyTitle: string;
     emptyBody: string;
     ingredientsCount: string;
+    categories: {
+      Hauptgericht: string;
+      'Backen & Dessert': string;
+      Frühstück: string;
+      'Salat & Beilage': string;
+      Suppe: string;
+      Snack: string;
+      Getränk: string;
+      Sonstiges: string;
+    };
   };
   home: {
     morningGreeting: string;

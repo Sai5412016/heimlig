@@ -202,6 +202,16 @@ export const de: AppTranslations = {
     emptyTitle: 'Noch keine Rezepte',
     emptyBody: 'Speicher dein erstes Rezept per Link, Text oder Foto.',
     ingredientsCount: '{{count}} Zutaten',
+    categories: {
+      Hauptgericht: 'Hauptgericht',
+      'Backen & Dessert': 'Backen & Dessert',
+      Frühstück: 'Frühstück',
+      'Salat & Beilage': 'Salat & Beilage',
+      Suppe: 'Suppe',
+      Snack: 'Snack',
+      Getränk: 'Getränk',
+      Sonstiges: 'Sonstiges',
+    },
   },
   home: {
     morningGreeting: 'Guten Morgen',

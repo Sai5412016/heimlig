@@ -32,6 +32,12 @@ const RECIPE_CATEGORIES: { key: string; emoji: string }[] = [
 ];
 const RECIPE_CAT_EMOJI: Record<string, string> = Object.fromEntries(RECIPE_CATEGORIES.map(c => [c.key, c.emoji]));
 
+// Category values are a closed, stable set of German keys (matches stored recipe data) — this
+// only translates the label actually shown to the user, same pattern as shopping.tsx's
+// categoryLabel(). Unknown/custom categories fall back to the raw key instead of disappearing.
+const categoryLabel = (t: (key: string, opts?: Record<string, unknown>) => string, cat: string): string =>
+  t(`recipes.categories.${cat}`, { defaultValue: cat });
+
 // ─── CATEGORY PICKER ──────────────────────────────────────────
 function CategoryModal({ recipe, onClose, onPick }: {
   recipe: Recipe | null;
@@ -57,7 +63,7 @@ function CategoryModal({ recipe, onClose, onPick }: {
                   onPress={() => onPick(c.key)}
                 >
                   <Text style={styles.catOptionEmoji}>{c.emoji}</Text>
-                  <Text style={[styles.catOptionText, active && styles.chipTextActive]}>{c.key}</Text>
+                  <Text style={[styles.catOptionText, active && styles.chipTextActive]}>{categoryLabel(t, c.key)}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -230,7 +236,7 @@ export default function RecipesScreen() {
         <TouchableOpacity style={styles.cardBody} onPress={() => setPlanTarget(item)} activeOpacity={0.7}>
           <Text style={styles.cardName}>{item.name}</Text>
           <Text style={styles.cardMeta}>
-            {item.category ? `${RECIPE_CAT_EMOJI[item.category] ?? '📁'} ${item.category} · ` : ''}{t('recipes.ingredientsCount', { count })}{item.source_url ? ' · 🔗 Link' : ''}
+            {item.category ? `${RECIPE_CAT_EMOJI[item.category] ?? '📁'} ${categoryLabel(t, item.category)} · ` : ''}{t('recipes.ingredientsCount', { count })}{item.source_url ? ' · 🔗 Link' : ''}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.iconBtn} onPress={() => setCatTarget(item)}>
@@ -289,7 +295,7 @@ export default function RecipesScreen() {
               </TouchableOpacity>
               {usedCategories.map(c => (
                 <TouchableOpacity key={c.key} style={[styles.filterChip, filter === c.key && styles.chipActive]} onPress={() => setFilter(filter === c.key ? null : c.key)}>
-                  <Text style={[styles.chipText, filter === c.key && styles.chipTextActive]}>{c.emoji} {c.key}</Text>
+                  <Text style={[styles.chipText, filter === c.key && styles.chipTextActive]}>{c.emoji} {categoryLabel(t, c.key)}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
