@@ -63,6 +63,10 @@ export interface AppTranslations {
     lists: {
       title: string;
       quickCreate: string;
+      genericSupermarket: string;
+      genericPharmacy: string;
+      genericOrganicStore: string;
+      genericConvenienceStore: string;
       namePlaceholder: string;
       newList: string;
       cantDeleteTitle: string;

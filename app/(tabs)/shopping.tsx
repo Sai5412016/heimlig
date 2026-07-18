@@ -22,7 +22,7 @@ import ProductScanner from '../../components/ProductScanner';
 import { searchGroceries, categoryForItem, normalizeKey } from '../../lib/groceries';
 import { estimateCartTotal } from '../../lib/pricing';
 import { formatCurrency } from '../../lib/currency';
-import { searchBrands, bumpBrand, supermarketKey, type BrandEntry } from '../../lib/brands';
+import { searchBrands, bumpBrand, supermarketKey, supermarketsForCountry, ALL_SUPERMARKETS, GENERIC_STORE_TYPES, type BrandEntry, type SupermarketOption } from '../../lib/brands';
 import ThemeMotif from '../../components/ThemeMotif';
 
 // ─── ADD ITEM MODAL ───────────────────────────────────────────
@@ -102,7 +102,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
     if (!key) return null;
     const entry = itemCatalog.find(c => c.name_key === key);
     if (!entry?.preferred_supermarket || entry.preferred_supermarket === smKey) return null;
-    return SUPERMARKETS.find(s => s.name.toLowerCase() === entry.preferred_supermarket) ?? null;
+    return ALL_SUPERMARKETS.find(s => s.name.toLowerCase() === entry.preferred_supermarket) ?? null;
   }, [name, itemCatalog, smKey]);
 
   // Auto-assign category when the typed name matches a known item
@@ -262,16 +262,6 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
 
 
 const LIST_EMOJIS = ['🛒', '🛍️', '🏪', '💊', '🥦', '🥩', '🐾', '🏠', '📦', '👗'];
-const SUPERMARKETS = [
-  { name: 'Rewe', emoji: '🛍️' },
-  { name: 'Aldi', emoji: '🛒' },
-  { name: 'Edeka', emoji: '🏪' },
-  { name: 'Lidl', emoji: '💛' },
-  { name: 'Penny', emoji: '🟡' },
-  { name: 'Netto', emoji: '💰' },
-  { name: 'dm', emoji: '💊' },
-  { name: 'Rossmann', emoji: '🌸' },
-];
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   'Lebensmittel': '🥫', 'Obst & Gemüse': '🥬', 'Tiefkühl': '❄️',
@@ -505,11 +495,19 @@ const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () =
   const { colors } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { shoppingLists, activeListId, switchList, createShoppingList, deleteShoppingList } = useStore();
+  const { household, shoppingLists, activeListId, switchList, createShoppingList, deleteShoppingList } = useStore();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [newEmoji, setNewEmoji] = useState('🛒');
   const nameRef = useRef<TextInput>(null);
+
+  // Real chains for the household's own country; a generic, non-branded fallback for
+  // countries we don't have a curated chain list for, so users never see foreign supermarkets.
+  const quickCreateOptions: SupermarketOption[] = useMemo(() => {
+    const countryList = supermarketsForCountry(household?.country);
+    if (countryList) return countryList;
+    return GENERIC_STORE_TYPES.map(g => ({ name: t(g.nameKey), emoji: g.emoji }));
+  }, [household?.country, t]);
 
   useEffect(() => {
     if (!visible) { setCreating(false); setNewName(''); setNewEmoji('🛒'); }
@@ -575,7 +573,7 @@ const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () =
             <Text style={styles.supermarketLabel}>{t('shopping.lists.quickCreate')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.xs }}>
-                {SUPERMARKETS.map(sm => {
+                {quickCreateOptions.map(sm => {
                   const existing = shoppingLists.find(l => l.name.toLowerCase() === sm.name.toLowerCase());
                   const isActive = existing?.id === activeListId;
                   return (
@@ -716,7 +714,7 @@ export default function ShoppingScreen() {
   };
 
   const handleAddElsewhere = async (name: string, quantity: string, category: string, smKey: string, brand?: string) => {
-    const info = SUPERMARKETS.find(s => s.name.toLowerCase() === smKey);
+    const info = ALL_SUPERMARKETS.find(s => s.name.toLowerCase() === smKey);
     if (!info) return;
     const existing = shoppingLists.find(l => l.name.toLowerCase() === smKey);
     if (existing) await switchList(existing.id);

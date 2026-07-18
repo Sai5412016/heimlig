@@ -65,6 +65,10 @@ export const en: AppTranslations = {
     lists: {
       title: 'Shopping Lists',
       quickCreate: 'Quick create',
+      genericSupermarket: 'Supermarket',
+      genericPharmacy: 'Pharmacy',
+      genericOrganicStore: 'Organic store',
+      genericConvenienceStore: 'Convenience store',
       namePlaceholder: 'List name',
       newList: '+ New List',
       cantDeleteTitle: 'Not possible',
