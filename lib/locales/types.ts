@@ -37,6 +37,16 @@ export interface AppTranslations {
     defaultListName: string;
     defaultHouseholdName: string;
     listsButton: string;
+    categories: {
+      Lebensmittel: string;
+      'Obst & Gemüse': string;
+      Tiefkühl: string;
+      'Fleisch & Fisch': string;
+      Drogerie: string;
+      Backwaren: string;
+      Getränke: string;
+      Sonstiges: string;
+    };
     progressDone: string;
     costEstimate: string;
     costEstimatePartial: string;

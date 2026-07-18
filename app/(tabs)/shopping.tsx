@@ -179,7 +179,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
                 {suggestions.map(s => (
                   <TouchableOpacity key={s.name} style={styles.suggestRow} onPress={() => pickSuggestion(s)}>
                     <Text style={styles.suggestName}>{s.name}</Text>
-                    <Text style={styles.suggestCat}>{s.category}</Text>
+                    <Text style={styles.suggestCat}>{categoryLabel(t, s.category)}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -240,7 +240,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
                     style={[styles.categoryChip, isActive && { backgroundColor: catColor, borderColor: catColor }]}
                     onPress={() => setCategory(cat)}
                   >
-                    <Text style={[styles.categoryChipText, isActive && { color: colors.textInverse }]}>{cat}</Text>
+                    <Text style={[styles.categoryChipText, isActive && { color: colors.textInverse }]}>{categoryLabel(t, cat)}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -262,6 +262,13 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
 
 
 const LIST_EMOJIS = ['🛒', '🛍️', '🏪', '💊', '🥦', '🥩', '🐾', '🏠', '📦', '👗'];
+
+// Category values are a closed, stable set of German keys shared with lib/groceries.ts's curated
+// catalog (data, like brand/supermarket names — not translated), while this only translates the
+// label actually shown to the user (chips, section headers, autocomplete). Unknown/custom
+// categories fall back to the raw key rather than disappearing.
+const categoryLabel = (t: (key: string, opts?: Record<string, unknown>) => string, cat: string): string =>
+  t(`shopping.categories.${cat}`, { defaultValue: cat });
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   'Lebensmittel': '🥫', 'Obst & Gemüse': '🥬', 'Tiefkühl': '❄️',
@@ -812,7 +819,7 @@ export default function ShoppingScreen() {
           <View key={category}>
             <View style={styles.catHeader}>
               <Text style={styles.catHeaderEmoji}>{CATEGORY_EMOJIS[category] || '🛒'}</Text>
-              <Text style={styles.catHeaderText}>{category.toUpperCase()}</Text>
+              <Text style={styles.catHeaderText}>{categoryLabel(t, category).toUpperCase()}</Text>
               <Text style={styles.catHeaderCount}>{catItems.length}</Text>
             </View>
             <View style={styles.tileGrid}>
