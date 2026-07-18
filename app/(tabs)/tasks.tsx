@@ -74,6 +74,12 @@ const CATEGORY_COLORS: Record<string, string> = {
 const catColor = (cat?: string) => CATEGORY_COLORS[cat || ''] || '#9AB5A0';
 const HOUSEHOLD_CATEGORIES = ['Haushalt', 'Einkauf', 'Wartung', 'Garten'];
 
+// Category values are a closed, stable set of German keys (matches stored task data) — this
+// only translates the label actually shown to the user, same pattern as shopping.tsx's
+// categoryLabel(). Unknown/custom categories fall back to the raw key instead of disappearing.
+const categoryLabel = (t: (key: string, opts?: Record<string, unknown>) => string, cat: string): string =>
+  t(`tasksTab.categories.${cat}`, { defaultValue: cat });
+
 // ─── TIME SLOTS ───────────────────────────────────────────────
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
@@ -368,7 +374,7 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
                 {Object.keys(CATEGORY_EMOJIS).map(cat => (
                   <TouchableOpacity key={cat} style={[styles.chip, category === cat && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setCategory(cat)}>
                     <Text style={styles.chipEmoji}>{CATEGORY_EMOJIS[cat]}</Text>
-                    <Text style={[styles.chipText, category === cat && { color: colors.textInverse }]}>{cat}</Text>
+                    <Text style={[styles.chipText, category === cat && { color: colors.textInverse }]}>{categoryLabel(t, cat)}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -634,7 +640,7 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
         <View style={styles.taskMeta}>
           <View style={[styles.taskCatChip, { backgroundColor: catColor(task.category) + '1A' }]}>
             <Text style={styles.taskCatEmoji}>{CATEGORY_EMOJIS[task.category] || '📋'}</Text>
-            <Text style={[styles.taskCatLabel, { color: catColor(task.category) }]}>{task.category}</Text>
+            <Text style={[styles.taskCatLabel, { color: catColor(task.category) }]}>{categoryLabel(t, task.category)}</Text>
           </View>
           {dueDateText && (
             <View style={[styles.dueBadge, isOverdue && { backgroundColor: '#FEE2E2' }]}>
@@ -809,7 +815,7 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit,
 
             <ChecklistSection taskId={task.id} />
 
-            <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailCategory')}</Text><Text style={styles.detailValue}>{CATEGORY_EMOJIS[task.category] || '📋'} {task.category}</Text></View>
+            <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailCategory')}</Text><Text style={styles.detailValue}>{CATEGORY_EMOJIS[task.category] || '📋'} {categoryLabel(t, task.category)}</Text></View>
             <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailDate')}</Text><Text style={styles.detailValue}>{dateText}</Text></View>
             <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailTime')}</Text><Text style={styles.detailValue}>{task.due_time ? t('tasksTab.detailTimeValue', { time: task.due_time }) : t('tasksTab.detailTimeNone')}</Text></View>
             <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailEffort')}</Text><Text style={styles.detailValue}>{t('tasksTab.detailEffortPoints', { label: priorityLabels(t)[task.priority as Priority] })}</Text></View>
@@ -1617,7 +1623,7 @@ export default function TasksScreen() {
           {Object.keys(CATEGORY_EMOJIS).map(cat => (
             <TouchableOpacity key={cat} style={[styles.filterChip, filterCategory === cat && styles.filterChipActive]} onPress={() => setFilterCategory(filterCategory === cat ? null : cat)}>
               <Text style={styles.filterChipEmoji}>{CATEGORY_EMOJIS[cat]}</Text>
-              <Text style={[styles.filterChipText, filterCategory === cat && styles.filterChipTextActive]}>{cat}</Text>
+              <Text style={[styles.filterChipText, filterCategory === cat && styles.filterChipTextActive]}>{categoryLabel(t, cat)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>

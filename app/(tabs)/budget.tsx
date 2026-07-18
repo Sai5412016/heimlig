@@ -34,6 +34,12 @@ const CAT_EMOJIS: Record<string, string> = {
 
 const ALL_CATEGORIES = Object.keys(CAT_EMOJIS);
 
+// Category values are a closed, stable set of German keys (matches stored transaction data) —
+// this only translates the label actually shown to the user, same pattern as shopping.tsx's
+// categoryLabel(). Unknown/custom categories fall back to the raw key instead of disappearing.
+const categoryLabel = (t: (key: string, opts?: Record<string, unknown>) => string, cat: string): string =>
+  t(`budget.categories.${cat}`, { defaultValue: cat });
+
 const CAT_COLORS: Record<string, string> = {
   'Lebensmittel': '#10B981', 'Miete': '#3B82F6', 'Transport': '#F59E0B',
   'Freizeit': '#8B5CF6', 'Gesundheit': '#EF4444', 'Kleidung': '#EC4899',
@@ -42,17 +48,20 @@ const CAT_COLORS: Record<string, string> = {
   'Elektronik': '#6366F1', 'Sport': '#22C55E', 'Sonstiges': '#9CA3AF',
 };
 
-const QUICK_PRESETS = [
-  { label: '⛽ Tanken', cat: 'Transport', desc: 'Tanken' },
-  { label: '🍽️ Restaurant', cat: 'Restaurant', desc: 'Essen auswärts' },
-  { label: '🛒 Wocheneinkauf', cat: 'Lebensmittel', desc: 'Wocheneinkauf' },
-  { label: '☕ Kaffee', cat: 'Freizeit', desc: 'Kaffee' },
-  { label: '💊 Apotheke', cat: 'Gesundheit', desc: 'Apotheke' },
-  { label: '👕 Kleidung', cat: 'Kleidung', desc: 'Kleidung' },
-  { label: '🎬 Kino', cat: 'Freizeit', desc: 'Kino' },
-  { label: '🐾 Tierarzt', cat: 'Haustiere', desc: 'Tierarzt' },
-  { label: '🔧 Baumarkt', cat: 'Haushalt', desc: 'Baumarkt' },
-  { label: '✈️ Urlaub', cat: 'Urlaub', desc: 'Urlaub' },
+// Quick-select presets set both a category and a canned description — presetKey drives the
+// translated text for both the chip label and the description that actually gets typed in,
+// so an English-language household doesn't get a German word inserted into their transaction.
+const QUICK_PRESETS: { emoji: string; presetKey: string; cat: string }[] = [
+  { emoji: '⛽', presetKey: 'fuel', cat: 'Transport' },
+  { emoji: '🍽️', presetKey: 'restaurant', cat: 'Restaurant' },
+  { emoji: '🛒', presetKey: 'weeklyShopping', cat: 'Lebensmittel' },
+  { emoji: '☕', presetKey: 'coffee', cat: 'Freizeit' },
+  { emoji: '💊', presetKey: 'pharmacy', cat: 'Gesundheit' },
+  { emoji: '👕', presetKey: 'clothing', cat: 'Kleidung' },
+  { emoji: '🎬', presetKey: 'cinema', cat: 'Freizeit' },
+  { emoji: '🐾', presetKey: 'vet', cat: 'Haustiere' },
+  { emoji: '🔧', presetKey: 'hardwareStore', cat: 'Haushalt' },
+  { emoji: '✈️', presetKey: 'vacation', cat: 'Urlaub' },
 ];
 
 function AddTransactionModal({ visible, onClose, onSave, members, currentMemberId }: {
@@ -123,11 +132,15 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
               </View>
               <Text style={styles.fieldLabel}>{t('budget.quickSelect')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
-                {QUICK_PRESETS.map(p => (
-                  <TouchableOpacity key={p.label} style={[styles.presetChip, category === p.cat && description === p.desc && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => { setCategory(p.cat); setDescription(p.desc); }}>
-                    <Text style={[styles.presetChipText, category === p.cat && description === p.desc && { color: colors.textInverse }]}>{p.label}</Text>
-                  </TouchableOpacity>
-                ))}
+                {QUICK_PRESETS.map(p => {
+                  const presetDesc = t(`budget.presets.${p.presetKey}`);
+                  const isActive = category === p.cat && description === presetDesc;
+                  return (
+                    <TouchableOpacity key={p.presetKey} style={[styles.presetChip, isActive && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => { setCategory(p.cat); setDescription(presetDesc); }}>
+                      <Text style={[styles.presetChipText, isActive && { color: colors.textInverse }]}>{p.emoji} {presetDesc}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
               <View style={styles.amountRow}>
                 <Text style={styles.currencySymbol}>{currencySymbol(household?.currency)}</Text>
@@ -143,7 +156,7 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
                   return (
                     <TouchableOpacity key={cat} style={[styles.catChip, isActive && { backgroundColor: catColor, borderColor: catColor }]} onPress={() => setCategory(cat)}>
                       <Text style={styles.catChipEmoji}>{CAT_EMOJIS[cat]}</Text>
-                      <Text style={[styles.catChipText, isActive && { color: colors.textInverse }]}>{cat}</Text>
+                      <Text style={[styles.catChipText, isActive && { color: colors.textInverse }]}>{categoryLabel(t, cat)}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -242,7 +255,7 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
       <Text style={styles.catBarEmoji}>{emoji}</Text>
       <View style={styles.catBarContent}>
         <View style={styles.catBarHeader}>
-          <Text style={styles.catBarLabel}>{label}</Text>
+          <Text style={styles.catBarLabel}>{categoryLabel(t, label)}</Text>
           <Text style={styles.catBarAmount}>{formatCurrency(amount, household?.currency, language)}</Text>
         </View>
         <View style={styles.catBarTrack}>
@@ -287,7 +300,7 @@ function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: 
         <Text style={styles.txCatEmoji}>{CAT_EMOJIS[tx.category] || '📦'}</Text>
       </View>
       <View style={styles.txInfo}>
-        <Text style={styles.txTitle}>{tx.description || tx.category}{tx.recurrence ? ' 🔄' : ''}</Text>
+        <Text style={styles.txTitle}>{tx.description || categoryLabel(t, tx.category)}{tx.recurrence ? ' 🔄' : ''}</Text>
         <View style={styles.txMetaRow}>
           <Text style={styles.txDate}>{format(parseISO(tx.transaction_date), 'dd. MMM', { locale: dateLocale })}</Text>
           {payer && (
@@ -616,7 +629,7 @@ export default function BudgetScreen() {
                     onPress={() => setFilterCat(filterCat === cat ? null : cat)}
                   >
                     <Text style={styles.filterChipEmoji}>{CAT_EMOJIS[cat] || '📦'}</Text>
-                    <Text style={[styles.filterChipText, filterCat === cat && { color: colors.textInverse }]}>{cat}</Text>
+                    <Text style={[styles.filterChipText, filterCat === cat && { color: colors.textInverse }]}>{categoryLabel(t, cat)}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -626,7 +639,7 @@ export default function BudgetScreen() {
               <View style={styles.emptyState}>
                 <Text style={styles.emptyEmoji}>📋</Text>
                 <Text style={styles.emptyTitle}>{t('budget.noEntries')}</Text>
-                <Text style={styles.emptyBody}>{filterCat ? t('budget.noEntriesForCat', { category: filterCat }) : t('budget.noEntriesForMonth', { month: monthLabel })}</Text>
+                <Text style={styles.emptyBody}>{filterCat ? t('budget.noEntriesForCat', { category: categoryLabel(t, filterCat) }) : t('budget.noEntriesForMonth', { month: monthLabel })}</Text>
                 {!filterCat && (
                   <TouchableOpacity style={styles.emptyCta} onPress={() => setShowModal(true)}>
                     <Text style={styles.emptyCtaText}>{t('budget.addEntry')}</Text>
