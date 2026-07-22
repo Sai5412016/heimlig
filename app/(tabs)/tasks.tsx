@@ -23,7 +23,7 @@ import { colors, spacing, radius, typography, shadow, APP_THEMES, type ColorPale
 import { useTheme } from '../../hooks/useTheme';
 import { supabase, Task, MealPlan, MealType } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
-import { scheduleTaskNotification, requestNotificationPermission } from '../../lib/notifications';
+import { scheduleTaskNotification, cancelTaskNotification, requestNotificationPermission } from '../../lib/notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Scoreboard, { monthlyScores } from '../../components/Scoreboard';
 import RewardsModal from '../../components/RewardsModal';
@@ -1246,6 +1246,7 @@ export default function TasksScreen() {
   };
 
   const handleComplete = async (id: string) => {
+    await cancelTaskNotification(id);
     const result = await completeTask(id);
     hapticImpact(Haptics.ImpactFeedbackStyle.Medium);
     loadMonthScores();
@@ -1268,6 +1269,7 @@ export default function TasksScreen() {
     setEditingTask(null);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
     if (notify && data?.due_date) await scheduleTaskNotification(data.id, data.title, data.due_date, due_time, data.remind_time);
+    else await cancelTaskNotification(editingTask.id);
   };
 
   // A recurring event's "date" is just its next upcoming occurrence, which shifts depending
@@ -1490,6 +1492,7 @@ export default function TasksScreen() {
       {
         text: t('common.delete'), style: 'destructive', onPress: async () => {
           setTasks(tasks.filter(task => task.id !== id));
+          await cancelTaskNotification(id);
           await supabase.from('tasks').delete().eq('id', id);
           if (task?.attachment_path) deleteTaskAttachment(task.attachment_path);
         }

@@ -43,7 +43,12 @@ export async function scheduleTaskNotification(
     reminder.setHours(remindHour, remindMinute, 0, 0);
 
     if (reminder > now) {
+      // identifier: taskId makes the notification's own ID predictable, so cancelling it later
+      // (task deleted, completed, or edited away from needing a reminder) never needs a
+      // separately-tracked notification ID — and scheduling again for the same task just
+      // replaces the old one instead of leaving a duplicate.
       const id = await Notifications.scheduleNotificationAsync({
+        identifier: taskId,
         content: {
           title: '📋 Aufgabe heute fällig',
           body: title,
@@ -64,7 +69,7 @@ export async function scheduleTaskNotification(
   }
 }
 
-export async function cancelTaskNotification(notificationId: string) {
+export async function cancelTaskNotification(taskId: string) {
   if (!Notifications) return;
-  try { await Notifications.cancelScheduledNotificationAsync(notificationId); } catch {}
+  try { await Notifications.cancelScheduledNotificationAsync(taskId); } catch {}
 }
