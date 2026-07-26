@@ -67,6 +67,7 @@ export const en: AppTranslations = {
       namePlaceholder: 'What do you need?',
       quantityPlaceholder: 'Quantity',
       elsewhereHint: '{{emoji}} Usually at {{name}} — add there',
+      fuzzyMatchHint: '📝 Did you mean "{{name}}"? Tap to fix spelling',
       frequentlyBought: 'FREQUENTLY BOUGHT',
       brandAt: 'BRAND AT {{supermarket}} (OPTIONAL)',
       brandPlaceholder: 'Enter your own brand…',

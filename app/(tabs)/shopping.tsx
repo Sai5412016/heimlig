@@ -19,7 +19,7 @@ import { useStore } from '../../store/useStore';
 import { fetchShoppingItems, subscribeToShoppingItems } from '../../repositories/shoppingRepository';
 import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
 import ProductScanner from '../../components/ProductScanner';
-import { searchGroceries, categoryForItem, normalizeKey } from '../../lib/groceries';
+import { searchGroceries, categoryForItem, fuzzyMatchGrocery, normalizeKey } from '../../lib/groceries';
 import { estimateCartTotal } from '../../lib/pricing';
 import { formatCurrency } from '../../lib/currency';
 import { searchBrands, bumpBrand, supermarketKey, supermarketsForCountry, ALL_SUPERMARKETS, GENERIC_STORE_TYPES, type BrandEntry, type SupermarketOption } from '../../lib/brands';
@@ -41,6 +41,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
   const [category, setCategory] = useState('Lebensmittel');
   const [brand, setBrand] = useState('');
   const [brandOptions, setBrandOptions] = useState<BrandEntry[]>([]);
+  const [fuzzyMatch, setFuzzyMatch] = useState<{ name: string; category: string } | null>(null);
   const inputRef = useRef<TextInput>(null);
   const itemCatalog = useStore(s => s.itemCatalog);
   const smKey = supermarketKey(supermarket);
@@ -49,7 +50,7 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
     if (visible) {
       setTimeout(() => inputRef.current?.focus(), 300);
     } else {
-      setName(''); setQuantity(''); setCategory('Lebensmittel'); setBrand(''); setBrandOptions([]);
+      setName(''); setQuantity(''); setCategory('Lebensmittel'); setBrand(''); setBrandOptions([]); setFuzzyMatch(null);
     }
   }, [visible]);
 
@@ -105,18 +106,34 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
     return ALL_SUPERMARKETS.find(s => s.name.toLowerCase() === entry.preferred_supermarket) ?? null;
   }, [name, itemCatalog, smKey]);
 
-  // Auto-assign category when the typed name matches a known item
+  // Auto-assign category when the typed name matches a known item — falls back to a fuzzy
+  // (typo-tolerant) match so e.g. "Fischstebchen" still lands in the right category instead of
+  // silently keeping whatever category chip was last selected.
   const applyName = (text: string) => {
     setName(text);
     setBrand('');
-    const known = categoryForItem(text) || itemCatalog.find(c => c.name_key === normalizeKey(text))?.category;
-    if (known) setCategory(known);
+    const exact = categoryForItem(text) || itemCatalog.find(c => c.name_key === normalizeKey(text))?.category;
+    if (exact) {
+      setCategory(exact);
+      setFuzzyMatch(null);
+      return;
+    }
+    const fuzzy = fuzzyMatchGrocery(text);
+    if (fuzzy) { setCategory(fuzzy.category); setFuzzyMatch(fuzzy); }
+    else setFuzzyMatch(null);
   };
 
   const pickSuggestion = (s: { name: string; category: string }) => {
     setName(s.name);
     setBrand('');
     setCategory(s.category);
+    setFuzzyMatch(null);
+  };
+
+  const acceptFuzzyMatch = () => {
+    if (!fuzzyMatch) return;
+    setName(fuzzyMatch.name);
+    setFuzzyMatch(null);
   };
 
   const handleAdd = () => {
@@ -170,6 +187,14 @@ const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: 
                 }}
               >
                 <Text style={styles.elsewhereHintText}>{t('shopping.addItem.elsewhereHint', { emoji: elsewhere.emoji, name: elsewhere.name })}</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Typo tolerance: name didn't exactly match the catalog, but a close spelling did —
+                category is already auto-corrected silently, this just offers to fix the spelling too. */}
+            {fuzzyMatch && (
+              <TouchableOpacity style={styles.elsewhereHint} onPress={acceptFuzzyMatch}>
+                <Text style={styles.elsewhereHintText}>{t('shopping.addItem.fuzzyMatchHint', { name: fuzzyMatch.name })}</Text>
               </TouchableOpacity>
             )}
 

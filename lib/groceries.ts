@@ -99,6 +99,49 @@ export function categoryForItem(name: string): string | undefined {
   return BY_KEY[normalizeKey(name)];
 }
 
+// Levenshtein edit distance (iterative DP) — catalog entries are short (a few hundred, single
+// words/short phrases), so a plain O(n*m) implementation per comparison is fast enough to run
+// against the whole catalog on every keystroke.
+function editDistance(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const row = new Array(n + 1);
+  for (let j = 0; j <= n; j++) row[j] = j;
+  for (let i = 1; i <= m; i++) {
+    let prev = row[0];
+    row[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = row[j];
+      row[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, row[j], row[j - 1]);
+      prev = tmp;
+    }
+  }
+  return row[n];
+}
+
+// Finds the closest catalog entry for a misspelled item name, so a typo (e.g. "Fischstebchen"
+// instead of "Fischstäbchen") still gets the right category instead of silently keeping
+// whichever category chip was last selected. Only kicks in for near-misses, not free-text: the
+// allowed edit distance scales with word length (never more than ~30% of the typed text), and
+// short inputs (<4 chars) are skipped entirely since e.g. "Ei" vs "Eis" is 1 edit but a
+// different item.
+export function fuzzyMatchGrocery(name: string): GroceryEntry | undefined {
+  const q = normalizeKey(name);
+  if (q.length < 4) return undefined;
+  if (BY_KEY[q]) return undefined; // exact match already handled by categoryForItem
+  const maxDistance = Math.max(1, Math.floor(q.length * 0.3));
+  let best: GroceryEntry | undefined;
+  let bestDistance = maxDistance + 1;
+  for (const entry of GROCERY_LIST) {
+    const candidate = entry.name.toLowerCase();
+    if (Math.abs(candidate.length - q.length) > maxDistance) continue; // cheap pre-filter
+    const d = editDistance(q, candidate);
+    if (d < bestDistance) { bestDistance = d; best = entry; }
+  }
+  return bestDistance <= maxDistance ? best : undefined;
+}
+
 // Search the curated catalog for items matching the query (prefix matches first)
 export function searchGroceries(query: string, limit = 8): GroceryEntry[] {
   const q = normalizeKey(query);

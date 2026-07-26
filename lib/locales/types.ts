@@ -65,6 +65,7 @@ export interface AppTranslations {
       namePlaceholder: string;
       quantityPlaceholder: string;
       elsewhereHint: string;
+      fuzzyMatchHint: string;
       frequentlyBought: string;
       brandAt: string;
       brandPlaceholder: string;

@@ -66,6 +66,7 @@ export const de: AppTranslations = {
       namePlaceholder: 'Was brauchst du?',
       quantityPlaceholder: 'Menge',
       elsewhereHint: '{{emoji}} Meist bei {{name}} — dort hinzufügen',
+      fuzzyMatchHint: '📝 Meinst du „{{name}}"? Tippen zum Korrigieren',
       frequentlyBought: 'HÄUFIG GEKAUFT',
       brandAt: 'MARKE BEI {{supermarket}} (OPTIONAL)',
       brandPlaceholder: 'Eigene Marke eingeben…',
