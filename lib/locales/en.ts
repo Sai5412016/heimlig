@@ -429,7 +429,7 @@ export const en: AppTranslations = {
     addIngredientsButton: 'Add {{count}} ingredients ✓',
     addIngredientsCalendarButton: 'Add {{count}} ingredients + calendar ✓',
     calendarOnlyButton: 'Only add to calendar ✓',
-    chooseOptionButton: 'Please choose an option',
+    saveOnlyButton: 'Save recipe only ✓',
   },
   scanner: {
     topTitle: 'Scan product',

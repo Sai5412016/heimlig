@@ -427,7 +427,7 @@ export interface AppTranslations {
     addIngredientsButton: string;
     addIngredientsCalendarButton: string;
     calendarOnlyButton: string;
-    chooseOptionButton: string;
+    saveOnlyButton: string;
   };
   scanner: {
     topTitle: string;

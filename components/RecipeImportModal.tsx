@@ -202,14 +202,11 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
                   </View>
                 )}
 
-                <TouchableOpacity
-                  style={[s.addBtn, { marginTop: spacing.lg }, (!addToCart && !planEnabled) && s.addBtnDisabled]}
-                  onPress={handleAdd} disabled={!addToCart && !planEnabled}
-                >
+                <TouchableOpacity style={[s.addBtn, { marginTop: spacing.lg }]} onPress={handleAdd}>
                   <Text style={s.addBtnText}>
                     {addToCart
                       ? t(planEnabled ? 'recipeImport.addIngredientsCalendarButton' : 'recipeImport.addIngredientsButton', { count: selectedCount })
-                      : planEnabled ? t('recipeImport.calendarOnlyButton') : t('recipeImport.chooseOptionButton')}
+                      : planEnabled ? t('recipeImport.calendarOnlyButton') : t('recipeImport.saveOnlyButton')}
                   </Text>
                 </TouchableOpacity>
               </ScrollView>

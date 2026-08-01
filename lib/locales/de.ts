@@ -428,7 +428,7 @@ export const de: AppTranslations = {
     addIngredientsButton: '{{count}} Zutaten hinzufügen ✓',
     addIngredientsCalendarButton: '{{count}} Zutaten hinzufügen + Kalender ✓',
     calendarOnlyButton: 'Nur in Kalender eintragen ✓',
-    chooseOptionButton: 'Bitte Option wählen',
+    saveOnlyButton: 'Nur Rezept speichern ✓',
   },
   scanner: {
     topTitle: 'Produkt scannen',
