@@ -23,7 +23,7 @@ Heimlig ist **live im Play Store** (offizieller Production-Release, kein geschlo
 3. Fertige **AAB** in Play Console → **Production** → „Neuen Release erstellen" → Versionshinweise (de-DE) eintragen → hochladen → veröffentlichen. *(Upload macht Andi manuell – kein API-Zugang.)*
 4. Nach Veröffentlichung: in Supabase `app_config.latest_version_code` auf den neuen versionCode setzen → löst das In-App-„Update verfügbar"-Popup für ältere Nutzer aus.
 - **Web** braucht keinen Build – Push auf `main` reicht (Vercel).
-- Stand zuletzt: **versionCode 67** gepusht/gebaut (EAS-Build läuft automatisch über GitHub-Integration bei jedem Push auf `main`). `app_config.latest_version_code` (DB) = **50** — der In-App-Update-Hinweis ist also seit einigen Releases nicht mehr aktuell; erst nach dem nächsten manuellen Play-Store-Upload durch Andi hochsetzen. versionName = `1.0.2`.
+- Stand zuletzt: **versionCode 69** gepusht/gebaut (EAS-Build läuft automatisch über GitHub-Integration bei jedem Push auf `main`). `app_config.latest_version_code` (DB) = **50** — der In-App-Update-Hinweis ist also seit einigen Releases nicht mehr aktuell; erst nach dem nächsten manuellen Play-Store-Upload durch Andi hochsetzen. versionName = `1.0.2`.
 - Keine Tester-Ankündigungsmail mehr nötig (App ist live, keine Google-Group-Benachrichtigung mehr).
 
 ## Bekannte Play-Console-Warnungen ("Empfohlene Aktionen")
