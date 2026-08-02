@@ -14,6 +14,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { Recipe, MealType } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
+import RecipeDetailModal from '../../components/RecipeDetailModal';
 import ThemeMotif from '../../components/ThemeMotif';
 import { format, addDays } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
@@ -162,6 +163,7 @@ export default function RecipesScreen() {
   const [showImport, setShowImport] = useState(false);
   const [planTarget, setPlanTarget] = useState<Recipe | null>(null);
   const [catTarget, setCatTarget] = useState<Recipe | null>(null);
+  const [detailTarget, setDetailTarget] = useState<Recipe | null>(null);
   const [filter, setFilter] = useState<string | null>(null);
 
   const visibleRecipes = useMemo(
@@ -233,7 +235,7 @@ export default function RecipesScreen() {
         <TouchableOpacity onPress={() => toggleRecipeFavorite(item.id)} style={styles.favBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={styles.favIcon}>{item.is_favorite ? '⭐' : '☆'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.cardBody} onPress={() => setPlanTarget(item)} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.cardBody} onPress={() => setDetailTarget(item)} activeOpacity={0.7}>
           <Text style={styles.cardName}>{item.name}</Text>
           <Text style={styles.cardMeta}>
             {item.category ? `${RECIPE_CAT_EMOJI[item.category] ?? '📁'} ${categoryLabel(t, item.category)} · ` : ''}{t('recipes.ingredientsCount', { count })}{item.source_url ? ' · 🔗 Link' : ''}
@@ -312,6 +314,7 @@ export default function RecipesScreen() {
       <RecipeImportModal visible={showImport} onClose={() => setShowImport(false)} onAdd={handleImportAdd} />
       <PlanModal recipe={planTarget} onClose={() => setPlanTarget(null)} onConfirm={handlePlanConfirm} />
       <CategoryModal recipe={catTarget} onClose={() => setCatTarget(null)} onPick={handlePickCategory} />
+      <RecipeDetailModal recipe={detailTarget} onClose={() => setDetailTarget(null)} />
     </SafeAreaView>
   );
 }

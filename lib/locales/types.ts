@@ -161,6 +161,7 @@ export interface AppTranslations {
     noDataBody: string;
     exportFailed: string;
     importFailed: string;
+    receiptLoadFailed: string;
     noRowsTitle: string;
     noRowsBody: string;
     importConfirmTitle: string;
@@ -428,6 +429,22 @@ export interface AppTranslations {
     addIngredientsCalendarButton: string;
     calendarOnlyButton: string;
     saveOnlyButton: string;
+    stepsRecognized: string;
+  };
+  recipeDetail: {
+    ingredientsLabel: string;
+    stepsLabel: string;
+    showOriginal: string;
+    hideOriginal: string;
+    originalLoadFailed: string;
+  };
+  receiptScan: {
+    title: string;
+    pickPlaceholder: string;
+    extracting: string;
+    hint: string;
+    extractErrorBody: string;
+    saveButton: string;
   };
   scanner: {
     topTitle: string;

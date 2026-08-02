@@ -14,7 +14,10 @@ import { format, addDays } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import * as ImagePicker from 'expo-image-picker';
 
-export interface RecipeAddOpts { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }
+export interface RecipeAddOpts {
+  sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean;
+  instructions?: string[]; sourceText?: string; imageBase64?: string; imageMimeType?: string;
+}
 
 export default function RecipeImportModal({ visible, onClose, onAdd }: {
   visible: boolean;
@@ -35,13 +38,14 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [recipeName, setRecipeName] = useState('');
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
+  const [instructions, setInstructions] = useState<string[]>([]);
   const [planDate, setPlanDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [mealType, setMealType] = useState<MealType>('abendessen');
   const [planEnabled, setPlanEnabled] = useState(false);
   const [addToCart, setAddToCart] = useState(true);
 
   const reset = () => {
-    setStep('input'); setInput(''); setIngredients([]); setRecipeName('');
+    setStep('input'); setInput(''); setIngredients([]); setInstructions([]); setRecipeName('');
     setPlanDate(format(new Date(), 'yyyy-MM-dd')); setPlanEnabled(false); setAddToCart(true);
     setImageB64(null); setImageMime('image/jpeg');
   };
@@ -74,6 +78,7 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
       setRecipeName(data.name || t('recipeImport.defaultName'));
       // Pre-select ALL ingredients (incl. basics like salt/pepper) — user can deselect
       setIngredients((data.ingredients || []).map((i: RecipeIngredient) => ({ ...i, include: true })));
+      setInstructions(Array.isArray(data.instructions) ? data.instructions : []);
       setStep('review');
     } catch (e) {
       Alert.alert(t('common.error'), t('recipeImport.extractErrorBody'));
@@ -100,6 +105,10 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
       date: planEnabled && planDate ? planDate : undefined,
       mealType: planEnabled ? mealType : undefined,
       addToCart,
+      instructions: instructions.length > 0 ? instructions : undefined,
+      sourceText: inputMode === 'text' && input.trim() ? input.trim() : undefined,
+      imageBase64: inputMode === 'image' ? imageB64 || undefined : undefined,
+      imageMimeType: inputMode === 'image' ? imageMime : undefined,
     });
     onClose();
   };
@@ -172,6 +181,10 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
                     {ing.quantity && <Text style={s.ingQty}>{ing.quantity}</Text>}
                   </TouchableOpacity>
                 ))}
+
+                {instructions.length > 0 && (
+                  <Text style={s.hint}>{t('recipeImport.stepsRecognized', { count: instructions.length })}</Text>
+                )}
 
                 <TouchableOpacity style={s.toggleRow} onPress={() => setAddToCart(v => !v)}>
                   <View style={[s.checkbox, addToCart && s.checkboxChecked]}>{addToCart && <Text style={s.checkmark}>✓</Text>}</View>

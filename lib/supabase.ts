@@ -140,7 +140,9 @@ export interface Recipe {
   name: string;
   source_url?: string;
   source_text?: string;
+  source_image_path?: string;
   ingredients: RecipeIngredient[];
+  instructions?: string[];
   is_favorite?: boolean;
   category?: string;
   created_by?: string;
