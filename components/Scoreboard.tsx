@@ -6,23 +6,31 @@ import { colors, spacing, radius, typography, type ColorPalette } from '../const
 import { useTheme } from '../hooks/useTheme';
 import { useStore } from '../store/useStore';
 import { supabase, Member } from '../lib/supabase';
-import { taskPoints, titleForPoints } from '../lib/gamification';
+import { taskPoints, titleForPoints, SHARE_POINTS } from '../lib/gamification';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 
 interface Row { member: Member; points: number; done: number }
 
-// Sum points of tasks completed in [start, end] grouped by member
+// Sum points of tasks completed + app shares in [start, end] grouped by member
 export async function monthlyScores(householdId: string, members: Member[], monthDate: Date): Promise<Row[]> {
   const start = startOfMonth(monthDate).toISOString();
   const end = endOfMonth(monthDate).toISOString();
-  const { data } = await supabase
-    .from('tasks')
-    .select('points, priority, category, completed_by, completed_at')
-    .eq('household_id', householdId)
-    .not('completed_at', 'is', null)
-    .gte('completed_at', start)
-    .lte('completed_at', end);
+  const [{ data }, { data: shares }] = await Promise.all([
+    supabase
+      .from('tasks')
+      .select('points, priority, category, completed_by, completed_at')
+      .eq('household_id', householdId)
+      .not('completed_at', 'is', null)
+      .gte('completed_at', start)
+      .lte('completed_at', end),
+    supabase
+      .from('share_events')
+      .select('user_id')
+      .eq('household_id', householdId)
+      .gte('shared_at', start)
+      .lte('shared_at', end),
+  ]);
 
   const byMember: Record<string, { points: number; done: number }> = {};
   (data || []).forEach(t => {
@@ -30,6 +38,16 @@ export async function monthlyScores(householdId: string, members: Member[], mont
     const p = taskPoints(t as any);
     const cur = byMember[t.completed_by] || { points: 0, done: 0 };
     byMember[t.completed_by] = { points: cur.points + p, done: cur.done + 1 };
+  });
+
+  // share_events is keyed by auth user_id (not member_id) — map through the member list.
+  const memberIdByUserId: Record<string, string> = {};
+  members.forEach(m => { memberIdByUserId[m.user_id] = m.id; });
+  (shares || []).forEach(s => {
+    const memberId = memberIdByUserId[s.user_id];
+    if (!memberId) return;
+    const cur = byMember[memberId] || { points: 0, done: 0 };
+    byMember[memberId] = { ...cur, points: cur.points + SHARE_POINTS };
   });
 
   return members

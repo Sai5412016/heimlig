@@ -23,6 +23,7 @@ import NotesModal from '../../components/NotesModal';
 import GoogleCalendarModal from '../../components/GoogleCalendarModal';
 import LocationModal from '../../components/LocationModal';
 import ThemeMotif from '../../components/ThemeMotif';
+import ShareModal from '../../components/ShareModal';
 import { captureScreenshot } from '../../lib/screenshotTool';
 
 // Only these accounts see the screenshot tool (web-only, dev use for refreshing store/marketing
@@ -226,6 +227,7 @@ export default function HouseholdScreen() {
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [showInvite, setShowInvite] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [showEditName, setShowEditName] = useState(false);
   const [showChangePw, setShowChangePw] = useState(false);
@@ -435,6 +437,18 @@ export default function HouseholdScreen() {
             </View>
           </View>
           <Text style={styles.inviteBannerArrow}>›</Text>
+        </TouchableOpacity>
+
+        {/* Share banner */}
+        <TouchableOpacity style={styles.shareBanner} onPress={() => setShowShare(true)} activeOpacity={0.85}>
+          <View style={styles.inviteBannerLeft}>
+            <Text style={styles.inviteBannerEmoji}>📤</Text>
+            <View>
+              <Text style={styles.shareBannerTitle}>{t('household.shareBannerTitle')}</Text>
+              <Text style={styles.shareBannerSub}>{t('household.shareBannerSub')}</Text>
+            </View>
+          </View>
+          <Text style={styles.shareBannerArrow}>›</Text>
         </TouchableOpacity>
 
         {/* Weekly Score */}
@@ -710,6 +724,7 @@ export default function HouseholdScreen() {
         inviteCode={household?.invite_code ?? ''}
         householdName={household?.name ?? ''}
       />
+      <ShareModal visible={showShare} onClose={() => setShowShare(false)} />
       <JoinModal
         visible={showJoin}
         onClose={() => setShowJoin(false)}
@@ -781,6 +796,15 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   inviteBannerSub: { ...typography.sm, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   inviteBannerCode: { color: colors.brandLight, fontWeight: '800', fontFamily: 'monospace' },
   inviteBannerArrow: { fontSize: 28, color: 'rgba(255,255,255,0.5)' },
+
+  shareBanner: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: colors.accent, borderRadius: radius.lg, padding: spacing.lg,
+    marginBottom: spacing.md, ...shadow.md,
+  },
+  shareBannerTitle: { ...typography.body, color: colors.textInverse, fontWeight: '700' },
+  shareBannerSub: { ...typography.sm, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  shareBannerArrow: { fontSize: 28, color: 'rgba(255,255,255,0.5)' },
 
   scoreCard: {
     backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg,

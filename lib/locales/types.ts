@@ -282,6 +282,8 @@ export interface AppTranslations {
     inviteButton: string;
     inviteBannerTitle: string;
     inviteBannerSub: string;
+    shareBannerTitle: string;
+    shareBannerSub: string;
     thisWeek: string;
     points: string;
     membersCount: string;
@@ -482,6 +484,22 @@ export interface AppTranslations {
     youSuffix: string;
     pointsLabel: string;
     footnote: string;
+  };
+  shareModal: {
+    title: string;
+    subtitle: string;
+    platform: {
+      instagram: string;
+      facebook: string;
+      twitter: string;
+      tiktok: string;
+      other: string;
+    };
+    sharedToday: string;
+    pointAbbrev: string;
+    toast: string;
+    failedTitle: string;
+    failedBody: string;
   };
   gamification: {
     titleLegend: string;

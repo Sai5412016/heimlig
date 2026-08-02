@@ -11,6 +11,10 @@ export function taskPoints(task: Pick<Task, 'points' | 'priority'>): number {
 // Effort levels shown when creating a task
 export const EFFORT_POINTS = { low: 5, normal: 10, high: 20 } as const;
 
+// Points for sharing the app on social media — one per platform per day (see share_events'
+// unique(user_id, platform, shared_date) constraint, which is what actually enforces the cap).
+export const SHARE_POINTS = 1;
+
 // Fun titles based on a member's monthly points. First match from the top wins.
 function titles(t: TFunction): { min: number; title: string }[] {
   return [
