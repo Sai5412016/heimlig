@@ -9,8 +9,12 @@ import { registerPushToken } from '../lib/pushTokens';
 import * as shoppingRepo from '../repositories/shoppingRepository';
 import { supermarketKey } from '../lib/brands';
 import i18n, { type SupportedLanguage } from '../lib/i18n';
+import { uploadRecipeImage, deleteRecipeImage } from '../lib/recipeAttachments';
 
-export interface SaveRecipeOpts { sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean }
+export interface SaveRecipeOpts {
+  sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean;
+  instructions?: string[]; sourceText?: string; imageBase64?: string; imageMimeType?: string;
+}
 export interface PlanRecipeOpts { date: string; mealType: MealType; addToCart: boolean }
 
 const HOUSEHOLD_CATEGORIES = ['Haushalt', 'Einkauf', 'Wartung', 'Garten'];
@@ -787,22 +791,34 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteRecipe: async (id) => {
+    const recipe = get().recipes.find(r => r.id === id);
     set(s => ({ recipes: s.recipes.filter(r => r.id !== id) }));
     await supabase.from('recipes').delete().eq('id', id);
+    if (recipe?.source_image_path) deleteRecipeImage(recipe.source_image_path);
   },
 
   // Create a brand-new recipe (from import) + optional meal plan + optional cart items
   saveRecipe: async (ingredients, name, opts) => {
     const { household, currentMember, activeListId, addItem } = get();
     if (!household || !currentMember) return { added: 0, planned: false };
-    const { sourceUrl, date, mealType, addToCart } = opts;
+    const { sourceUrl, date, mealType, addToCart, instructions, sourceText, imageBase64, imageMimeType } = opts;
     const toAdd = ingredients.filter(i => i.include);
+
+    // Keep the original around for later reference (esp. cooking steps that didn't make it
+    // into the structured "instructions" extraction) — a pasted text is saved as-is, a photo
+    // import is uploaded to storage so it can be reopened from the recipe detail view.
+    const sourceImagePath = imageBase64
+      ? await uploadRecipeImage(household.id, imageBase64, imageMimeType || 'image/jpeg')
+      : null;
 
     const { data: recipe } = await supabase.from('recipes').insert({
       household_id: household.id,
       name,
       source_url: sourceUrl,
+      source_text: sourceText,
+      source_image_path: sourceImagePath ?? undefined,
       ingredients,
+      instructions,
       created_by: currentMember.id,
     }).select().single();
     if (recipe) set(s => ({ recipes: [recipe, ...s.recipes] }));

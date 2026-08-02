@@ -58,3 +58,7 @@ export async function insertTransaction(tx: Partial<Transaction>): Promise<Trans
 export async function deleteTransaction(id: string): Promise<void> {
   await supabase.from('transactions').delete().eq('id', id);
 }
+
+export async function updateTransactionReceipt(id: string, receiptPath: string): Promise<void> {
+  await supabase.from('transactions').update({ receipt_url: receiptPath }).eq('id', id);
+}

@@ -106,7 +106,7 @@ async function safeFetchText(rawUrl: string): Promise<string> {
   }
 }
 
-const INSTRUCTION = `Extrahiere die Zutaten aus diesem Rezept und gib sie als JSON zurück.
+const INSTRUCTION = `Extrahiere die Zutaten und die Kochschritte aus diesem Rezept und gib sie als JSON zurück.
 
 Regeln:
 - Gib NUR valides JSON zurück, kein Text darum herum
@@ -114,13 +114,15 @@ Regeln:
 - Behalte ALLE Zutaten, auch Basics wie Salz und Pfeffer, aber setze bei diesen isBasic auf true
 - Mappe jede Zutat auf eine dieser Kategorien: Lebensmittel, Obst & Gemüse, Tiefkühl, Fleisch & Fisch, Drogerie, Backwaren, Getränke, Sonstiges
 - quantity auf Deutsch
+- "instructions": jeder Kochschritt als ein String in der Liste, in der Reihenfolge der Zubereitung, ohne vorangestellte Nummerierung (die wird in der App ergänzt). Wenn keine Zubereitungsschritte im Text/Bild vorhanden sind, gib ein leeres Array zurück.
 
 Format:
 {
   "name": "Rezeptname",
   "ingredients": [
     {"name": "Zutat", "quantity": "200 g", "category": "Lebensmittel", "isBasic": false}
-  ]
+  ],
+  "instructions": ["Zwiebeln würfeln und andünsten.", "..."]
 }`;
 
 serve(async (req) => {
@@ -201,7 +203,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
+        max_tokens: 2048,
         messages: [{ role: 'user', content: userContent }],
       }),
     });
@@ -225,7 +227,11 @@ serve(async (req) => {
       include: !ing.isBasic && !BASICS.some(b => ing.name.toLowerCase().includes(b)),
     }));
 
-    return new Response(JSON.stringify({ name: parsed.name, ingredients }), {
+    const instructions = Array.isArray(parsed.instructions)
+      ? parsed.instructions.filter((s: unknown) => typeof s === 'string' && s.trim()).map((s: string) => s.trim())
+      : [];
+
+    return new Response(JSON.stringify({ name: parsed.name, ingredients, instructions }), {
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
   } catch (e) {

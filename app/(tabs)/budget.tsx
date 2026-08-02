@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
-  Modal, Pressable, KeyboardAvoidingView, Platform, Animated
+  Modal, Pressable, KeyboardAvoidingView, Platform, Animated, Linking
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,30 +23,10 @@ import { buildTransactionsCsv, exportCsv, parseTransactionsCsv, memberIdByName }
 import { currencySymbol, formatCurrency } from '../../lib/currency';
 import BudgetSplitModal from '../../components/BudgetSplitModal';
 import ThemeMotif from '../../components/ThemeMotif';
+import ReceiptScanModal, { ReceiptDraft } from '../../components/ReceiptScanModal';
+import { uploadReceiptImage, deleteReceiptImage, getReceiptImageUrl } from '../../lib/receiptAttachments';
 
-const CAT_EMOJIS: Record<string, string> = {
-  'Lebensmittel': '🛒', 'Miete': '🏠', 'Transport': '🚗',
-  'Freizeit': '🎮', 'Gesundheit': '💊', 'Kleidung': '👕',
-  'Haushalt': '🔧', 'Kinder': '👶', 'Haustiere': '🐾',
-  'Sparen': '💰', 'Restaurant': '🍽️', 'Urlaub': '✈️',
-  'Elektronik': '💻', 'Sport': '🏃', 'Sonstiges': '📦',
-};
-
-const ALL_CATEGORIES = Object.keys(CAT_EMOJIS);
-
-// Category values are a closed, stable set of German keys (matches stored transaction data) —
-// this only translates the label actually shown to the user, same pattern as shopping.tsx's
-// categoryLabel(). Unknown/custom categories fall back to the raw key instead of disappearing.
-const categoryLabel = (t: (key: string, opts?: Record<string, unknown>) => string, cat: string): string =>
-  t(`budget.categories.${cat}`, { defaultValue: cat });
-
-const CAT_COLORS: Record<string, string> = {
-  'Lebensmittel': '#10B981', 'Miete': '#3B82F6', 'Transport': '#F59E0B',
-  'Freizeit': '#8B5CF6', 'Gesundheit': '#EF4444', 'Kleidung': '#EC4899',
-  'Haushalt': '#6B7280', 'Kinder': '#F97316', 'Haustiere': '#84CC16',
-  'Sparen': '#14B8A6', 'Restaurant': '#F59E0B', 'Urlaub': '#06B6D4',
-  'Elektronik': '#6366F1', 'Sport': '#22C55E', 'Sonstiges': '#9CA3AF',
-};
+import { CAT_EMOJIS, ALL_CATEGORIES, CAT_COLORS, categoryLabel } from '../../lib/budgetCategories';
 
 // Quick-select presets set both a category and a canned description — presetKey drives the
 // translated text for both the chip label and the description that actually gets typed in,
@@ -325,12 +305,25 @@ function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: 
         <Text style={[styles.txAmount, { color: tx.type === 'income' ? colors.success : colors.error }]}>
           {tx.type === 'income' ? '+' : '-'} {formatCurrency(Number(tx.amount), household?.currency, language)}
         </Text>
-        <TouchableOpacity onPress={() => onDelete(tx.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.txDelete}>×</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          {tx.receipt_url && (
+            <TouchableOpacity onPress={() => handleOpenReceipt(tx.receipt_url!, t)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.txReceiptIcon}>🧾</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={() => onDelete(tx.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.txDelete}>×</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
+}
+
+async function handleOpenReceipt(path: string, t: (key: string) => string) {
+  const url = await getReceiptImageUrl(path);
+  if (url) Linking.openURL(url);
+  else Alert.alert(t('common.error'), t('budget.receiptLoadFailed'));
 }
 
 export default function BudgetScreen() {
@@ -341,6 +334,7 @@ export default function BudgetScreen() {
   const dateLocale = language === 'en' ? enUS : de;
   const [showModal, setShowModal] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
+  const [showReceiptScan, setShowReceiptScan] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions'>('overview');
   const [filterCat, setFilterCat] = useState<string | null>(null);
@@ -434,10 +428,34 @@ export default function BudgetScreen() {
     if (data) { setTransactions([data, ...transactions]); hapticNotification(Haptics.NotificationFeedbackType.Success); }
   };
 
+  const handleReceiptConfirm = async (draft: ReceiptDraft) => {
+    if (!household) return;
+    // Insert the transaction first so the household always ends up with the entry even if the
+    // (non-critical) receipt photo upload fails — the amount/category is what actually matters.
+    const data = await budgetRepo.insertTransaction({
+      household_id: household.id, amount: draft.amount, type: 'expense', category: draft.category,
+      description: draft.description, transaction_date: draft.date, member_id: currentMember?.id,
+    });
+    if (!data) return;
+    let tx = data;
+    const path = await uploadReceiptImage(household.id, draft.imageBase64, draft.imageMimeType);
+    if (path) {
+      await budgetRepo.updateTransactionReceipt(data.id, path);
+      tx = { ...data, receipt_url: path };
+    }
+    setTransactions([tx, ...transactions]);
+    hapticNotification(Haptics.NotificationFeedbackType.Success);
+  };
+
   const handleDelete = (id: string) => {
     Alert.alert(t('budget.deleteConfirmTitle'), t('budget.deleteConfirmBody'), [
       { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: async () => { setTransactions(transactions.filter(tx => tx.id !== id)); await budgetRepo.deleteTransaction(id); } }
+      { text: t('common.delete'), style: 'destructive', onPress: async () => {
+          const tx = transactions.find(t => t.id === id);
+          setTransactions(transactions.filter(tx => tx.id !== id));
+          await budgetRepo.deleteTransaction(id);
+          if (tx?.receipt_url) deleteReceiptImage(tx.receipt_url);
+        } }
     ]);
   };
 
@@ -502,6 +520,9 @@ export default function BudgetScreen() {
               <Text style={styles.ioBtnText}>💸</Text>
             </TouchableOpacity>
           )}
+          <TouchableOpacity style={styles.ioBtn} onPress={() => setShowReceiptScan(true)}>
+            <Text style={styles.ioBtnText}>📷</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.ioBtn} onPress={handleExport}>
             <Text style={styles.ioBtnText}>📤</Text>
           </TouchableOpacity>
@@ -664,6 +685,7 @@ export default function BudgetScreen() {
         currentMemberId={currentMember?.id ?? ''}
       />
       <BudgetSplitModal visible={showSplit} onClose={() => setShowSplit(false)} />
+      <ReceiptScanModal visible={showReceiptScan} onClose={() => setShowReceiptScan(false)} onConfirm={handleReceiptConfirm} />
     </SafeAreaView>
   );
 }
@@ -737,6 +759,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   txRight: { alignItems: 'flex-end', gap: 4 },
   txAmount: { ...typography.body, fontWeight: '700' },
   txDelete: { fontSize: 18, color: colors.textMuted },
+  txReceiptIcon: { fontSize: 16 },
 
   memberBreakdown: { marginTop: spacing.lg },
   memberRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
