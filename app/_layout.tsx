@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { useTheme } from '../hooks/useTheme';
 import { checkForUpdate } from '../lib/appUpdate';
+import { initBilling, restorePurchases } from '../lib/billing';
 import WhatsNewModal from '../components/WhatsNewModal';
 import ErrorFallback from '../components/ErrorFallback';
 import { initSentry, Sentry } from '../lib/sentry';
@@ -135,6 +136,13 @@ function RootLayout() {
       setReady(true);
       if (pendingJoinCode) router.replace(`/join/${pendingJoinCode}`);
       else router.replace('/(tabs)');
+
+      // Play Store requires restorable purchases to be re-surfaced on every app start (not
+      // just after a fresh purchase) — non-blocking, same pattern as checkForUpdate above.
+      const householdId = chosen.households?.id as string | undefined;
+      if (householdId) {
+        initBilling(householdId).then(ok => { if (ok) restorePurchases(householdId); });
+      }
     } catch (e) {
       console.error(e);
       Sentry.captureException(e);

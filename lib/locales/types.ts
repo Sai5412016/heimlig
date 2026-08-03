@@ -299,6 +299,7 @@ export interface AppTranslations {
     infoInviteCode: string;
     planFree: string;
     planPremium: string;
+    upgradeChip: string;
     darkMode: string;
     designLabel: string;
     scoreboardLabel: string;
@@ -500,6 +501,33 @@ export interface AppTranslations {
     toast: string;
     failedTitle: string;
     failedBody: string;
+  };
+  premiumModal: {
+    title: string;
+    subtitle: string;
+    benefit: {
+      members: { emoji: string; text: string };
+      earlyAccess: { emoji: string; text: string };
+      support: { emoji: string; text: string };
+    };
+    alreadyPremium: string;
+    androidOnly: string;
+    unlockButton: string;
+    restoreButton: string;
+    restoring: string;
+    successTitle: string;
+    successBody: string;
+    failedTitle: string;
+    purchaseFailed: string;
+    verifyFailed: string;
+    unsupportedPlatform: string;
+    notConfigured: string;
+    connectionFailed: string;
+    noOfferFound: string;
+    restoredTitle: string;
+    restoredBody: string;
+    nothingToRestoreTitle: string;
+    nothingToRestoreBody: string;
   };
   gamification: {
     titleLegend: string;

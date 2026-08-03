@@ -24,6 +24,7 @@ import GoogleCalendarModal from '../../components/GoogleCalendarModal';
 import LocationModal from '../../components/LocationModal';
 import ThemeMotif from '../../components/ThemeMotif';
 import ShareModal from '../../components/ShareModal';
+import PremiumModal from '../../components/PremiumModal';
 import { captureScreenshot } from '../../lib/screenshotTool';
 
 // Only these accounts see the screenshot tool (web-only, dev use for refreshing store/marketing
@@ -228,6 +229,7 @@ export default function HouseholdScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [showInvite, setShowInvite] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [showEditName, setShowEditName] = useState(false);
   const [showChangePw, setShowChangePw] = useState(false);
@@ -521,10 +523,18 @@ export default function HouseholdScreen() {
             <Text style={styles.infoLabel}>{t('household.infoName')}</Text>
             <Text style={styles.infoValue}>{household?.name}{currentMember?.role === 'admin' ? '  ✏️' : ''}</Text>
           </TouchableOpacity>
-          <View style={styles.infoRow}>
+          <TouchableOpacity
+            style={styles.infoRow}
+            onPress={() => { if (household?.plan_tier === 'free') setShowPremium(true); }}
+            activeOpacity={household?.plan_tier === 'free' ? 0.6 : 1}
+            disabled={household?.plan_tier !== 'free'}
+          >
             <Text style={styles.infoLabel}>{t('household.infoPlan')}</Text>
-            <Text style={styles.infoValue}>{household?.plan_tier === 'free' ? t('household.planFree') : t('household.planPremium')}</Text>
-          </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.infoValue}>{household?.plan_tier === 'free' ? t('household.planFree') : t('household.planPremium')}</Text>
+              {household?.plan_tier === 'free' && <Text style={styles.upgradeChip}>{t('household.upgradeChip')}</Text>}
+            </View>
+          </TouchableOpacity>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('household.infoMembers')}</Text>
             <Text style={styles.infoValue}>{members.length} / {household?.plan_tier === 'free' ? '3' : '6'}</Text>
@@ -725,6 +735,7 @@ export default function HouseholdScreen() {
         householdName={household?.name ?? ''}
       />
       <ShareModal visible={showShare} onClose={() => setShowShare(false)} />
+      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />
       <JoinModal
         visible={showJoin}
         onClose={() => setShowJoin(false)}
@@ -853,6 +864,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   infoLabel: { ...typography.sm, color: colors.textSecondary },
   infoValue: { ...typography.sm, color: colors.text, fontWeight: '600' },
+  upgradeChip: { ...typography.xs, color: colors.textInverse, backgroundColor: colors.accent, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2, fontWeight: '700' },
 
   settingsBtn: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center', marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   settingsBtnText: { ...typography.body, color: colors.text, fontWeight: '600' },
