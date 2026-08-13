@@ -25,6 +25,7 @@ import LocationModal from '../../components/LocationModal';
 import ThemeMotif from '../../components/ThemeMotif';
 import ShareModal from '../../components/ShareModal';
 import PremiumModal from '../../components/PremiumModal';
+import { hasPremiumAccess } from '../../lib/premium';
 import { captureScreenshot } from '../../lib/screenshotTool';
 
 // Only these accounts see the screenshot tool (web-only, dev use for refreshing store/marketing
@@ -230,6 +231,7 @@ export default function HouseholdScreen() {
   const [showInvite, setShowInvite] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
+  const premium = hasPremiumAccess(household);
   const [showJoin, setShowJoin] = useState(false);
   const [showEditName, setShowEditName] = useState(false);
   const [showChangePw, setShowChangePw] = useState(false);
@@ -523,21 +525,24 @@ export default function HouseholdScreen() {
             <Text style={styles.infoLabel}>{t('household.infoName')}</Text>
             <Text style={styles.infoValue}>{household?.name}{currentMember?.role === 'admin' ? '  ✏️' : ''}</Text>
           </TouchableOpacity>
+          {/* Everything user-facing keys off hasPremiumAccess(), not plan_tier — a
+              grandfathered household is still on the free tier but has every premium benefit,
+              so upselling it (or showing it the lower member allowance) would be wrong. */}
           <TouchableOpacity
             style={styles.infoRow}
-            onPress={() => { if (household?.plan_tier === 'free') setShowPremium(true); }}
-            activeOpacity={household?.plan_tier === 'free' ? 0.6 : 1}
-            disabled={household?.plan_tier !== 'free'}
+            onPress={() => { if (!premium) setShowPremium(true); }}
+            activeOpacity={premium ? 1 : 0.6}
+            disabled={premium}
           >
             <Text style={styles.infoLabel}>{t('household.infoPlan')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.infoValue}>{household?.plan_tier === 'free' ? t('household.planFree') : t('household.planPremium')}</Text>
-              {household?.plan_tier === 'free' && <Text style={styles.upgradeChip}>{t('household.upgradeChip')}</Text>}
+              <Text style={styles.infoValue}>{premium ? t('household.planPremium') : t('household.planFree')}</Text>
+              {!premium && <Text style={styles.upgradeChip}>{t('household.upgradeChip')}</Text>}
             </View>
           </TouchableOpacity>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('household.infoMembers')}</Text>
-            <Text style={styles.infoValue}>{members.length} / {household?.plan_tier === 'free' ? '3' : '6'}</Text>
+            <Text style={styles.infoValue}>{members.length} / {premium ? '6' : '3'}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('household.infoInviteCode')}</Text>

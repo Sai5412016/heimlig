@@ -169,6 +169,9 @@ serve(async (req) => {
     // ── Premium gate: free (non-grandfathered) households get FREE_MONTHLY_IMPORT_LIMIT
     // imports per calendar month. Checked (and logged) BEFORE the Anthropic call, so a
     // household that's already at its limit never triggers the cost this limit exists for. ──
+    // NOTE: this condition intentionally mirrors hasPremiumAccess() in lib/premium.ts. It
+    // can't import it — that's app code in the Node/Metro bundle, this runs in Deno — so if
+    // the premium rule ever changes, it has to change in both places.
     const { data: household } = await authClient
       .from('households').select('plan_tier, grandfathered').eq('id', householdId).single();
     const hasUnlimitedImports = household?.plan_tier !== 'free' || household?.grandfathered === true;
