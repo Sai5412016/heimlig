@@ -10,6 +10,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 import { purchasePremium, restorePurchases } from '../lib/billing';
+import { hasPremiumAccess } from '../lib/premium';
 
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 
@@ -67,7 +68,10 @@ export default function PremiumModal({ visible, onClose }: { visible: boolean; o
     }
   };
 
-  const alreadyPremium = household?.plan_tier !== 'free';
+  // Grandfathered households count as "already premium" here on purpose: they get every
+  // benefit this modal advertises for free, so letting them pay would charge them for
+  // something they already have.
+  const alreadyPremium = hasPremiumAccess(household);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
