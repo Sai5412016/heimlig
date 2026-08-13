@@ -12,6 +12,7 @@ import {
 } from 'expo-iap';
 import { supabase } from './supabase';
 import i18n from './i18n';
+import { Sentry } from './sentry';
 
 export const PREMIUM_PRODUCT_ID = 'heimlig_premium_monthly';
 
@@ -52,7 +53,15 @@ async function verifyAndFinish(purchase: Purchase, householdId: string): Promise
       // { error: string } detail lives on error.context (the raw Response), see
       // FunctionsHttpError in @supabase/functions-js.
       let serverError: string | undefined;
-      try { serverError = (await error.context?.json())?.error; } catch { /* best-effort */ }
+      let httpStatus: number | undefined;
+      try {
+        httpStatus = error.context?.status;
+        serverError = (await error.context?.json())?.error;
+      } catch { /* best-effort */ }
+      // This used to be a silent dead end — a rejection reached the server fine but nothing
+      // here recorded which one. Never logs purchaseToken, only the status/error code.
+      console.warn('[billing] verify-purchase rejected the purchase —', httpStatus, serverError);
+      Sentry.captureMessage('verify-purchase rejected a purchase', { level: 'warning', extra: { httpStatus, serverError } });
       return { ok: false, error: serverError };
     }
     if (!data?.valid) return { ok: false, error: data?.error };
@@ -60,8 +69,13 @@ async function verifyAndFinish(purchase: Purchase, householdId: string): Promise
     await finishTransaction({ purchase, isConsumable: false });
     return { ok: true };
   } catch (e) {
-    console.warn('[billing] verifyAndFinish failed', e);
-    return { ok: false };
+    // supabase.functions.invoke() threw before any HTTP response came back at all — a purely
+    // client-side failure (offline, DNS, timeout, ...) that never reaches verify-purchase, so
+    // there's nothing to find in its logs. Previously swallowed with just a console.warn and no
+    // Sentry report, which made this exact failure mode undiagnosable from the client side too.
+    console.warn('[billing] verifyAndFinish: supabase.functions.invoke threw before a server response —', e);
+    Sentry.captureException(e, { tags: { context: 'verify-purchase-invoke' } });
+    return { ok: false, error: 'client_invoke_failed' };
   }
 }
 
