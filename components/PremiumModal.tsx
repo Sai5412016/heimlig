@@ -1,7 +1,5 @@
 // components/PremiumModal.tsx — Heimlig Premium upsell + purchase flow.
-// The actual purchase only works on Android (Play Billing) and only once Andi has created
-// the real subscription product (see PREMIUM_PRODUCT_ID TODO in lib/billing.ts) — until then
-// purchasePremium() returns a clear "not configured yet" error rather than pretending to work.
+// The actual purchase only works on Android (Play Billing) — see lib/billing.ts.
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, Platform, ActivityIndicator } from 'react-native';
 import { Alert } from '../lib/alert';
@@ -15,7 +13,8 @@ import { purchasePremium, restorePurchases } from '../lib/billing';
 
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 
-const BENEFIT_KEYS = ['members', 'earlyAccess', 'support'] as const;
+// Matches the exact perks advertised in the Play Store listing — keep in sync with it.
+const BENEFIT_KEYS = ['members', 'unlimitedImports', 'csvExport'] as const;
 
 export default function PremiumModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();

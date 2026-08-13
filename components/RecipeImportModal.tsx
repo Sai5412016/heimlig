@@ -13,6 +13,7 @@ import { supabase, RecipeIngredient, MealType } from '../lib/supabase';
 import { format, addDays } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import * as ImagePicker from 'expo-image-picker';
+import PremiumModal from './PremiumModal';
 
 export interface RecipeAddOpts {
   sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean;
@@ -27,7 +28,9 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const language = useStore(state => state.language);
+  const household = useStore(state => state.household);
   const dateLocale = language === 'en' ? enUS : de;
+  const [showPremium, setShowPremium] = useState(false);
   const mealLabels: Record<MealType, string> = { fruehstueck: t('recipes.mealBreakfast'), mittag: t('recipes.mealLunch'), abendessen: t('recipes.mealDinner') };
   const s = useMemo(() => makeStyles(colors), [colors]);
   const [inputMode, setInputMode] = useState<'url' | 'text' | 'image'>('url');
@@ -67,12 +70,12 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
   const canExtract = inputMode === 'image' ? !!imageB64 : !!input.trim();
 
   const handleExtract = async () => {
-    if (!canExtract) return;
+    if (!canExtract || !household) return;
     setLoading(true);
     try {
-      const body = inputMode === 'url' ? { url: input.trim() }
-        : inputMode === 'text' ? { text: input.trim() }
-        : { imageBase64: imageB64, imageMediaType: imageMime };
+      const body = inputMode === 'url' ? { url: input.trim(), householdId: household.id }
+        : inputMode === 'text' ? { text: input.trim(), householdId: household.id }
+        : { imageBase64: imageB64, imageMediaType: imageMime, householdId: household.id };
       const { data, error } = await supabase.functions.invoke('extract-recipe', { body });
       if (error) throw error;
       setRecipeName(data.name || t('recipeImport.defaultName'));
@@ -80,8 +83,20 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
       setIngredients((data.ingredients || []).map((i: RecipeIngredient) => ({ ...i, include: true })));
       setInstructions(Array.isArray(data.instructions) ? data.instructions : []);
       setStep('review');
-    } catch (e) {
-      Alert.alert(t('common.error'), t('recipeImport.extractErrorBody'));
+    } catch (e: any) {
+      // extract-recipe returns a specific { error: 'import_limit_reached' } body on the
+      // free-plan monthly cap — supabase-js doesn't parse it automatically on a non-2xx
+      // response, so read it off the raw Response (see FunctionsHttpError.context).
+      let serverError: string | undefined;
+      try { serverError = (await e?.context?.json())?.error; } catch { /* best-effort */ }
+      if (serverError === 'import_limit_reached') {
+        Alert.alert(t('recipeImport.limitReachedTitle'), t('recipeImport.limitReachedBody'), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('recipeImport.upgradeButton'), onPress: () => setShowPremium(true) },
+        ]);
+      } else {
+        Alert.alert(t('common.error'), t('recipeImport.extractErrorBody'));
+      }
     } finally {
       setLoading(false);
     }
@@ -227,6 +242,7 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
           </View>
         </View>
       </KeyboardAvoidingView>
+      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />
     </Modal>
   );
 }
