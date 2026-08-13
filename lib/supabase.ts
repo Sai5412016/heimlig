@@ -37,6 +37,11 @@ export interface Household {
   currency?: string;
   timezone?: string;
   country?: string;
+  // Bestandsschutz: true for every household that already existed when premium gating shipped
+  // (see the premium_gating_grandfather_and_import_limit migration) — grants the same
+  // unlimited access as plan_tier === 'premium' without actually changing plan_tier, so it
+  // can't be confused with (or accidentally overwritten by) a real purchase.
+  grandfathered?: boolean;
   created_at: string;
 }
 

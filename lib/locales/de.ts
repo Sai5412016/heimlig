@@ -434,6 +434,9 @@ export const de: AppTranslations = {
     calendarOnlyButton: 'Nur in Kalender eintragen ✓',
     saveOnlyButton: 'Nur Rezept speichern ✓',
     stepsRecognized: '{{count}} Kochschritte erkannt – im Rezept abrufbar',
+    limitReachedTitle: 'Monatliches Limit erreicht',
+    limitReachedBody: 'Im kostenlosen Plan sind 3 Rezept-Importe pro Monat enthalten. Mit Heimlig Premium importierst du unbegrenzt.',
+    upgradeButton: 'Zu Premium',
   },
   recipeDetail: {
     ingredientsLabel: 'ZUTATEN',
@@ -508,8 +511,8 @@ export const de: AppTranslations = {
     subtitle: 'Mehr Platz für deinen Haushalt',
     benefit: {
       members: { emoji: '👨‍👩‍👧‍👦', text: 'Bis zu 6 statt 3 Mitglieder pro Haushalt' },
-      earlyAccess: { emoji: '🚀', text: 'Früher Zugriff auf neue Features' },
-      support: { emoji: '💚', text: 'Du unterstützt die Weiterentwicklung von Heimlig' },
+      unlimitedImports: { emoji: '🍳', text: 'Unbegrenzter Rezept-Import' },
+      csvExport: { emoji: '📊', text: 'Budget-Export als CSV' },
     },
     alreadyPremium: 'Ihr habt Premium schon freigeschaltet – danke! 🎉',
     androidOnly: 'Der Kauf ist aktuell nur in der Android-App möglich.',

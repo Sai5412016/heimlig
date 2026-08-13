@@ -7,6 +7,11 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 const BASICS = ['salz', 'pfeffer', 'wasser', 'öl', 'olivenöl', 'zucker', 'mehl', 'butter', 'backpulver', 'natron', 'hefe', 'essig', 'senf'];
 
+// Free-plan households (not premium, not grandfathered) get this many recipe imports per
+// calendar month — each call here costs a real Anthropic API request, so this is enforced
+// server-side against recipe_import_events, never trusting a client-sent count.
+const FREE_MONTHLY_IMPORT_LIMIT = 3;
+
 // Decode common HTML entities (fractions, nbsp, etc.) so quantities arrive cleanly
 function decodeEntities(s: string): string {
   if (!s) return s;
@@ -148,7 +153,43 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Zu viele Anfragen, bitte später erneut versuchen.' }), { status: 429, headers: { ...cors, 'Content-Type': 'application/json' } });
     }
 
-    const { url, text, imageBase64, imageMediaType } = await req.json();
+    const { url, text, imageBase64, imageMediaType, householdId } = await req.json();
+    if (!householdId) {
+      return new Response(JSON.stringify({ error: 'missing householdId' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+
+    // Confirm the caller actually belongs to the household they're importing for — this is
+    // about to check (and consume) that household's import quota.
+    const { data: membership } = await authClient
+      .from('members').select('id').eq('user_id', user.id).eq('household_id', householdId).maybeSingle();
+    if (!membership) {
+      return new Response(JSON.stringify({ error: 'not a member of this household' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+
+    // ── Premium gate: free (non-grandfathered) households get FREE_MONTHLY_IMPORT_LIMIT
+    // imports per calendar month. Checked (and logged) BEFORE the Anthropic call, so a
+    // household that's already at its limit never triggers the cost this limit exists for. ──
+    const { data: household } = await authClient
+      .from('households').select('plan_tier, grandfathered').eq('id', householdId).single();
+    const hasUnlimitedImports = household?.plan_tier !== 'free' || household?.grandfathered === true;
+
+    if (!hasUnlimitedImports) {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+      const { count } = await authClient
+        .from('recipe_import_events')
+        .select('id', { count: 'exact', head: true })
+        .eq('household_id', householdId)
+        .gte('created_at', monthStart.toISOString());
+
+      if ((count ?? 0) >= FREE_MONTHLY_IMPORT_LIMIT) {
+        return new Response(JSON.stringify({ error: 'import_limit_reached', limit: FREE_MONTHLY_IMPORT_LIMIT }), {
+          status: 403, headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      }
+      await authClient.from('recipe_import_events').insert({ household_id: householdId, user_id: user.id });
+    }
 
     let recipeContent = text || '';
 

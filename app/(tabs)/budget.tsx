@@ -24,6 +24,8 @@ import { currencySymbol, formatCurrency } from '../../lib/currency';
 import BudgetSplitModal from '../../components/BudgetSplitModal';
 import ThemeMotif from '../../components/ThemeMotif';
 import ReceiptScanModal, { ReceiptDraft } from '../../components/ReceiptScanModal';
+import PremiumModal from '../../components/PremiumModal';
+import { hasPremiumAccess } from '../../lib/premium';
 import { uploadReceiptImage, deleteReceiptImage, getReceiptImageUrl } from '../../lib/receiptAttachments';
 
 import { CAT_EMOJIS, ALL_CATEGORIES, CAT_COLORS, categoryLabel } from '../../lib/budgetCategories';
@@ -335,6 +337,7 @@ export default function BudgetScreen() {
   const [showModal, setShowModal] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [showReceiptScan, setShowReceiptScan] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions'>('overview');
   const [filterCat, setFilterCat] = useState<string | null>(null);
@@ -463,6 +466,7 @@ export default function BudgetScreen() {
 
   // ─── EXPORT ───────────────────────────────────────────────
   const handleExport = async () => {
+    if (!hasPremiumAccess(household)) { setShowPremium(true); return; }
     if (transactions.length === 0) { Alert.alert(t('budget.noDataTitle'), t('budget.noDataBody')); return; }
     try {
       const nameById: Record<string, string> = {};
@@ -686,6 +690,7 @@ export default function BudgetScreen() {
       />
       <BudgetSplitModal visible={showSplit} onClose={() => setShowSplit(false)} />
       <ReceiptScanModal visible={showReceiptScan} onClose={() => setShowReceiptScan(false)} onConfirm={handleReceiptConfirm} />
+      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />
     </SafeAreaView>
   );
 }
