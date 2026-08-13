@@ -277,6 +277,8 @@ export const en: AppTranslations = {
     welcomeBody: 'You are now a member of "{{name}}".',
     notFoundTitle: 'Not found',
     joinFailed: 'Failed to join.',
+    memberLimitTitle: 'Household is full',
+    memberLimitBody: 'This household has reached its member limit. Heimlig Premium allows up to 6 members instead of 3.',
     removeMemberTitle: 'Remove member',
     removeMemberBody: 'Remove {{name}} from the household?',
     removeButton: 'Remove',
