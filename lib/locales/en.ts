@@ -435,6 +435,9 @@ export const en: AppTranslations = {
     calendarOnlyButton: 'Only add to calendar ✓',
     saveOnlyButton: 'Save recipe only ✓',
     stepsRecognized: '{{count}} cooking steps recognized – available in the recipe',
+    limitReachedTitle: 'Monthly limit reached',
+    limitReachedBody: 'The free plan includes 3 recipe imports per month. Heimlig Premium gives you unlimited imports.',
+    upgradeButton: 'Go Premium',
   },
   recipeDetail: {
     ingredientsLabel: 'INGREDIENTS',
@@ -509,8 +512,8 @@ export const en: AppTranslations = {
     subtitle: 'More room for your household',
     benefit: {
       members: { emoji: '👨‍👩‍👧‍👦', text: 'Up to 6 members per household instead of 3' },
-      earlyAccess: { emoji: '🚀', text: 'Early access to new features' },
-      support: { emoji: '💚', text: "You're supporting Heimlig's development" },
+      unlimitedImports: { emoji: '🍳', text: 'Unlimited recipe imports' },
+      csvExport: { emoji: '📊', text: 'Budget export as CSV' },
     },
     alreadyPremium: 'Your household already has Premium — thank you! 🎉',
     androidOnly: 'Purchases are currently only available in the Android app.',

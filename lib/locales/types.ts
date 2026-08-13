@@ -433,6 +433,9 @@ export interface AppTranslations {
     calendarOnlyButton: string;
     saveOnlyButton: string;
     stepsRecognized: string;
+    limitReachedTitle: string;
+    limitReachedBody: string;
+    upgradeButton: string;
   };
   recipeDetail: {
     ingredientsLabel: string;
@@ -507,8 +510,8 @@ export interface AppTranslations {
     subtitle: string;
     benefit: {
       members: { emoji: string; text: string };
-      earlyAccess: { emoji: string; text: string };
-      support: { emoji: string; text: string };
+      unlimitedImports: { emoji: string; text: string };
+      csvExport: { emoji: string; text: string };
     };
     alreadyPremium: string;
     androidOnly: string;

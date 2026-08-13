@@ -4,9 +4,6 @@
 // forwards the purchase token to the verify-purchase edge function, which validates it
 // against the Google Play Developer API server-side before granting anything. A client
 // could otherwise just fabricate a token and unlock Premium for free.
-//
-// TODO(Andi): PREMIUM_PRODUCT_ID is a placeholder — swap in the real subscription product ID
-// once it's created in the Play Console (Monetize -> Products -> Subscriptions).
 import { Platform } from 'react-native';
 import {
   initConnection, endConnection, fetchProducts, requestPurchase, finishTransaction,
@@ -16,9 +13,17 @@ import {
 import { supabase } from './supabase';
 import i18n from './i18n';
 
-export const PREMIUM_PRODUCT_ID = 'TBD'; // TODO(Andi): replace once the Play Console product exists
+export const PREMIUM_PRODUCT_ID = 'heimlig_premium_monthly';
 
 export interface PurchaseResult { success: boolean; error?: string }
+
+// verify-purchase returns a specific { error: string } body on failure (see its Response.json()
+// shapes) — this maps the ones worth telling the user about differently to their translation,
+// everything else falls back to the generic verifyFailed message.
+function translateVerifyError(serverError: string | undefined): string {
+  if (serverError === 'billing verification not configured yet') return i18n.t('premiumModal.notConfigured');
+  return i18n.t('premiumModal.verifyFailed');
+}
 
 let connected = false;
 let updateSub: { remove: () => void } | null = null;
@@ -28,7 +33,11 @@ let errorSub: { remove: () => void } | null = null;
 // original purchasePremium() promise instead of leaving the UI without a resolution.
 let pendingResolve: ((result: PurchaseResult) => void) | null = null;
 
-async function verifyAndFinish(purchase: Purchase, householdId: string): Promise<boolean> {
+// Returns the raw server error string (e.g. 'billing verification not configured yet') when
+// verification fails, so callers can show something more useful than a generic "try again" —
+// a 503 because the service account secret isn't set yet is a developer-side issue, not
+// something retrying or restoring purchases will ever fix.
+async function verifyAndFinish(purchase: Purchase, householdId: string): Promise<{ ok: boolean; error?: string }> {
   try {
     const { data, error } = await supabase.functions.invoke('verify-purchase', {
       body: {
@@ -38,13 +47,21 @@ async function verifyAndFinish(purchase: Purchase, householdId: string): Promise
         householdId,
       },
     });
-    if (error || !data?.valid) return false;
+    if (error) {
+      // supabase-js doesn't parse the body on a non-2xx response — the edge function's
+      // { error: string } detail lives on error.context (the raw Response), see
+      // FunctionsHttpError in @supabase/functions-js.
+      let serverError: string | undefined;
+      try { serverError = (await error.context?.json())?.error; } catch { /* best-effort */ }
+      return { ok: false, error: serverError };
+    }
+    if (!data?.valid) return { ok: false, error: data?.error };
     // Non-consumable (a subscription, not a coin pack) — don't consume the token.
     await finishTransaction({ purchase, isConsumable: false });
-    return true;
+    return { ok: true };
   } catch (e) {
     console.warn('[billing] verifyAndFinish failed', e);
-    return false;
+    return { ok: false };
   }
 }
 
@@ -59,9 +76,9 @@ export async function initBilling(householdId: string | undefined): Promise<bool
     await initConnection();
     connected = true;
     updateSub = purchaseUpdatedListener(async (purchase) => {
-      const ok = householdId ? await verifyAndFinish(purchase, householdId) : false;
+      const result = householdId ? await verifyAndFinish(purchase, householdId) : { ok: false as const };
       if (pendingResolve) {
-        pendingResolve(ok ? { success: true } : { success: false, error: i18n.t('premiumModal.verifyFailed') });
+        pendingResolve(result.ok ? { success: true } : { success: false, error: translateVerifyError(result.error) });
         pendingResolve = null;
       }
     });
@@ -90,7 +107,6 @@ export function endBilling(): void {
 // actually been verified server-side (not just "dialog opened") — see pendingResolve above.
 export async function purchasePremium(householdId: string): Promise<PurchaseResult> {
   if (Platform.OS !== 'android') return { success: false, error: i18n.t('premiumModal.unsupportedPlatform') };
-  if (PREMIUM_PRODUCT_ID === 'TBD') return { success: false, error: i18n.t('premiumModal.notConfigured') }; // TODO(Andi): remove once wired
   if (!connected) await initBilling(householdId);
   if (!connected) return { success: false, error: i18n.t('premiumModal.connectionFailed') };
 
@@ -126,7 +142,7 @@ export async function restorePurchases(householdId: string): Promise<number> {
     const purchases = await getAvailablePurchases();
     let restored = 0;
     for (const p of purchases) {
-      if (await verifyAndFinish(p, householdId)) restored++;
+      if ((await verifyAndFinish(p, householdId)).ok) restored++;
     }
     return restored;
   } catch (e) {
