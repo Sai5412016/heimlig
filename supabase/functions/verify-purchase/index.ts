@@ -19,6 +19,9 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 // Until this is set, verification fails clearly (503) instead of silently granting Premium.
 const GOOGLE_SERVICE_ACCOUNT_JSON = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON');
 const ANDROID_PACKAGE_NAME = 'com.fledderman.heimlig';
+// Must match lib/billing.ts's PREMIUM_PRODUCT_ID — only used for a diagnostic log below, the
+// Play API call itself never looks at productId, only at the purchase token.
+const EXPECTED_PRODUCT_ID = 'heimlig_premium_monthly';
 
 const ALLOWED_ORIGINS = new Set([
   'https://heimlig.vercel.app',
@@ -124,6 +127,7 @@ async function verifyAndroidSubscription(purchaseToken: string): Promise<VerifyR
     console.error('verify-purchase: failed to obtain a Google access token —', errMsg(e));
     return { valid: false, expiresAt: null, errorCode: 'google_auth_failed' };
   }
+  console.log('verify-purchase: obtained a Google OAuth access token successfully');
 
   const url = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${ANDROID_PACKAGE_NAME}/purchases/subscriptionsv2/tokens/${purchaseToken}`;
   let res: Response;
@@ -154,13 +158,11 @@ async function verifyAndroidSubscription(purchaseToken: string): Promise<VerifyR
 
   const state = data.subscriptionState as string | undefined;
   const valid = state === 'SUBSCRIPTION_STATE_ACTIVE' || state === 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD';
-  if (!valid) {
-    // Not a bug — Google answered fine, this is just a real subscription state we don't treat
-    // as "currently paying" (e.g. cancelled, on hold, paused, pending). Logged at info level so
-    // it's visible without looking like an infra failure.
-    console.log(`verify-purchase: subscription found but state '${state}' is not treated as active`);
-  }
   const expiresAt = data.lineItems?.[0]?.expiryTime ?? null;
+  // Always logged, not just on rejection — this is the actual answer Google gave us, and the
+  // single most useful line for diagnosing a "responds 200 but writes nothing" report: it shows
+  // whether the call even reached Google, and if so, exactly what state it returned.
+  console.log(`verify-purchase: Play API subscriptionsv2 responded — subscriptionState=${state ?? '<missing>'} valid=${valid} hasExpiresAt=${!!expiresAt}`);
   return { valid, expiresAt };
 }
 
@@ -184,7 +186,11 @@ serve(async (req) => {
     }
 
     const { data: allowed, error: rlError } = await authClient.rpc('rl_hit', { p_bucket: 'verify-purchase', p_limit: 20 });
-    if (!rlError && allowed === false) {
+    if (rlError) {
+      // Fails open on purpose (rate limiting is a safety net, not core correctness) — but worth
+      // knowing about if it's silently never limiting anyone.
+      console.error('verify-purchase: rl_hit rate-limit check failed, failing open —', rlError.message);
+    } else if (allowed === false) {
       return new Response(JSON.stringify({ valid: false, error: 'Zu viele Anfragen, bitte später erneut versuchen.' }), { status: 429, headers: { ...cors, 'Content-Type': 'application/json' } });
     }
 
@@ -195,6 +201,12 @@ serve(async (req) => {
         purchaseToken: !!purchaseToken, productId: !!productId, platform: !!platform, householdId: !!householdId,
       });
       return new Response(JSON.stringify({ valid: false, error: 'missing_fields' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+    if (productId !== EXPECTED_PRODUCT_ID) {
+      // Not fatal — the Play API call below only ever uses purchaseToken, never productId, so a
+      // mismatch here can't be *why* verification silently fails. Still logged since it'd
+      // indicate a client/Play-Console product-ID mismatch worth knowing about.
+      console.error(`verify-purchase: productId '${productId}' does not match the expected '${EXPECTED_PRODUCT_ID}' (see lib/billing.ts PREMIUM_PRODUCT_ID) — continuing anyway`);
     }
 
     // Confirm the caller actually belongs to the household they're claiming Premium for —
@@ -225,10 +237,14 @@ serve(async (req) => {
     if (!result.valid) {
       // google_auth_failed/play_api_error are OUR infra failing to answer the question at all
       // (502); anything else is Google answering "no" for a real reason, e.g. the subscription
-      // just isn't active (200, same as any other legitimate "not valid" response).
+      // just isn't active (402 — Google was reachable, but there's currently no active paid
+      // entitlement for this token). Both are deliberately non-2xx now: a 200 here used to bury
+      // legitimate rejections right next to real successes in the Invocations log, which made
+      // exactly this "responds 200, writes nothing" failure mode invisible.
       const infraFailure = result.errorCode === 'google_auth_failed' || result.errorCode === 'play_api_error';
+      console.error(`verify-purchase: rejecting purchase for household ${householdId} — errorCode=${result.errorCode ?? 'not_active'}`);
       return new Response(JSON.stringify({ valid: false, error: result.errorCode ?? 'not_active' }), {
-        status: infraFailure ? 502 : 200,
+        status: infraFailure ? 502 : 402,
         headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
