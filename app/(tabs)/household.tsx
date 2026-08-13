@@ -25,7 +25,7 @@ import LocationModal from '../../components/LocationModal';
 import ThemeMotif from '../../components/ThemeMotif';
 import ShareModal from '../../components/ShareModal';
 import PremiumModal from '../../components/PremiumModal';
-import { hasPremiumAccess } from '../../lib/premium';
+import { hasPremiumAccess, memberLimit, isMemberLimitError } from '../../lib/premium';
 import { captureScreenshot } from '../../lib/screenshotTool';
 
 // Only these accounts see the screenshot tool (web-only, dev use for refreshing store/marketing
@@ -358,6 +358,11 @@ export default function HouseholdScreen() {
       p_avatar_color: currentMember.avatar_color,
     });
 
+    if (isMemberLimitError(error)) {
+      Alert.alert(t('household.memberLimitTitle'), t('household.memberLimitBody'));
+      return;
+    }
+
     if (error) {
       Alert.alert(t('common.error'), error.message || t('household.joinFailed'));
       return;
@@ -542,7 +547,7 @@ export default function HouseholdScreen() {
           </TouchableOpacity>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('household.infoMembers')}</Text>
-            <Text style={styles.infoValue}>{members.length} / {premium ? '6' : '3'}</Text>
+            <Text style={styles.infoValue}>{members.length} / {memberLimit(household)}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('household.infoInviteCode')}</Text>

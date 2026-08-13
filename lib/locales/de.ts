@@ -276,6 +276,8 @@ export const de: AppTranslations = {
     welcomeBody: 'Du bist jetzt Mitglied von "{{name}}".',
     notFoundTitle: 'Nicht gefunden',
     joinFailed: 'Beitreten fehlgeschlagen.',
+    memberLimitTitle: 'Haushalt ist voll',
+    memberLimitBody: 'Dieser Haushalt hat die maximale Mitgliederzahl erreicht. Mit Heimlig Premium sind bis zu 6 Mitglieder möglich statt 3.',
     removeMemberTitle: 'Mitglied entfernen',
     removeMemberBody: '{{name}} aus dem Haushalt entfernen?',
     removeButton: 'Entfernen',

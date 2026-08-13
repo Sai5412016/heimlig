@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, radius, typography, shadow } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
+import { isMemberLimitError } from '../../lib/premium';
 
 type Status = 'idle' | 'joining' | 'done' | 'error' | 'login' | 'web';
 
@@ -54,6 +55,7 @@ export default function JoinByCode() {
         p_avatar_color: member?.avatar_color ?? colors.brand,
       });
 
+      if (isMemberLimitError(error)) { setStatus('error'); setMessage(t('household.memberLimitBody')); return; }
       if (error) { setStatus('error'); setMessage(error.message); return; }
       if (result?.error) { setStatus('error'); setMessage(result.error); return; }
 

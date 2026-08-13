@@ -16,6 +16,7 @@ import { useStore } from '../store/useStore';
 import { CURRENCIES } from '../lib/currency';
 import { TIMEZONES } from '../lib/timezones';
 import { SUPPORTED_COUNTRIES } from '../lib/holidays';
+import { isMemberLimitError } from '../lib/premium';
 
 type Step = 'welcome' | 'type' | 'auth' | 'verify' | 'name';
 type HouseholdType = 'couple' | 'wg' | 'family' | 'solo';
@@ -149,6 +150,7 @@ export default function OnboardingScreen() {
         p_display_name: displayName,
         p_avatar_color: avatarColor,
       });
+      if (isMemberLimitError(rpcError)) { setErrorMsg(t('household.memberLimitBody')); return; }
       if (rpcError) throw rpcError;
       if (result?.error) throw new Error(result.error);
 

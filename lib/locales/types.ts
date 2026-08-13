@@ -275,6 +275,8 @@ export interface AppTranslations {
     welcomeBody: string;
     notFoundTitle: string;
     joinFailed: string;
+    memberLimitTitle: string;
+    memberLimitBody: string;
     removeMemberTitle: string;
     removeMemberBody: string;
     removeButton: string;
