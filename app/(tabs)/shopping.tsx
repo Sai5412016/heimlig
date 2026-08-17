@@ -1,10 +1,9 @@
 // app/(tabs)/shopping.tsx
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Dimensions } from 'react-native';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   Animated, Platform, KeyboardAvoidingView, RefreshControl,
-  Pressable, Modal, ScrollView, Image
+  Pressable, Modal, ScrollView, Image, useWindowDimensions
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -492,7 +491,25 @@ function getItemColor(name: string, category: string): string {
   return matchByName(name, ITEM_COLORS) || CATEGORY_COLORS[category] || colors.sonstiges;
 }
 
-const TILE_SIZE = (Dimensions.get('window').width - spacing.lg * 2 - spacing.sm * 2) / 3;
+// Roughly how wide a tile should be. The column count is derived from this rather than fixed,
+// so the same grid works from a 320dp split-screen phone up to a wide desktop browser window.
+// It is a target, not a hard minimum: the real width is whatever divides the row evenly.
+const TARGET_TILE_WIDTH = 132;
+const MIN_COLUMNS = 2;
+const MAX_COLUMNS = 8;
+
+// useWindowDimensions (not Dimensions.get) because this has to react to changes at runtime:
+// the shopping list is also used as a web PWA, where the browser window is resized freely, and
+// tablets are allowed to rotate (see app/_layout.tsx — only phones are locked to portrait).
+// The previous module-scope Dimensions.get('window') was evaluated once at import and never
+// updated, so a resized browser kept the tile width from page load.
+function useTileWidth(): number {
+  const { width } = useWindowDimensions();
+  // Mirrors styles.tileGrid: paddingHorizontal on both sides, then a gap between each column.
+  const available = width - spacing.sm * 2;
+  const columns = Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, Math.round(available / TARGET_TILE_WIDTH)));
+  return (available - spacing.sm * (columns - 1)) / columns;
+}
 
 // ─── TILE ITEM ────────────────────────────────────────────────
 const TileItem = React.memo(({ item, onToggle, onDelete }: {
@@ -500,11 +517,12 @@ const TileItem = React.memo(({ item, onToggle, onDelete }: {
 }) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const tileWidth = useTileWidth();
   const itemColor = getItemColor(item.name, item.category);
   const emoji = getItemEmoji(item.name, item.category);
   return (
     <TouchableOpacity
-      style={[styles.tile, { width: TILE_SIZE, backgroundColor: item.checked ? itemColor + '40' : itemColor + '18', borderColor: itemColor + '60' }]}
+      style={[styles.tile, { width: tileWidth, backgroundColor: item.checked ? itemColor + '40' : itemColor + '18', borderColor: itemColor + '60' }]}
       onPress={() => onToggle(item.id)}
       onLongPress={() => onDelete(item.id)}
       activeOpacity={0.7}
@@ -1090,20 +1108,24 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   catHeaderText: { ...typography.label, color: colors.textMuted, flex: 1 },
   catHeaderCount: { ...typography.xs, color: colors.textMuted, backgroundColor: colors.border, borderRadius: radius.full, paddingHorizontal: 7, paddingVertical: 2 },
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingHorizontal: spacing.sm },
+  // Width is set per render from useTileWidth(); only the fixed height lives here so every tile
+  // in a row lines up. Height fits the tallest case (emoji + 2 name lines + brand + quantity).
   tile: {
-    width: TILE_SIZE, height: 90, borderRadius: radius.md, borderWidth: 1.5,
+    height: 136, borderRadius: radius.md, borderWidth: 1.5,
     padding: spacing.sm, alignItems: 'center', justifyContent: 'center', position: 'relative',
   },
   tileCheckBadge: {
     position: 'absolute', top: 4, right: 4,
-    width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center',
+    width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center',
   },
-  tileCheckMark: { color: colors.textInverse, fontSize: 10, fontWeight: '700' },
-  tileEmoji: { fontSize: 22, marginBottom: 4 },
-  tileName: { ...typography.xs, color: colors.text, fontWeight: '600', textAlign: 'center' },
+  tileCheckMark: { color: colors.textInverse, fontSize: 12, fontWeight: '700' },
+  tileEmoji: { fontSize: 32, marginBottom: 4 },
+  // Explicit fontSize/lineHeight instead of typography.xs (12): the tile has to stay readable at
+  // a glance in a shop, which was the point of the tester feedback.
+  tileName: { fontSize: 14, lineHeight: 18, color: colors.text, fontWeight: '600', textAlign: 'center' },
   tileNameChecked: { textDecorationLine: 'line-through', color: colors.textMuted },
   tileBrand: { ...typography.xs, color: colors.brand, fontWeight: '700', marginTop: 1, textAlign: 'center' },
-  tileQty: { ...typography.xs, color: colors.textSecondary, marginTop: 2 },
+  tileQty: { fontSize: 13, lineHeight: 16, color: colors.textSecondary, marginTop: 2 },
   checkedSection: { marginTop: spacing.md },
 
   // List picker
