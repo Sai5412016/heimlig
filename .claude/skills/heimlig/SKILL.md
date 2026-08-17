@@ -148,7 +148,8 @@ Ohne erfüllte Kriterien nichts als "fertig" melden, sondern das offene Kriteriu
 **Release fertig, wenn:**
 - EAS-Build hochgeladen und in der Play Console freigegeben
 - `app_config.latest_version_code` in Supabase gesetzt
-- Ankündigung an die Tester-Google-Group raus
+- Versionshinweise im `<de-DE>`-Feld der Play Console eingetragen — das ersetzt die frühere
+  Ankündigungsmail an die Tester-Google-Group, die seit dem Production-Release entfällt
 
 **Bugfix fertig, wenn:**
 - Ursache benannt statt nur Symptom weg

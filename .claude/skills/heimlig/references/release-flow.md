@@ -79,14 +79,19 @@ Tabelle `app_config` hat genau eine Zeile (`id = 1`) mit `latest_version_code`, 
 und `store_url`. `lib/appUpdate.ts` liest sie beim Start und zeigt das
 "Update verfügbar"-Popup, wenn `latest_version_code` **größer** als der eigene `versionCode` ist.
 
-### 5. Ankündigung an die Tester-Google-Group
+### 5. Versionshinweise statt Tester-Mail
 
-An **`haushalts-app-heimlig-tester@googlegroups.com`**, im festen Textformat.
+**Es gibt keine Ankündigungsmail mehr.** Die frühere Mail an
+`haushalts-app-heimlig-tester@googlegroups.com` entfällt seit dem Production-Release — die App ist
+öffentlich, es gibt keine Google-Group-Benachrichtigung mehr. Diese Regel ist verbindlich geklärt;
+nicht wieder einführen.
 
-> Hinweis: `CONTEXT.md` behauptet, diese Mail sei seit dem Production-Release nicht mehr nötig und
-> die Versionshinweise in der Play Console hätten sie ersetzt. Die aktuelle Definition of Done
-> verlangt sie ausdrücklich weiterhin — im Zweifel beim Betreiber nachfragen, welche der beiden
-> Regeln gilt.
+Stattdessen gehen die „Was ist neu"-Texte direkt ins **`<de-DE>`-Feld bei „Versionshinweise"** beim
+Erstellen des Releases, also in Schritt 3. Format: kurz, locker, Du-Form, 1–2 Sätze mit Emoji.
+Kein Betreff, keine Anrede, keine Signatur — das war nur für die alte Tester-Mail.
+
+Optional zusätzlich für die Kommunikation in der App selbst: `update_message` in `app_config`
+(Schritt 4) und ein Eintrag in `app_changelog`, den `components/WhatsNewModal.tsx` anzeigt.
 
 ### 6. Web
 
