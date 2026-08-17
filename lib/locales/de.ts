@@ -124,6 +124,7 @@ export const de: AppTranslations = {
     descriptionPlaceholder: 'Beschreibung (optional)',
     datePlaceholder: 'Datum (JJJJ-MM-TT)',
     paidByLabel: 'BEZAHLT VON',
+    paidBySharedHint: '🤝 Gemeinsam = Haushaltsausgabe, wird zu gleichen Teilen auf alle Mitglieder gerechnet.',
     recurringLabel: 'WIEDERKEHREND',
     recurrenceOnce: 'Einmalig',
     recurrenceWeekly: 'Wöchentlich',

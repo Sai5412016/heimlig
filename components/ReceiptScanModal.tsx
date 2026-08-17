@@ -16,10 +16,15 @@ import { currencySymbol } from '../lib/currency';
 import { format } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
 import { ALL_CATEGORIES, CAT_EMOJIS, CAT_COLORS, categoryLabel } from '../lib/budgetCategories';
+import PayerPicker from './PayerPicker';
 
 export interface ReceiptDraft {
   amount: number; description?: string; category: string; date: string;
   imageBase64: string; imageMimeType: string;
+  // null = "gemeinsam" (stored as member_id IS NULL). Previously this screen had no payer
+  // choice at all and the caller hard-wired the current member, so a scanned receipt could
+  // never be booked as a shared expense.
+  memberId: string | null;
 }
 
 export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
@@ -31,6 +36,8 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
   const { t } = useTranslation();
   const language = useStore(state => state.language);
   const household = useStore(state => state.household);
+  const members = useStore(state => state.members);
+  const currentMember = useStore(state => state.currentMember);
   const s = useMemo(() => makeStyles(colors), [colors]);
   const [step, setStep] = useState<'pick' | 'review'>('pick');
   const [loading, setLoading] = useState(false);
@@ -40,10 +47,12 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Lebensmittel');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [paidBy, setPaidBy] = useState<string | null>(currentMember?.id ?? null);
 
   const reset = () => {
     setStep('pick'); setImageB64(null); setImageMime('image/jpeg');
     setAmount(''); setDescription(''); setCategory('Lebensmittel'); setDate(format(new Date(), 'yyyy-MM-dd'));
+    setPaidBy(currentMember?.id ?? null);
   };
 
   useEffect(() => { if (!visible) reset(); }, [visible]);
@@ -83,7 +92,7 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
       ? parseFloat(amount.replace(/,/g, ''))
       : parseFloat(amount.replace(/\./g, '').replace(',', '.'));
     if (!num || isNaN(num) || !imageB64) return;
-    onConfirm({ amount: num, description: description.trim() || undefined, category, date, imageBase64: imageB64, imageMimeType: imageMime });
+    onConfirm({ amount: num, description: description.trim() || undefined, category, date, imageBase64: imageB64, imageMimeType: imageMime, memberId: paidBy });
     onClose();
   };
 
@@ -134,6 +143,8 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
                     );
                   })}
                 </ScrollView>
+
+                <PayerPicker members={members} value={paidBy} onChange={setPaidBy} />
 
                 <TouchableOpacity style={[s.addBtn, !amount && s.addBtnDisabled]} onPress={handleConfirm} disabled={!amount}>
                   <Text style={s.addBtnText}>{t('receiptScan.saveButton')}</Text>

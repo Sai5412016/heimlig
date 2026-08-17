@@ -125,6 +125,7 @@ export const en: AppTranslations = {
     descriptionPlaceholder: 'Description (optional)',
     datePlaceholder: 'Date (YYYY-MM-DD)',
     paidByLabel: 'PAID BY',
+    paidBySharedHint: '🤝 Shared = household expense, counted equally towards every member.',
     recurringLabel: 'RECURRING',
     recurrenceOnce: 'One-time',
     recurrenceWeekly: 'Weekly',

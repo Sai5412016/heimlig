@@ -25,6 +25,7 @@ import BudgetSplitModal from '../../components/BudgetSplitModal';
 import ThemeMotif from '../../components/ThemeMotif';
 import ReceiptScanModal, { ReceiptDraft } from '../../components/ReceiptScanModal';
 import PremiumModal from '../../components/PremiumModal';
+import PayerPicker from '../../components/PayerPicker';
 import { hasPremiumAccess } from '../../lib/premium';
 import { uploadReceiptImage, deleteReceiptImage, getReceiptImageUrl } from '../../lib/receiptAttachments';
 
@@ -66,7 +67,8 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
   const [category, setCategory] = useState('Lebensmittel');
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [paidBy, setPaidBy] = useState<string>(currentMemberId);
+  // null = "gemeinsam" (stored as member_id IS NULL), matching PayerPicker's contract.
+  const [paidBy, setPaidBy] = useState<string | null>(currentMemberId);
   const [recurrence, setRecurrence] = useState<string | null>(null);
   const [recurrenceInterval, setRecurrenceInterval] = useState(1);
 
@@ -88,7 +90,9 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
     if (!num || isNaN(num)) return;
     onSave({
       amount: num, description: description.trim() || undefined, category, type,
-      transaction_date: date, member_id: paidBy || undefined,
+      // undefined drops the key from the insert, so the column stays NULL — that is exactly
+      // what "gemeinsam" is stored as.
+      transaction_date: date, member_id: paidBy ?? undefined,
       recurrence: recurrence || undefined,
       recurrence_interval: recurrence ? recurrenceInterval : undefined,
       recurrence_next: recurrence ? advanceFromAnchor(date, recurrence as RecurrenceUnit, recurrenceInterval) : undefined,
@@ -143,23 +147,7 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
                   );
                 })}
               </ScrollView>
-              <Text style={styles.fieldLabel}>{t('budget.paidByLabel')}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
-                {members.map(m => (
-                  <TouchableOpacity key={m.id} style={[styles.memberChip, paidBy === m.id && { backgroundColor: m.avatar_color, borderColor: m.avatar_color }]} onPress={() => setPaidBy(m.id)}>
-                    <View style={[styles.memberChipAvatar, { backgroundColor: paidBy === m.id ? 'rgba(255,255,255,0.3)' : m.avatar_color }]}>
-                      <Text style={styles.memberChipAvatarText}>{m.display_name[0]}</Text>
-                    </View>
-                    <Text style={[styles.memberChipText, paidBy === m.id && { color: colors.textInverse }]}>{m.display_name}</Text>
-                  </TouchableOpacity>
-                ))}
-                {members.length > 1 && (
-                  <TouchableOpacity style={[styles.memberChip, paidBy === '' && { backgroundColor: colors.brand, borderColor: colors.brand }]} onPress={() => setPaidBy('')}>
-                    <Text style={{ fontSize: 14 }}>🤝</Text>
-                    <Text style={[styles.memberChipText, paidBy === '' && { color: colors.textInverse }]}>{t('common.shared')}</Text>
-                  </TouchableOpacity>
-                )}
-              </ScrollView>
+              <PayerPicker members={members} value={paidBy} onChange={setPaidBy} />
               <Text style={styles.fieldLabel}>{t('budget.recurringLabel')}</Text>
               <View style={styles.recurrenceWrap}>
                 {txRecurrenceOptions.map(r => (
@@ -437,7 +425,10 @@ export default function BudgetScreen() {
     // (non-critical) receipt photo upload fails — the amount/category is what actually matters.
     const data = await budgetRepo.insertTransaction({
       household_id: household.id, amount: draft.amount, type: 'expense', category: draft.category,
-      description: draft.description, transaction_date: draft.date, member_id: currentMember?.id,
+      // draft.memberId is null when the user picked "gemeinsam"; undefined drops the key so the
+      // column stays NULL. This used to be hard-wired to currentMember, which made it
+      // impossible to book a scanned receipt as a shared expense.
+      description: draft.description, transaction_date: draft.date, member_id: draft.memberId ?? undefined,
     });
     if (!data) return;
     let tx = data;
@@ -798,10 +789,6 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   catChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, marginRight: spacing.sm, backgroundColor: colors.surface },
   catChipEmoji: { fontSize: 14 },
   catChipText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
-  memberChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, marginRight: spacing.sm, backgroundColor: colors.surface },
-  memberChipAvatar: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  memberChipAvatarText: { color: colors.textInverse, fontSize: 11, fontWeight: '800' },
-  memberChipText: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
   recurrenceWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   intervalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
   intervalLabel: { ...typography.sm, color: colors.textSecondary, fontWeight: '600' },
