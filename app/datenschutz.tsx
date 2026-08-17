@@ -17,7 +17,7 @@ export default function DatenschutzScreen() {
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
-          Stand: Juli 2026. Diese Erklärung informiert dich, welche Daten Heimlig verarbeitet, wofür, und welche Rechte du hast.
+          Stand: August 2026. Diese Erklärung informiert dich, welche Daten Heimlig verarbeitet, wofür, und welche Rechte du hast.
         </Text>
 
         <View style={styles.section}>
@@ -34,7 +34,8 @@ export default function DatenschutzScreen() {
             • Haushaltsdaten: Anzeigename, Avatarfarbe, Haushaltsname, Einkaufslisten, Aufgaben, Budget/Transaktionen, Rezepte, Notizen — sichtbar für die Mitglieder deines Haushalts{'\n'}
             • Optional, nur wenn du es aktivierst: dein Standort (einmalig beim Tippen auf „Standort teilen", kein dauerhaftes Tracking, Freigaben werden automatisch nach einiger Zeit wieder gelöscht){'\n'}
             • Optional: Fotos von Rezepten, die du zur Zutaten-Erkennung hochlädst{'\n'}
-            • Push-Benachrichtigungen: Wenn du Benachrichtigungen erlaubst, wird ein geräteweites Push-Token gespeichert, damit dich andere Haushaltsmitglieder erreichen können (z. B. bei einer neuen Pinnwand-Nachricht) — auch wenn die App geschlossen ist
+            • Push-Benachrichtigungen: Wenn du Benachrichtigungen erlaubst, wird ein geräteweites Push-Token gespeichert, damit dich andere Haushaltsmitglieder erreichen können (z. B. bei einer neuen Pinnwand-Nachricht) — auch wenn die App geschlossen ist{'\n'}
+            • Optional: Feedback, das du über „Feedback & Wünsche" schickst — der Text deiner Nachricht, freiwillig deine Kontakt-E-Mail, dazu App-Version und Plattform. Es wird ausschließlich Text verarbeitet, niemals Sprachaufnahmen: Wenn du die Mikrofon-Taste deiner Tastatur nutzt, wandelt dein Gerät das Gesprochene selbst in Text um, bevor es die App erreicht.
           </Text>
         </View>
 
@@ -42,7 +43,7 @@ export default function DatenschutzScreen() {
           <Text style={styles.h2}>3. Wer die Daten verarbeitet (Auftragsverarbeiter & Drittanbieter)</Text>
           <Text style={styles.p}>
             • Supabase Inc. — Datenbank, Authentifizierung, Backend-Funktionen. Alle App-Inhalte (Konto, Haushaltsdaten) werden dort gespeichert.{'\n\n'}
-            • Anthropic (USA) — wenn du ein Rezept per Foto oder Text importierst, wird der Inhalt zur Texterkennung an die Claude-API übermittelt. Dabei findet eine Datenübermittlung in ein Land außerhalb der EU (USA) statt.{'\n\n'}
+            • Anthropic (USA) — in zwei Fällen: (1) wenn du ein Rezept per Foto oder Text importierst oder einen Kassenzettel scannst, wird der Inhalt zur Texterkennung an die Claude-API übermittelt; (2) wenn du Feedback über „Feedback & Wünsche" abschickst, wird der Text deiner Nachricht an die Claude-API übermittelt, um automatisch zu prüfen, ob es sich um eine Rückmeldung zur App handelt — das schützt das Postfach vor Spam. Deine Kontakt-E-Mail wird dabei nicht mit übermittelt. In beiden Fällen findet eine Datenübermittlung in ein Land außerhalb der EU (USA) statt.{'\n\n'}
             • Open Food Facts — beim Scannen eines Produkt-Barcodes wird die Barcode-Nummer an die offene Produktdatenbank Open Food Facts gesendet, um Produktinfos abzurufen. Es werden dabei keine Konto- oder Personendaten übermittelt.{'\n\n'}
             • Google — nur wenn du „Google Kalender verbinden" nutzt: nach deiner ausdrücklichen Anmeldung bei Google werden Kalendertermine zwischen Heimlig und deinem Google-Kalender abgeglichen.{'\n\n'}
             • Vercel Inc. — Hosting der Web-Version (heimlig.vercel.app).{'\n\n'}
@@ -53,7 +54,7 @@ export default function DatenschutzScreen() {
         <View style={styles.section}>
           <Text style={styles.h2}>4. Zweck und Rechtsgrundlage</Text>
           <Text style={styles.p}>
-            Die Verarbeitung erfolgt zur Bereitstellung der App-Funktionen, die du nutzt (Art. 6 Abs. 1 lit. b DSGVO — Vertragserfüllung), bzw. bei optionalen Funktionen (Standort, Rezeptfoto-Import, Google-Kalender) auf Grundlage deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit widerrufen kannst, indem du die jeweilige Funktion einfach nicht nutzt.
+            Die Verarbeitung erfolgt zur Bereitstellung der App-Funktionen, die du nutzt (Art. 6 Abs. 1 lit. b DSGVO — Vertragserfüllung), bzw. bei optionalen Funktionen (Standort, Rezeptfoto-Import, Kassenzettel-Scan, Google-Kalender, Feedback) auf Grundlage deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit widerrufen kannst, indem du die jeweilige Funktion einfach nicht nutzt.
           </Text>
         </View>
 
