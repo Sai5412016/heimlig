@@ -123,6 +123,7 @@ export interface AppTranslations {
     descriptionPlaceholder: string;
     datePlaceholder: string;
     paidByLabel: string;
+    paidBySharedHint: string;
     recurringLabel: string;
     recurrenceOnce: string;
     recurrenceWeekly: string;
