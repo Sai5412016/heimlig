@@ -3,11 +3,11 @@ import type { AppTranslations } from './types';
 
 export const de: AppTranslations = {
   tabs: {
-    home: 'Home',
+    home: 'Start',
     shopping: 'Einkauf',
     scan: 'Gesund',
     recipes: 'Rezepte',
-    tasks: 'Tasks',
+    tasks: 'Aufgaben',
     budget: 'Budget',
     household: 'Haushalt',
   },

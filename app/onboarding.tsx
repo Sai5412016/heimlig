@@ -24,7 +24,7 @@ type HouseholdType = 'couple' | 'wg' | 'family' | 'solo';
 export default function OnboardingScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems } = useStore();
+  const { setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems, language } = useStore();
   const HOUSEHOLD_TYPES: { key: HouseholdType; emoji: string; label: string; sub: string }[] = [
     { key: 'couple', emoji: '💑', label: t('onboarding.typeCouple'), sub: t('onboarding.typeCoupleSub') },
     { key: 'wg',     emoji: '🏠', label: t('onboarding.typeWg'),     sub: t('onboarding.typeWgSub') },
@@ -189,6 +189,7 @@ export default function OnboardingScreen() {
         p_name: householdName,
         p_display_name: displayName,
         p_avatar_color: avatarColor,
+        p_language: language,
       });
       if (fnError) throw fnError;
 
@@ -207,7 +208,11 @@ export default function OnboardingScreen() {
       const deviceTimezone = Localization.getCalendars()[0]?.timeZone;
       const deviceCountry = deviceLocale?.regionCode;
       const guesses: { currency?: string; timezone?: string; country?: string } = {};
-      if (deviceCurrency && deviceCurrency !== 'EUR' && CURRENCIES.some(c => c.code === deviceCurrency)) guesses.currency = deviceCurrency;
+      // Currency is only trusted when the device's OWN language matches the language the user
+      // actually chose for the app — a German UI on an otherwise English-region device (e.g.
+      // when generating German Play Store screenshots) should still default to the DB's EUR,
+      // not silently inherit an unrelated device currency just because the region field says so.
+      if (deviceCurrency && deviceCurrency !== 'EUR' && CURRENCIES.some(c => c.code === deviceCurrency) && deviceLocale?.languageCode === language) guesses.currency = deviceCurrency;
       if (deviceTimezone && deviceTimezone !== 'Europe/Berlin' && TIMEZONES.includes(deviceTimezone)) guesses.timezone = deviceTimezone;
       if (deviceCountry && deviceCountry !== 'DE' && SUPPORTED_COUNTRIES.some(c => c.code === deviceCountry)) guesses.country = deviceCountry;
       if (household && Object.keys(guesses).length > 0) {
