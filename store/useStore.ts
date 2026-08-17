@@ -67,6 +67,11 @@ export function mergeQuantities(a?: string | null, b?: string | null): string | 
 interface AppState {
   userId: string | null;
   setUserId: (id: string | null) => void;
+  // Clears every user/household-specific field back to its just-booted default — called on
+  // sign-out (see app/_layout.tsx's onAuthStateChange listener) so a second account logging in
+  // on the same device never briefly renders the previous account's data. Device-level prefs
+  // (darkMode/themeId/language) are deliberately left untouched, same as AsyncStorage for those.
+  resetSession: () => void;
 
   household: Household | null;
   currentMember: Member | null;
@@ -196,6 +201,24 @@ interface AppState {
 export const useStore = create<AppState>((set, get) => ({
   userId: null,
   setUserId: (id) => set({ userId: id }),
+  resetSession: () => set({
+    userId: null,
+    household: null, currentMember: null, members: [],
+    myHouseholds: [],
+    shoppingLists: [], activeListId: null, items: [],
+    itemCatalog: [],
+    scanHistory: [],
+    rewards: [], redemptions: [], pointsEarned: {},
+    pantry: [],
+    notes: [],
+    settlements: [],
+    messages: [],
+    locations: [],
+    tasks: [],
+    weekScores: {},
+    transactions: [],
+    recipes: [],
+  }),
 
   household: null,
   currentMember: null,
