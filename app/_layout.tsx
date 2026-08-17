@@ -33,7 +33,7 @@ function RootLayout() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const { colors } = useTheme();
-  const { setUserId, loadMyHouseholds, activateHousehold, setDarkMode, setThemeId, setLanguage } = useStore();
+  const { setUserId, loadMyHouseholds, activateHousehold, setDarkMode, setThemeId, setLanguage, resetSession } = useStore();
 
   // Lock phones to portrait, but let large screens (tablets/foldables) rotate freely.
   // The static manifest restriction is removed (orientation: default) so Play stops
@@ -77,6 +77,25 @@ function RootLayout() {
     const updTimer = setTimeout(() => { checkForUpdate(); }, 2500);
 
     return () => { clearTimeout(timer); clearTimeout(updTimer); sub.remove(); };
+  }, []);
+
+  // Central place for reacting to a lost session — covers the sign-out button, the
+  // "leave last household" flow, an expired/revoked refresh token, and a session ended
+  // remotely (another device), since Supabase fires SIGNED_OUT for all of them, not just an
+  // explicit signOut() call. Previously nothing listened for this at all: signOut() was called
+  // but the screen just sat there with now-invalid data until the user force-quit or navigated
+  // manually. INITIAL_SESSION also fires once on subscribe (with whatever session already
+  // exists) — that one's ignored here since checkSession() above already owns first-launch
+  // routing; reacting to it too would just race a duplicate navigation.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        resetSession();
+        setReady(true);
+        router.replace('/onboarding');
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const checkSession = async (pendingJoinCode?: string | null) => {
