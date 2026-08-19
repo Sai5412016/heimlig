@@ -21,6 +21,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { buildTransactionsCsv, exportCsv, parseTransactionsCsv, memberIdByName } from '../../lib/dataIO';
 import { currencySymbol, formatCurrency } from '../../lib/currency';
+import { notifyUserAction } from '../../lib/reviewPrompt';
 import BudgetSplitModal from '../../components/BudgetSplitModal';
 import ThemeMotif from '../../components/ThemeMotif';
 import ReceiptScanModal, { ReceiptDraft } from '../../components/ReceiptScanModal';
@@ -416,7 +417,7 @@ export default function BudgetScreen() {
   const handleAddTransaction = async (txData: Partial<Transaction>) => {
     if (!household) return;
     const data = await budgetRepo.insertTransaction({ ...txData, household_id: household.id });
-    if (data) { setTransactions([data, ...transactions]); hapticNotification(Haptics.NotificationFeedbackType.Success); }
+    if (data) { setTransactions([data, ...transactions]); hapticNotification(Haptics.NotificationFeedbackType.Success); notifyUserAction(); }
   };
 
   const handleReceiptConfirm = async (draft: ReceiptDraft) => {
