@@ -1,0 +1,128 @@
+// lib/inviteFunnel.ts — instruments the household-invite funnel (invite_opened -> invite_shared
+// -> join_opened -> join_completed) into public.invite_funnel_events. See sql/invite_funnel.sql
+// (not applied yet) for the table/RPC/view this talks to.
+//
+// Fire-and-forget everywhere: a failed analytics write must never break the actual invite/join
+// flow, so every function here swallows its own errors instead of throwing into the caller.
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from './supabase';
+
+export type InviteFunnelStep = 'invite_opened' | 'invite_shared' | 'join_opened' | 'join_completed';
+
+export function logInviteFunnelStep(step: InviteFunnelStep, householdId: string): void {
+  (async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return; // no user_id to log yet
+      await supabase.from('invite_funnel_events').insert({ household_id: householdId, user_id: user.id, step });
+    } catch {
+      // analytics only, never surfaced to the user
+    }
+  })();
+}
+
+// join_opened is the one step that can legitimately happen before the opener has ever
+// authenticated — that's the exact recipient-has-no-account case this whole feature is about.
+// Needs sql/invite_funnel.sql's nullable user_id + anon_id column (see the report) applied
+// first; until then the insert just fails silently, same fire-and-forget contract as above.
+const ANON_ID_KEY = '@heimlig/anonId';
+
+async function getOrCreateAnonId(): Promise<string> {
+  const existing = await AsyncStorage.getItem(ANON_ID_KEY);
+  if (existing) return existing;
+  // Not a real UUID — doesn't need to be. This only ever labels an anonymous analytics row,
+  // never anything security-sensitive, so a lightweight generator avoids pulling in a UUID lib
+  // for one non-critical identifier.
+  const id = `anon-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  await AsyncStorage.setItem(ANON_ID_KEY, id);
+  return id;
+}
+
+export function logAnonymousJoinOpened(householdId: string): void {
+  (async () => {
+    try {
+      const anonId = await getOrCreateAnonId();
+      await supabase.from('invite_funnel_events').insert({ household_id: householdId, anon_id: anonId, step: 'join_opened' });
+    } catch {
+      // analytics only, never surfaced to the user
+    }
+  })();
+}
+
+// Dedupes join_opened per code. app/join/[code].tsx's screen can legitimately mount more than
+// once for the SAME physical "someone opened this invite" event: expo-router auto-navigates
+// there the instant the link is tapped, then app/_layout.tsx's checkSession (pre-existing
+// behavior, not new) and app/onboarding.tsx's post-login handoff (new in this release) both
+// redirect back to /join/[code] again once the recipient has a session — each of those redirects
+// is a fresh mount, and without this guard each one would log another join_opened row for what
+// is, from the recipient's side, one single open. Cleared together with the pending code, so a
+// genuinely new later attempt (or a different code entirely) still logs fresh.
+const JOIN_OPENED_LOGGED_FOR_KEY = '@heimlig/joinOpenedLoggedForCode';
+
+async function hasLoggedJoinOpened(code: string): Promise<boolean> {
+  try { return (await AsyncStorage.getItem(JOIN_OPENED_LOGGED_FOR_KEY)) === code; } catch { return false; }
+}
+
+async function markJoinOpenedLogged(code: string): Promise<void> {
+  try { await AsyncStorage.setItem(JOIN_OPENED_LOGGED_FOR_KEY, code); } catch { /* best-effort */ }
+}
+
+// Single entry point app/join/[code].tsx calls on every mount — folds in the dedup check so the
+// call site can't accidentally log without it. authenticatedUserId is null for an anonymous
+// opener (routes to logAnonymousJoinOpened instead).
+export function logJoinOpenedOnce(code: string, householdId: string, authenticatedUserId: string | null): void {
+  (async () => {
+    if (await hasLoggedJoinOpened(code)) return;
+    await markJoinOpenedLogged(code);
+    if (authenticatedUserId) logInviteFunnelStep('join_opened', householdId);
+    else logAnonymousJoinOpened(householdId);
+  })();
+}
+
+// Resolves an invite code to its household WITHOUT joining, so join_opened can be logged with a
+// real household_id before the recipient commits. Needs sql/invite_funnel.sql's
+// resolve_invite_code() RPC applied first (and its execute grant now includes anon — see the
+// report) — until then this silently returns null and join_opened just isn't logged.
+export async function resolveInviteCode(code: string): Promise<{ household_id: string; household_name: string } | null> {
+  try {
+    const { data, error } = await supabase.rpc('resolve_invite_code', { p_invite_code: code });
+    if (error || !data || data.length === 0) return null;
+    return data[0];
+  } catch {
+    return null;
+  }
+}
+
+// ─── Pending invite code — survives the auth flow (signup, email confirmation, login) ─────────
+// Written as soon as app/join/[code].tsx sees a code, read by app/_layout.tsx (cold boot /
+// login) and app/onboarding.tsx (post-signup), cleared once the join actually completes.
+//
+// AsyncStorage rather than a route param or Supabase user metadata: it's the only one of the
+// three that survives ALL of (a) an app restart, (b) the user leaving the app to confirm their
+// email in a separate mail client, and (c) working identically whether the recipient ends up
+// signing up or logging into an existing account — a route param dies the moment the app
+// re-launches, and user metadata can't be written until a user row exists, which doesn't help
+// the pre-signup window where the code first needs to be captured. Known limitation: this is
+// local to the device the link was first opened on — if the recipient opens the link on device A
+// but confirms their email on device B, the pending code doesn't follow them there. Fixing that
+// would need a server-side pending-invite record keyed by email, which is a bigger feature than
+// this task asked for.
+const PENDING_CODE_KEY = '@heimlig/pendingInviteCode';
+
+export async function savePendingInviteCode(code: string): Promise<void> {
+  try { await AsyncStorage.setItem(PENDING_CODE_KEY, code); } catch { /* best-effort */ }
+}
+
+export async function getPendingInviteCode(): Promise<string | null> {
+  try { return await AsyncStorage.getItem(PENDING_CODE_KEY); } catch { return null; }
+}
+
+export async function clearPendingInviteCode(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(PENDING_CODE_KEY);
+    // Same lifecycle as the pending code itself: this join journey is over (completed or
+    // abandoned in favor of creating a household), so a later new attempt — even with the same
+    // code — should be free to log join_opened again.
+    await AsyncStorage.removeItem(JOIN_OPENED_LOGGED_FOR_KEY);
+  } catch { /* best-effort */ }
+}

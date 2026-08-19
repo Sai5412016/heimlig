@@ -37,6 +37,8 @@ export interface AppTranslations {
     defaultListName: string;
     defaultHouseholdName: string;
     listsButton: string;
+    soloBannerText: string;
+    soloBannerCta: string;
     categories: {
       Lebensmittel: string;
       'Obst & Gemüse': string;
@@ -619,6 +621,10 @@ export interface AppTranslations {
     typeFamilySub: string;
     typeSolo: string;
     typeSoloSub: string;
+    inviteStepTitle: string;
+    inviteStepBody: string;
+    inviteStepShareButton: string;
+    inviteStepSkip: string;
     continueButton: string;
     welcomeBack: string;
     createAccount: string;

@@ -9,6 +9,8 @@ import { colors, spacing, radius, typography, shadow } from '../../constants/the
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { isMemberLimitError } from '../../lib/premium';
+import { DEFAULT_STORE_URL } from '../../lib/appUpdate';
+import { logInviteFunnelStep, logJoinOpenedOnce, resolveInviteCode, savePendingInviteCode, clearPendingInviteCode } from '../../lib/inviteFunnel';
 
 type Status = 'idle' | 'joining' | 'done' | 'error' | 'login' | 'web';
 
@@ -21,18 +23,49 @@ export default function JoinByCode() {
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
 
-  // On web, the page only acts as a bridge: open the installed app via the custom scheme.
+  // On web, the page only acts as a bridge: open the installed app via the custom scheme. There
+  // is no Android App Link configured (no assetlinks.json / intentFilters in app.json), so this
+  // page always loads in a browser first, even with the app installed — the custom-scheme
+  // handoff below is what actually opens the app. If that handoff fails (app not installed), the
+  // browser tab just sits there with no scheme to open — the fallback timer below sends it to
+  // the Play Store instead of dead-ending.
   useEffect(() => {
     if (Platform.OS === 'web') {
       setStatus('web');
+      const fallbackTimer = setTimeout(() => {
+        // If the tab is still visible/focused when this fires, the custom-scheme handoff never
+        // navigated away — the app isn't installed (or the handoff was blocked).
+        // @ts-ignore - document only exists on web
+        if (typeof document === 'undefined' || !document.hidden) {
+          // @ts-ignore - window only exists on web
+          window.location.href = DEFAULT_STORE_URL;
+        }
+      }, 1500);
       // @ts-ignore - window only exists on web
       window.location.href = `heimlig://join/${code}`;
-      return;
+      return () => clearTimeout(fallbackTimer);
     }
-    // On native, check whether the user is logged in
+    // On native: persist the code FIRST, before anything else — this is the safety net that
+    // survives a full auth detour (signup, mail-app switch for email confirmation, login). See
+    // lib/inviteFunnel.ts for why AsyncStorage. Cleared once the join actually completes.
     (async () => {
+      await savePendingInviteCode(code);
+
+      // join_opened needs a real household_id, which a code alone doesn't give us — resolve it
+      // without joining. Works with or without a session now (resolve_invite_code is granted to
+      // anon too) — this is exactly the main case: a recipient with no account yet. If the code
+      // is invalid this just silently returns null and the step isn't logged (the join attempt
+      // itself still surfaces the real error to the user).
+      //
+      // This screen legitimately mounts more than once for the SAME physical "opened the invite"
+      // event — app/_layout.tsx and app/onboarding.tsx both redirect back here once the recipient
+      // has a session (see lib/inviteFunnel.ts's logJoinOpenedOnce doc comment) — so the logging
+      // itself is deduped per code, not just called once per mount.
+      const resolved = await resolveInviteCode(code);
+
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) setStatus('login');
+      if (resolved) logJoinOpenedOnce(code, resolved.household_id, user?.id ?? null);
+      if (!user) { setStatus('login'); return; }
     })();
   }, [code]);
 
@@ -59,6 +92,8 @@ export default function JoinByCode() {
       if (error) { setStatus('error'); setMessage(error.message); return; }
       if (result?.error) { setStatus('error'); setMessage(result.error); return; }
 
+      if (result?.household_id) logInviteFunnelStep('join_completed', result.household_id);
+      await clearPendingInviteCode();
       setStatus('done');
       setMessage(result?.household_name ?? '');
       setTimeout(() => router.replace('/(tabs)'), 1400);

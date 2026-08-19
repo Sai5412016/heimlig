@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.fledderman.heimlig",
+      "sha256_cert_fingerprints": [
+        "E3:34:F1:4D:0F:BC:61:CB:25:02:57:77:18:D2:2A:73:22:55:0C:63:06:55:84:8E:20:58:C6:51:7B:6A:D8:E1"
+      ]
+    }
+  }
+]

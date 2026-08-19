@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   Animated, Platform, KeyboardAvoidingView, RefreshControl,
-  Pressable, Modal, ScrollView, Image, useWindowDimensions
+  Pressable, Modal, ScrollView, Image, useWindowDimensions, Share
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +23,7 @@ import { estimateCartTotal } from '../../lib/pricing';
 import { formatCurrency } from '../../lib/currency';
 import { searchBrands, bumpBrand, supermarketKey, supermarketsForCountry, ALL_SUPERMARKETS, GENERIC_STORE_TYPES, type BrandEntry, type SupermarketOption } from '../../lib/brands';
 import ThemeMotif from '../../components/ThemeMotif';
+import { logInviteFunnelStep } from '../../lib/inviteFunnel';
 
 // ─── ADD ITEM MODAL ───────────────────────────────────────────
 const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: {
@@ -706,7 +707,7 @@ export default function ShoppingScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { household, currentMember, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe, loadItemCatalog, createShoppingList, switchList, themeId, language } = useStore();
+  const { household, currentMember, members, activeListId, items, setItems, toggleItem, addItem, deleteItem, shoppingLists, saveRecipe, loadItemCatalog, createShoppingList, switchList, themeId, language } = useStore();
   const activeTheme = APP_THEMES.find(t => t.id === themeId);
   const [showModal, setShowModal] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
@@ -793,6 +794,23 @@ export default function ShoppingScreen() {
     Alert.alert(t('shopping.recipeAddedTitle'), `"${recipeName}" – ${parts.join(' & ') || t('shopping.recipeAddedSaved')}.`);
   };
 
+  const handleSoloBannerPress = async () => {
+    if (!household) return;
+    logInviteFunnelStep('invite_opened', household.id);
+    const message = t('household.inviteMessage', { name: household.name, code: household.invite_code });
+    try {
+      if (Platform.OS === 'web') {
+        await navigator.clipboard.writeText(message);
+        Alert.alert(t('household.copiedTitle'), t('household.copiedClipboardBody'));
+      } else {
+        await Share.share({ message });
+      }
+      logInviteFunnelStep('invite_shared', household.id);
+    } catch {
+      // user dismissed the share sheet — no error needed, they can just tap the banner again
+    }
+  };
+
   const handleClearChecked = () => {
     Alert.alert(t('shopping.clearCheckedTitle'), t('shopping.clearCheckedBody', { count: checked.length }), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -823,6 +841,17 @@ export default function ShoppingScreen() {
           <Text style={styles.listSwitchText}>{t('shopping.listsButton')}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Solo-household nudge — persistent (no dismiss), only while it's just this one member */}
+      {/* household_type is undefined until sql/household_type.sql is applied (see the report) —
+          the condition is still correct as-is, it just can't distinguish a deliberate solo
+          household from "unknown" until then, so it degrades to the old always-show behavior. */}
+      {members.length === 1 && household?.household_type !== 'solo' && (
+        <TouchableOpacity style={styles.soloBanner} onPress={handleSoloBannerPress} activeOpacity={0.85}>
+          <Text style={styles.soloBannerText}>{t('shopping.soloBannerText')}</Text>
+          <Text style={styles.soloBannerCta}>{t('shopping.soloBannerCta')}</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Tile Grid */}
       <ScrollView
@@ -946,6 +975,14 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
     paddingVertical: spacing.sm, borderRadius: radius.full,
   },
   listSwitchText: { ...typography.sm, color: colors.brand, fontWeight: '600' },
+
+  soloBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: colors.brandPale, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  soloBannerText: { ...typography.sm, color: colors.text, flex: 1, marginRight: spacing.sm },
+  soloBannerCta: { ...typography.sm, color: colors.brand, fontWeight: '700' },
 
   progressContainer: {
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
