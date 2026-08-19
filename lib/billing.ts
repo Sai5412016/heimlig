@@ -33,6 +33,18 @@ let errorSub: { remove: () => void } | null = null;
 // purchaseUpdatedListener/purchaseErrorListener. This bridges that back to the caller's
 // original purchasePremium() promise instead of leaving the UI without a resolution.
 let pendingResolve: ((result: PurchaseResult) => void) | null = null;
+// The purchaseUpdatedListener below is registered exactly once (initBilling is a no-op after
+// the first successful call) and lives for the whole app session, so it must NOT close over a
+// householdId captured at registration time — switching households later would leave it
+// attributing purchases to the household that happened to be active at app start. It reads
+// this module-level value at event time instead. Keep it in sync via setBillingHousehold().
+let activeHouseholdId: string | undefined;
+
+// Call this wherever the active household changes (household switch, join, create) so a
+// purchase that completes afterwards is attributed to the household the user is actually in.
+export function setBillingHousehold(householdId: string | undefined): void {
+  activeHouseholdId = householdId;
+}
 
 // Returns the raw server error string (e.g. 'billing verification not configured yet') when
 // verification fails, so callers can show something more useful than a generic "try again" —
@@ -85,12 +97,17 @@ async function verifyAndFinish(purchase: Purchase, householdId: string): Promise
 // that didn't finish before the app was killed and replays on the next launch); pass the
 // currently active household so verifyAndFinish has somewhere to attribute it to.
 export async function initBilling(householdId: string | undefined): Promise<boolean> {
+  // Always refresh the target household, even on the early-return path — otherwise a second
+  // initBilling() call with a newer household would be silently ignored.
+  if (householdId) activeHouseholdId = householdId;
   if (Platform.OS !== 'android' || connected) return connected;
   try {
     await initConnection();
     connected = true;
     updateSub = purchaseUpdatedListener(async (purchase) => {
-      const result = householdId ? await verifyAndFinish(purchase, householdId) : { ok: false as const };
+      const target = activeHouseholdId;
+      if (!target) console.warn('[billing] purchase arrived with no active household to attribute it to');
+      const result = target ? await verifyAndFinish(purchase, target) : { ok: false as const };
       if (pendingResolve) {
         pendingResolve(result.ok ? { success: true } : { success: false, error: translateVerifyError(result.error) });
         pendingResolve = null;
@@ -112,6 +129,7 @@ export async function initBilling(householdId: string | undefined): Promise<bool
 }
 
 export function endBilling(): void {
+  activeHouseholdId = undefined;
   updateSub?.remove(); updateSub = null;
   errorSub?.remove(); errorSub = null;
   if (connected) { void endConnection(); connected = false; }
@@ -121,6 +139,9 @@ export function endBilling(): void {
 // actually been verified server-side (not just "dialog opened") — see pendingResolve above.
 export async function purchasePremium(householdId: string): Promise<PurchaseResult> {
   if (Platform.OS !== 'android') return { success: false, error: i18n.t('premiumModal.unsupportedPlatform') };
+  // Set before the native flow starts: the result comes back through the listener, which reads
+  // activeHouseholdId — passing householdId here alone would never reach the verification call.
+  activeHouseholdId = householdId;
   if (!connected) await initBilling(householdId);
   if (!connected) return { success: false, error: i18n.t('premiumModal.connectionFailed') };
 
@@ -150,6 +171,7 @@ export async function purchasePremium(householdId: string): Promise<PurchaseResu
 // Returns how many purchases were (re-)verified successfully.
 export async function restorePurchases(householdId: string): Promise<number> {
   if (Platform.OS !== 'android') return 0;
+  activeHouseholdId = householdId;
   if (!connected) await initBilling(householdId);
   if (!connected) return 0;
   try {
