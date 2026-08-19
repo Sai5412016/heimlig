@@ -1,0 +1,48 @@
+name: EAS Submit (Android Internal Track)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: 'EAS build ID to submit (leave empty for the latest production build)'
+        required: false
+        default: ''
+
+jobs:
+  submit:
+    name: Submit AAB to Play Console
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Write service account key
+        run: printf '%s' "$GOOGLE_SERVICE_ACCOUNT_KEY" > google-service-account.json
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+
+      - name: Submit
+        run: |
+          if [ -n "${{ inputs.build_id }}" ]; then
+            eas submit --platform android --profile production --id "${{ inputs.build_id }}" --non-interactive
+          else
+            eas submit --platform android --profile production --latest --non-interactive
+          fi
+
+      - name: Remove service account key
+        if: always()
+        run: rm -f google-service-account.json
