@@ -323,6 +323,31 @@ begin
 end;
 $$;
 
+-- BLOCKER FIX (experimentally proven: Postgres 42725 "function is not unique"): before this
+-- statement, create_household_for_user existed live as BOTH (text,text,text,text) — no
+-- defaults, added when p_language shipped in app versionCode 73 (app/onboarding.tsx, commit
+-- bc5623f) — AND the 5-arg overload just created above, whose 4th and 5th parameters
+-- (p_language, p_household_type) both have defaults. A call with exactly 4 named arguments
+-- satisfies BOTH overloads, so PostgREST can no longer pick one — the live app (versionCode 76
+-- and every build back to 73) calls with exactly those 4 arguments, so leaving both in place
+-- would have broken household creation for every user on any of those builds the instant this
+-- migration ran.
+drop function if exists public.create_household_for_user(text, text, text, text);
+
+-- The (text,text,text) overload (pre-p_language, versionCode <= 72) is ALSO dropped, for the
+-- identical reason, not because it's unused — this needed a second look, since the first pass
+-- assumed keeping it was the cautious choice and that was wrong. The 5-arg overload's 4th AND
+-- 5th parameters both have defaults, so a 3-argument call satisfies it too, exactly the same
+-- ambiguity as the 4-arg case above, just one parameter further back. Postgres's overload
+-- resolution doesn't distinguish "one default filled in" from "two defaults filled in" — it's
+-- ambiguous either way once more than one candidate can satisfy the call. Keeping the 3-arg
+-- overload would therefore have broken household creation for the very versionCode <= 72
+-- population it was meant to protect, the moment this migration ran — the opposite of the
+-- intended effect. Dropping it is what actually keeps old clients working: with only the 5-arg
+-- overload left, a 3-argument call resolves to it unambiguously, defaulting p_language to 'de'
+-- and p_household_type to null — functionally identical to what the old 3-arg overload did.
+drop function if exists public.create_household_for_user(text, text, text);
+
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- 5) Final blanket grant — MUST run after every view above is created (grants on "all tables in
