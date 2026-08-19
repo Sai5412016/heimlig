@@ -5,7 +5,7 @@ import { supabase } from './supabase';
 import { Alert } from './alert';
 import i18n from './i18n';
 
-const DEFAULT_STORE_URL = 'https://play.google.com/store/apps/details?id=com.fledderman.heimlig';
+export const DEFAULT_STORE_URL = 'https://play.google.com/store/apps/details?id=com.fledderman.heimlig';
 
 // Check the remote app_config and prompt the user to update if their build is older.
 export async function checkForUpdate() {

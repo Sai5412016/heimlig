@@ -28,6 +28,7 @@ import PremiumModal from '../../components/PremiumModal';
 import FeedbackModal from '../../components/FeedbackModal';
 import { hasPremiumAccess, memberLimit, isMemberLimitError } from '../../lib/premium';
 import { captureScreenshot } from '../../lib/screenshotTool';
+import { logInviteFunnelStep } from '../../lib/inviteFunnel';
 
 // Only these accounts see the screenshot tool (web-only, dev use for refreshing store/marketing
 // screenshots) — everyone else's settings screen renders exactly as before. The test account is
@@ -53,22 +54,29 @@ function Avatar({ name, color, size = 48 }: { name: string; color: string; size?
 }
 
 // ─── INVITE MODAL ─────────────────────────────────────────────
-function InviteModal({ visible, onClose, inviteCode, householdName }: {
+function InviteModal({ visible, onClose, inviteCode, householdName, householdId }: {
   visible: boolean;
   onClose: () => void;
   inviteCode: string;
   householdName: string;
+  householdId: string | undefined;
 }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  useEffect(() => { if (visible && householdId) logInviteFunnelStep('invite_opened', householdId); }, [visible, householdId]);
+
   const handleShare = async () => {
     const message = t('household.inviteMessage', { name: householdName, code: inviteCode });
     if (Platform.OS === 'web') {
       try { await navigator.clipboard.writeText(message); Alert.alert(t('household.copiedTitle'), t('household.copiedClipboardBody')); }
       catch { Alert.alert(t('household.inviteCodeFallbackTitle'), message); }
     } else {
-      try { await Share.share({ message, title: t('household.shareTitle') }); }
+      try {
+        await Share.share({ message, title: t('household.shareTitle') });
+        if (householdId) logInviteFunnelStep('invite_shared', householdId);
+      }
       catch { Alert.alert(t('common.error'), t('household.shareFailedBody')); }
     }
   };
@@ -375,6 +383,7 @@ export default function HouseholdScreen() {
       return;
     }
 
+    if (result?.household_id) logInviteFunnelStep('join_completed', result.household_id);
     Alert.alert(t('household.welcomeTitle'), t('household.welcomeBody', { name: result.household_name }));
     setShowJoin(false);
   };
@@ -750,6 +759,7 @@ export default function HouseholdScreen() {
         onClose={() => setShowInvite(false)}
         inviteCode={household?.invite_code ?? ''}
         householdName={household?.name ?? ''}
+        householdId={household?.id}
       />
       <ShareModal visible={showShare} onClose={() => setShowShare(false)} />
       <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />

@@ -1,8 +1,8 @@
 // app/onboarding.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  KeyboardAvoidingView, Platform, ScrollView, Linking
+  KeyboardAvoidingView, Platform, ScrollView, Linking, Share
 } from 'react-native';
 import { Alert } from '../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,14 +17,15 @@ import { CURRENCIES } from '../lib/currency';
 import { TIMEZONES } from '../lib/timezones';
 import { SUPPORTED_COUNTRIES } from '../lib/holidays';
 import { isMemberLimitError } from '../lib/premium';
+import { logInviteFunnelStep } from '../lib/inviteFunnel';
 
-type Step = 'welcome' | 'type' | 'auth' | 'verify' | 'name';
+type Step = 'welcome' | 'type' | 'auth' | 'verify' | 'name' | 'invite';
 type HouseholdType = 'couple' | 'wg' | 'family' | 'solo';
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems, language } = useStore();
+  const { household, setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems, language } = useStore();
   const HOUSEHOLD_TYPES: { key: HouseholdType; emoji: string; label: string; sub: string }[] = [
     { key: 'couple', emoji: '💑', label: t('onboarding.typeCouple'), sub: t('onboarding.typeCoupleSub') },
     { key: 'wg',     emoji: '🏠', label: t('onboarding.typeWg'),     sub: t('onboarding.typeWgSub') },
@@ -170,6 +171,7 @@ export default function OnboardingScreen() {
         const { data: items } = await supabase.from('shopping_items').select('*').eq('list_id', lists[0].id);
         if (items) setItems(items);
       }
+      if (household_id) logInviteFunnelStep('join_completed', household_id);
       router.replace('/(tabs)');
     } catch (e: any) {
       setErrorMsg(e.message || JSON.stringify(e));
@@ -228,11 +230,37 @@ export default function OnboardingScreen() {
       if (shoppingList) { setShoppingLists([shoppingList]); setActiveListId(shoppingList.id); }
       setItems([]);
 
-      router.replace('/(tabs)');
+      // Freshly created household -> mandatory (but skippable) invite step, never shown when
+      // joining an existing one. household is now set in the store, so the 'invite' render below
+      // can read invite_code/name straight from it.
+      setStep('invite');
     } catch (e: any) {
       setErrorMsg(e.message || JSON.stringify(e));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ─── INVITE (mandatory-but-skippable step after creating a household) ────
+  useEffect(() => {
+    if (step === 'invite' && household) logInviteFunnelStep('invite_opened', household.id);
+  }, [step, household?.id]);
+
+  const handleShareInvite = async () => {
+    if (!household) { router.replace('/(tabs)'); return; }
+    const message = t('household.inviteMessage', { name: household.name, code: household.invite_code });
+    try {
+      if (Platform.OS === 'web') {
+        await navigator.clipboard.writeText(message);
+        Alert.alert(t('household.copiedTitle'), t('household.copiedClipboardBody'));
+      } else {
+        await Share.share({ message });
+      }
+      logInviteFunnelStep('invite_shared', household.id);
+    } catch {
+      // user dismissed the share sheet or it failed — either way, don't block onboarding on it
+    } finally {
+      router.replace('/(tabs)');
     }
   };
 
@@ -414,6 +442,22 @@ export default function OnboardingScreen() {
     </SafeAreaView>
   );
 
+  // ─── INVITE ────────────────────────────────────────────────
+  if (step === 'invite') return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.stepContent}>
+        <Text style={styles.stepTitle}>{t('onboarding.inviteStepTitle')}</Text>
+        <Text style={styles.stepSub}>{t('onboarding.inviteStepBody')}</Text>
+        <TouchableOpacity style={styles.primaryBtn} onPress={handleShareInvite}>
+          <Text style={styles.primaryBtnText}>{t('onboarding.inviteStepShareButton')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.inviteSkipBtn} onPress={() => router.replace('/(tabs)')}>
+          <Text style={styles.inviteSkipText}>{t('onboarding.inviteStepSkip')}</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+
   return null;
 }
 
@@ -465,4 +509,6 @@ const styles = StyleSheet.create({
   joinTabActive: { backgroundColor: colors.brandPale, borderColor: colors.brand },
   joinTabText: { ...typography.body, color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
   joinTabTextActive: { color: colors.brand },
+  inviteSkipBtn: { alignItems: 'center', padding: spacing.md, marginTop: spacing.sm },
+  inviteSkipText: { ...typography.sm, color: colors.textMuted, textDecorationLine: 'underline' },
 });
