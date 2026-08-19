@@ -10,6 +10,7 @@ import * as shoppingRepo from '../repositories/shoppingRepository';
 import { supermarketKey } from '../lib/brands';
 import i18n, { type SupportedLanguage } from '../lib/i18n';
 import { uploadRecipeImage, deleteRecipeImage } from '../lib/recipeAttachments';
+import { setBillingHousehold } from '../lib/billing';
 
 export interface SaveRecipeOpts {
   sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean;
@@ -224,6 +225,10 @@ export const useStore = create<AppState>((set, get) => ({
     // If we cleared at the end, loadData() in the Dashboard would race and lose.
     set({ tasks: [], transactions: [], recipes: [] });
     set({ household, currentMember: member });
+    // Keep Play Billing pointed at the household the user is actually in — its purchase
+    // listener is registered once for the whole app session and would otherwise keep
+    // attributing purchases to whichever household happened to be active at app start.
+    setBillingHousehold(household.id);
 
     const { data: allMembers } = await supabase.from('members').select('*').eq('household_id', household.id);
     if (allMembers) set({ members: allMembers });
