@@ -11,6 +11,7 @@ import { supermarketKey } from '../lib/brands';
 import i18n, { type SupportedLanguage } from '../lib/i18n';
 import { uploadRecipeImage, deleteRecipeImage } from '../lib/recipeAttachments';
 import { setBillingHousehold } from '../lib/billing';
+import { notifyUserAction } from '../lib/reviewPrompt';
 
 export interface SaveRecipeOpts {
   sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean;
@@ -363,7 +364,7 @@ export const useStore = create<AppState>((set, get) => ({
     const data = await shoppingRepo.insertShoppingItem({
       list_id: listId, name, quantity, category, brand: brand || null, added_by: currentMember?.id, meal_plan_id: mealPlanId, recipe_id: recipeId,
     });
-    if (data) set(s => ({ items: [...s.items, data] }));
+    if (data) { set(s => ({ items: [...s.items, data] })); notifyUserAction(); }
 
     // Learn this item for the household (powers autocomplete & frequent suggestions),
     // remembering which supermarket it was bought at so we can nudge next time.
@@ -542,7 +543,7 @@ export const useStore = create<AppState>((set, get) => ({
       const { data } = await supabase.from('household_notes')
         .insert({ household_id: household.id, title: title.trim(), content, created_by: currentMember?.id })
         .select().single();
-      if (data) set(s => ({ notes: [data as HouseholdNote, ...s.notes] }));
+      if (data) { set(s => ({ notes: [data as HouseholdNote, ...s.notes] })); notifyUserAction(); }
     }
   },
   deleteNote: async (id) => {
@@ -691,6 +692,8 @@ export const useStore = create<AppState>((set, get) => ({
         completed_by: isAlreadyCompleted ? null : currentMember?.id
       })
       .eq('id', taskId);
+
+    if (!isAlreadyCompleted) notifyUserAction();
 
     // 🔄 Recurring tasks: when completing one, spawn the next occurrence
     if (!isAlreadyCompleted && task.recurrence && task.due_date) {
@@ -849,7 +852,7 @@ export const useStore = create<AppState>((set, get) => ({
       instructions,
       created_by: currentMember.id,
     }).select().single();
-    if (recipe) set(s => ({ recipes: [recipe, ...s.recipes] }));
+    if (recipe) { set(s => ({ recipes: [recipe, ...s.recipes] })); notifyUserAction(); }
 
     let mealPlanId: string | undefined;
     if (date && mealType && recipe) {
