@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { isMemberLimitError } from '../../lib/premium';
 import { DEFAULT_STORE_URL } from '../../lib/appUpdate';
-import { logInviteFunnelStep, resolveInviteCode } from '../../lib/inviteFunnel';
+import { logInviteFunnelStep, logAnonymousJoinOpened, resolveInviteCode, savePendingInviteCode, clearPendingInviteCode } from '../../lib/inviteFunnel';
 
 type Status = 'idle' | 'joining' | 'done' | 'error' | 'login' | 'web';
 
@@ -45,15 +45,25 @@ export default function JoinByCode() {
       window.location.href = `heimlig://join/${code}`;
       return () => clearTimeout(fallbackTimer);
     }
-    // On native, check whether the user is logged in
+    // On native: persist the code FIRST, before anything else — this is the safety net that
+    // survives a full auth detour (signup, mail-app switch for email confirmation, login). See
+    // lib/inviteFunnel.ts for why AsyncStorage. Cleared once the join actually completes.
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setStatus('login'); return; }
+      await savePendingInviteCode(code);
+
       // join_opened needs a real household_id, which a code alone doesn't give us — resolve it
-      // without joining. If the code is invalid this just silently returns null and the step
-      // isn't logged (the join attempt itself will still surface the real error to the user).
+      // without joining. Works with or without a session now (resolve_invite_code is granted to
+      // anon too) — this is exactly the main case: a recipient with no account yet. If the code
+      // is invalid this just silently returns null and the step isn't logged (the join attempt
+      // itself still surfaces the real error to the user).
       const resolved = await resolveInviteCode(code);
-      if (resolved) logInviteFunnelStep('join_opened', resolved.household_id);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (resolved) {
+        if (user) logInviteFunnelStep('join_opened', resolved.household_id);
+        else logAnonymousJoinOpened(resolved.household_id);
+      }
+      if (!user) { setStatus('login'); return; }
     })();
   }, [code]);
 
@@ -81,6 +91,7 @@ export default function JoinByCode() {
       if (result?.error) { setStatus('error'); setMessage(result.error); return; }
 
       if (result?.household_id) logInviteFunnelStep('join_completed', result.household_id);
+      await clearPendingInviteCode();
       setStatus('done');
       setMessage(result?.household_name ?? '');
       setTimeout(() => router.replace('/(tabs)'), 1400);

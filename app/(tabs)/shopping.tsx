@@ -843,7 +843,10 @@ export default function ShoppingScreen() {
       </View>
 
       {/* Solo-household nudge — persistent (no dismiss), only while it's just this one member */}
-      {members.length === 1 && (
+      {/* household_type is undefined until sql/household_type.sql is applied (see the report) —
+          the condition is still correct as-is, it just can't distinguish a deliberate solo
+          household from "unknown" until then, so it degrades to the old always-show behavior. */}
+      {members.length === 1 && household?.household_type !== 'solo' && (
         <TouchableOpacity style={styles.soloBanner} onPress={handleSoloBannerPress} activeOpacity={0.85}>
           <Text style={styles.soloBannerText}>{t('shopping.soloBannerText')}</Text>
           <Text style={styles.soloBannerCta}>{t('shopping.soloBannerCta')}</Text>

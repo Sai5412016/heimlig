@@ -17,7 +17,7 @@ import { CURRENCIES } from '../lib/currency';
 import { TIMEZONES } from '../lib/timezones';
 import { SUPPORTED_COUNTRIES } from '../lib/holidays';
 import { isMemberLimitError } from '../lib/premium';
-import { logInviteFunnelStep } from '../lib/inviteFunnel';
+import { logInviteFunnelStep, getPendingInviteCode, clearPendingInviteCode } from '../lib/inviteFunnel';
 
 type Step = 'welcome' | 'type' | 'auth' | 'verify' | 'name' | 'invite';
 type HouseholdType = 'couple' | 'wg' | 'family' | 'solo';
@@ -46,6 +46,20 @@ export default function OnboardingScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [joinMode, setJoinMode] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
+  // A code app/join/[code].tsx persisted to AsyncStorage before routing here because there was
+  // no session yet (see lib/inviteFunnel.ts for why AsyncStorage and not a route param). Read
+  // once on mount; carries through signup/email-verify/login without the user retyping anything.
+  const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
+  useEffect(() => { getPendingInviteCode().then(setPendingInviteCode); }, []);
+
+  // Once we know about a pending code, pre-fill + preselect join mode as soon as the name step
+  // is reached — from any entry path (fresh signup, post-verify login, existing-account login).
+  useEffect(() => {
+    if (step === 'name' && pendingInviteCode) {
+      setJoinMode(true);
+      setInviteCode(pendingInviteCode);
+    }
+  }, [step, pendingInviteCode]);
 
   // ─── AUTH ────────────────────────────────────────────────
   const handleAuth = async () => {
@@ -137,6 +151,12 @@ export default function OnboardingScreen() {
       if (items) setItems(items);
     }
 
+    // A pending code plus an already-known identity (display name, avatar) is exactly the case
+    // app/join/[code].tsx's own handleJoin already covers end-to-end — hand off there instead of
+    // duplicating that join call here. currentMember is already set above, so it'll find it.
+    const pending = pendingInviteCode ?? await getPendingInviteCode();
+    if (pending) { router.replace(`/join/${pending}`); return; }
+
     router.replace('/(tabs)');
   };
 
@@ -172,6 +192,7 @@ export default function OnboardingScreen() {
         if (items) setItems(items);
       }
       if (household_id) logInviteFunnelStep('join_completed', household_id);
+      await clearPendingInviteCode();
       router.replace('/(tabs)');
     } catch (e: any) {
       setErrorMsg(e.message || JSON.stringify(e));
@@ -187,12 +208,29 @@ export default function OnboardingScreen() {
     setErrorMsg(null);
     try {
       // Use SECURITY DEFINER function to bypass RLS (works even if session not in storage)
-      const { data: result, error: fnError } = await supabase.rpc('create_household_for_user', {
+      // p_household_type needs sql/household_type.sql applied first (adds that RPC overload) —
+      // see that file's deploy-order note. Guarded here rather than just documented: if this
+      // build ships before the migration lands, PostgREST can't resolve the 5-arg overload and
+      // returns PGRST202 ("Could not find the function... in the schema cache") for EVERY
+      // signup — so on exactly that error, retry once without p_household_type instead of
+      // hard-failing account creation over a param the household_type feature doesn't need to
+      // succeed for. Once the migration is applied, the first attempt always succeeds and this
+      // fallback never triggers.
+      let { data: result, error: fnError } = await supabase.rpc('create_household_for_user', {
         p_name: householdName,
         p_display_name: displayName,
         p_avatar_color: avatarColor,
         p_language: language,
+        p_household_type: householdType,
       });
+      if (fnError?.code === 'PGRST202') {
+        ({ data: result, error: fnError } = await supabase.rpc('create_household_for_user', {
+          p_name: householdName,
+          p_display_name: displayName,
+          p_avatar_color: avatarColor,
+          p_language: language,
+        }));
+      }
       if (fnError) throw fnError;
 
       const { household_id, member_id, list_id } = result as any;
@@ -229,6 +267,10 @@ export default function OnboardingScreen() {
       if (member) { setCurrentMember(member); setMembers([member]); }
       if (shoppingList) { setShoppingLists([shoppingList]); setActiveListId(shoppingList.id); }
       setItems([]);
+
+      // Chose to create their own household instead of using a pending invite (if any) — that's
+      // a deliberate opt-out, don't resurrect the old code on a later launch.
+      await clearPendingInviteCode();
 
       // Freshly created household -> mandatory (but skippable) invite step, never shown when
       // joining an existing one. household is now set in the store, so the 'invite' render below
@@ -273,7 +315,7 @@ export default function OnboardingScreen() {
         <Text style={styles.tagline}>{t('onboarding.tagline')}</Text>
         <Text style={styles.taglineSub}>{t('onboarding.taglineSub')}</Text>
         <View style={styles.btnGroup}>
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => { setIsLogin(false); setStep('type'); }}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => { setIsLogin(false); setStep(pendingInviteCode ? 'auth' : 'type'); }}>
             <Text style={styles.primaryBtnText}>{t('onboarding.getStarted')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => { setIsLogin(true); setStep('auth'); }}>

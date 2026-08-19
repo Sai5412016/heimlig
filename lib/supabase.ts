@@ -42,6 +42,10 @@ export interface Household {
   // unlimited access as plan_tier === 'premium' without actually changing plan_tier, so it
   // can't be confused with (or accidentally overwritten by) a real purchase.
   grandfathered?: boolean;
+  // Asked at onboarding but not yet persisted anywhere server-side — see sql/household_type.sql
+  // (not applied). Optional here on purpose: stays undefined until that migration lands, and
+  // select('*') simply omits the key from the response until the column exists.
+  household_type?: 'couple' | 'wg' | 'family' | 'solo';
   created_at: string;
 }
 

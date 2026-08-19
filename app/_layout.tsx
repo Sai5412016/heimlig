@@ -15,6 +15,7 @@ import { initBilling, restorePurchases } from '../lib/billing';
 import WhatsNewModal from '../components/WhatsNewModal';
 import ErrorFallback from '../components/ErrorFallback';
 import { initSentry, Sentry } from '../lib/sentry';
+import { getPendingInviteCode } from '../lib/inviteFunnel';
 import '../lib/i18n';
 import type { SupportedLanguage } from '../lib/i18n';
 
@@ -64,7 +65,12 @@ function RootLayout() {
         }
       }
       const initialUrl = await Linking.getInitialURL();
-      checkSession(extractJoinCode(initialUrl));
+      // Falls back to the AsyncStorage-persisted code (see lib/inviteFunnel.ts) when this cold
+      // boot wasn't itself triggered by the join link — the case that matters here is a user who
+      // left the app to confirm their email in a browser/mail client and then reopens the app
+      // icon directly, never re-tapping the original link.
+      const pending = extractJoinCode(initialUrl) || await getPendingInviteCode();
+      checkSession(pending);
     }, 500);
 
     // Handle deep links while the app is already running
