@@ -49,6 +49,36 @@ export function logAnonymousJoinOpened(householdId: string): void {
   })();
 }
 
+// Dedupes join_opened per code. app/join/[code].tsx's screen can legitimately mount more than
+// once for the SAME physical "someone opened this invite" event: expo-router auto-navigates
+// there the instant the link is tapped, then app/_layout.tsx's checkSession (pre-existing
+// behavior, not new) and app/onboarding.tsx's post-login handoff (new in this release) both
+// redirect back to /join/[code] again once the recipient has a session — each of those redirects
+// is a fresh mount, and without this guard each one would log another join_opened row for what
+// is, from the recipient's side, one single open. Cleared together with the pending code, so a
+// genuinely new later attempt (or a different code entirely) still logs fresh.
+const JOIN_OPENED_LOGGED_FOR_KEY = '@heimlig/joinOpenedLoggedForCode';
+
+async function hasLoggedJoinOpened(code: string): Promise<boolean> {
+  try { return (await AsyncStorage.getItem(JOIN_OPENED_LOGGED_FOR_KEY)) === code; } catch { return false; }
+}
+
+async function markJoinOpenedLogged(code: string): Promise<void> {
+  try { await AsyncStorage.setItem(JOIN_OPENED_LOGGED_FOR_KEY, code); } catch { /* best-effort */ }
+}
+
+// Single entry point app/join/[code].tsx calls on every mount — folds in the dedup check so the
+// call site can't accidentally log without it. authenticatedUserId is null for an anonymous
+// opener (routes to logAnonymousJoinOpened instead).
+export function logJoinOpenedOnce(code: string, householdId: string, authenticatedUserId: string | null): void {
+  (async () => {
+    if (await hasLoggedJoinOpened(code)) return;
+    await markJoinOpenedLogged(code);
+    if (authenticatedUserId) logInviteFunnelStep('join_opened', householdId);
+    else logAnonymousJoinOpened(householdId);
+  })();
+}
+
 // Resolves an invite code to its household WITHOUT joining, so join_opened can be logged with a
 // real household_id before the recipient commits. Needs sql/invite_funnel.sql's
 // resolve_invite_code() RPC applied first (and its execute grant now includes anon — see the
@@ -88,5 +118,11 @@ export async function getPendingInviteCode(): Promise<string | null> {
 }
 
 export async function clearPendingInviteCode(): Promise<void> {
-  try { await AsyncStorage.removeItem(PENDING_CODE_KEY); } catch { /* best-effort */ }
+  try {
+    await AsyncStorage.removeItem(PENDING_CODE_KEY);
+    // Same lifecycle as the pending code itself: this join journey is over (completed or
+    // abandoned in favor of creating a household), so a later new attempt — even with the same
+    // code — should be free to log join_opened again.
+    await AsyncStorage.removeItem(JOIN_OPENED_LOGGED_FOR_KEY);
+  } catch { /* best-effort */ }
 }

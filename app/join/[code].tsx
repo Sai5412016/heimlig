@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { isMemberLimitError } from '../../lib/premium';
 import { DEFAULT_STORE_URL } from '../../lib/appUpdate';
-import { logInviteFunnelStep, logAnonymousJoinOpened, resolveInviteCode, savePendingInviteCode, clearPendingInviteCode } from '../../lib/inviteFunnel';
+import { logInviteFunnelStep, logJoinOpenedOnce, resolveInviteCode, savePendingInviteCode, clearPendingInviteCode } from '../../lib/inviteFunnel';
 
 type Status = 'idle' | 'joining' | 'done' | 'error' | 'login' | 'web';
 
@@ -56,13 +56,15 @@ export default function JoinByCode() {
       // anon too) — this is exactly the main case: a recipient with no account yet. If the code
       // is invalid this just silently returns null and the step isn't logged (the join attempt
       // itself still surfaces the real error to the user).
+      //
+      // This screen legitimately mounts more than once for the SAME physical "opened the invite"
+      // event — app/_layout.tsx and app/onboarding.tsx both redirect back here once the recipient
+      // has a session (see lib/inviteFunnel.ts's logJoinOpenedOnce doc comment) — so the logging
+      // itself is deduped per code, not just called once per mount.
       const resolved = await resolveInviteCode(code);
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (resolved) {
-        if (user) logInviteFunnelStep('join_opened', resolved.household_id);
-        else logAnonymousJoinOpened(resolved.household_id);
-      }
+      if (resolved) logJoinOpenedOnce(code, resolved.household_id, user?.id ?? null);
       if (!user) { setStatus('login'); return; }
     })();
   }, [code]);
