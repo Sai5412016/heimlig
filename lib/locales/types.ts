@@ -123,6 +123,7 @@ export interface AppTranslations {
     descriptionPlaceholder: string;
     datePlaceholder: string;
     paidByLabel: string;
+    paidBySharedHint: string;
     recurringLabel: string;
     recurrenceOnce: string;
     recurrenceWeekly: string;
@@ -314,6 +315,7 @@ export interface AppTranslations {
     changePasswordLabel: string;
     screenshotToolLabel: string;
     screenshotToolLabelCapturing: string;
+    feedbackLabel: string;
     imprintLabel: string;
     privacyLabel: string;
     leaveHouseholdLabel: string;
@@ -490,6 +492,22 @@ export interface AppTranslations {
     youSuffix: string;
     pointsLabel: string;
     footnote: string;
+  };
+  feedbackModal: {
+    title: string;
+    subtitle: string;
+    messagePlaceholder: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    emailHint: string;
+    sendButton: string;
+    deliveredTitle: string;
+    deliveredBody: string;
+    rejectedTitle: string;
+    rejectedBody: string;
+    rejectedRetryButton: string;
+    errorGeneric: string;
+    errorRateLimited: string;
   };
   shareModal: {
     title: string;

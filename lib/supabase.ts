@@ -224,6 +224,25 @@ export interface PantryItem {
   created_at: string;
 }
 
+// In-app feedback. Rows are only ever written by the submit-feedback edge function (service
+// role) — `feedback` has no client-writable RLS policy, so the client can read its own rows
+// but never create one. Text only, never audio (voice input goes through the keyboard's own
+// microphone key, which transcribes before the app sees anything).
+export type FeedbackStatus = 'delivered' | 'rejected';
+
+export interface Feedback {
+  id: string;
+  user_id: string;
+  household_id?: string | null;
+  message: string;
+  contact_email?: string | null;
+  status: FeedbackStatus;
+  reject_reason?: string | null;
+  app_version?: string | null;
+  platform?: string | null;
+  created_at: string;
+}
+
 export type MealType = 'fruehstueck' | 'mittag' | 'abendessen';
 
 export interface MealPlan {

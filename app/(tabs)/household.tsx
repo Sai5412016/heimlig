@@ -25,6 +25,7 @@ import LocationModal from '../../components/LocationModal';
 import ThemeMotif from '../../components/ThemeMotif';
 import ShareModal from '../../components/ShareModal';
 import PremiumModal from '../../components/PremiumModal';
+import FeedbackModal from '../../components/FeedbackModal';
 import { hasPremiumAccess, memberLimit, isMemberLimitError } from '../../lib/premium';
 import { captureScreenshot } from '../../lib/screenshotTool';
 
@@ -236,6 +237,7 @@ export default function HouseholdScreen() {
   const [showEditName, setShowEditName] = useState(false);
   const [showChangePw, setShowChangePw] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [showGCal, setShowGCal] = useState(false);
   const [showLocation, setShowLocation] = useState(false);
   const [showSwitcher, setShowSwitcher] = useState(false);
@@ -708,6 +710,11 @@ export default function HouseholdScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Feedback & wishes */}
+        <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowFeedback(true)}>
+          <Text style={styles.settingsBtnText}>{t('household.feedbackLabel')}</Text>
+        </TouchableOpacity>
+
         {/* Legal */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push('/impressum')}>
           <Text style={styles.settingsBtnText}>{t('household.imprintLabel')}</Text>
@@ -746,6 +753,7 @@ export default function HouseholdScreen() {
       />
       <ShareModal visible={showShare} onClose={() => setShowShare(false)} />
       <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />
+      <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
       <JoinModal
         visible={showJoin}
         onClose={() => setShowJoin(false)}
