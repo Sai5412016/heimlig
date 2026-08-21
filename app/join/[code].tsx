@@ -88,9 +88,28 @@ export default function JoinByCode() {
         p_avatar_color: member?.avatar_color ?? colors.brand,
       });
 
-      if (isMemberLimitError(error)) { setStatus('error'); setMessage(t('household.memberLimitBody')); return; }
+      // Transient vs. final, so the pending code (see lib/inviteFunnel.ts) is only thrown away
+      // once it's actually dead:
+      // - Member limit reached (trg_enforce_member_limit's exception, surfaced as `error` and
+      //   matched by isMemberLimitError) and the RPC's own business errors below ("already a
+      //   member", unknown/invalid code — which also covers a household deleted after the code
+      //   was shared, since it then simply doesn't resolve to anything) are FINAL: retrying with
+      //   the same code will never succeed, so the code must stop resurfacing on later logins.
+      // - Any other `error` here means the request got a definite non-2xx response from the
+      //   server (not a dropped connection — see the catch block below for that case). We don't
+      //   have a reliable way to tell a genuine 5xx apart from it here, so we conservatively keep
+      //   the code rather than risk discarding a still-valid invite.
+      // - A thrown exception (below, in `catch`) means the request never got a response at all
+      //   — network drop, timeout — the textbook transient case, so the code survives.
+      if (isMemberLimitError(error)) {
+        await clearPendingInviteCode();
+        setStatus('error'); setMessage(t('household.memberLimitBody')); return;
+      }
       if (error) { setStatus('error'); setMessage(error.message); return; }
-      if (result?.error) { setStatus('error'); setMessage(result.error); return; }
+      if (result?.error) {
+        await clearPendingInviteCode();
+        setStatus('error'); setMessage(result.error); return;
+      }
 
       if (result?.household_id) logInviteFunnelStep('join_completed', result.household_id);
       await clearPendingInviteCode();
@@ -98,6 +117,7 @@ export default function JoinByCode() {
       setMessage(result?.household_name ?? '');
       setTimeout(() => router.replace('/(tabs)'), 1400);
     } catch (e: any) {
+      // Never reached a response — see the transient/final note above.
       setStatus('error');
       setMessage(e?.message ?? t('joinPage.joinFailedBody'));
     }

@@ -17,7 +17,7 @@ import { CURRENCIES } from '../lib/currency';
 import { TIMEZONES } from '../lib/timezones';
 import { SUPPORTED_COUNTRIES } from '../lib/holidays';
 import { isMemberLimitError } from '../lib/premium';
-import { logInviteFunnelStep, getPendingInviteCode, clearPendingInviteCode } from '../lib/inviteFunnel';
+import { logInviteFunnelStep, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember } from '../lib/inviteFunnel';
 
 type Step = 'welcome' | 'type' | 'auth' | 'verify' | 'name' | 'invite';
 type HouseholdType = 'couple' | 'wg' | 'family' | 'solo';
@@ -155,7 +155,21 @@ export default function OnboardingScreen() {
     // app/join/[code].tsx's own handleJoin already covers end-to-end — hand off there instead of
     // duplicating that join call here. currentMember is already set above, so it'll find it.
     const pending = pendingInviteCode ?? await getPendingInviteCode();
-    if (pending) { router.replace(`/join/${pending}`); return; }
+    if (pending) {
+      // Skip the join screen entirely if this login's user already belongs to the household the
+      // code points at — join_household_by_code can only ever answer "already a member" for that
+      // combination, so redirecting there would just be the dead-end loop this fix addresses.
+      // Checked across ALL of this user's memberships, not just `household` above (which is only
+      // the first one loaded) — someone can belong to more than one household.
+      const { data: allMemberRows } = await supabase.from('members').select('household_id').eq('user_id', userId);
+      const householdIds = (allMemberRows || []).map((r: any) => r.household_id);
+      if (await isPendingCodeAlreadyMember(pending, householdIds)) {
+        await clearPendingInviteCode();
+      } else {
+        router.replace(`/join/${pending}`);
+        return;
+      }
+    }
 
     router.replace('/(tabs)');
   };
@@ -171,9 +185,21 @@ export default function OnboardingScreen() {
         p_display_name: displayName,
         p_avatar_color: avatarColor,
       });
-      if (isMemberLimitError(rpcError)) { setErrorMsg(t('household.memberLimitBody')); return; }
+      // Same transient-vs-final split as app/join/[code].tsx's handleJoin: member-limit and the
+      // RPC's own business errors are final for this code and must not leave it stuck in
+      // AsyncStorage for the next login; a thrown exception below (network drop before any
+      // response) is the one case that stays transient and keeps the pending code.
+      if (isMemberLimitError(rpcError)) {
+        await clearPendingInviteCode();
+        setErrorMsg(t('household.memberLimitBody'));
+        return;
+      }
       if (rpcError) throw rpcError;
-      if (result?.error) throw new Error(result.error);
+      if (result?.error) {
+        await clearPendingInviteCode();
+        setErrorMsg(result.error);
+        return;
+      }
 
       const household_id = result.household_id;
       const { data: household } = await supabase.from('households').select('*').eq('id', household_id).single();

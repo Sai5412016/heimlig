@@ -67,10 +67,24 @@ async function markJoinOpenedLogged(code: string): Promise<void> {
   try { await AsyncStorage.setItem(JOIN_OPENED_LOGGED_FOR_KEY, code); } catch { /* best-effort */ }
 }
 
+// Root cause of the 3 join_opened rows seen in production for one recipient: read-then-write
+// across an `await` is not atomic. Android can genuinely deliver the SAME initial deep link
+// twice to JS — once via Linking.getInitialURL() in app/_layout.tsx's cold-start path, and again
+// via the Linking 'url' event listener firing once the bridge is up (a known RN/Expo double-
+// delivery quirk on cold start) — so app/join/[code].tsx's effect can run twice in quick
+// succession for one open. Both calls used to run `await hasLoggedJoinOpened(code)` — a separate
+// AsyncStorage read — before either had written the "logged" flag with `markJoinOpenedLogged`;
+// AsyncStorage has no compare-and-swap, so both reads returned "not logged yet" and both proceeded
+// to insert a row. A synchronous, in-memory guard (checked and set with no `await` in between)
+// closes that gap for calls within the same JS session, which is exactly where the race happens.
+const loggedOrInFlightJoinOpenedCodes = new Set<string>();
+
 // Single entry point app/join/[code].tsx calls on every mount — folds in the dedup check so the
 // call site can't accidentally log without it. authenticatedUserId is null for an anonymous
 // opener (routes to logAnonymousJoinOpened instead).
 export function logJoinOpenedOnce(code: string, householdId: string, authenticatedUserId: string | null): void {
+  if (loggedOrInFlightJoinOpenedCodes.has(code)) return;
+  loggedOrInFlightJoinOpenedCodes.add(code);
   (async () => {
     if (await hasLoggedJoinOpened(code)) return;
     await markJoinOpenedLogged(code);
@@ -108,21 +122,52 @@ export async function resolveInviteCode(code: string): Promise<{ household_id: s
 // would need a server-side pending-invite record keyed by email, which is a bigger feature than
 // this task asked for.
 const PENDING_CODE_KEY = '@heimlig/pendingInviteCode';
+const PENDING_CODE_SAVED_AT_KEY = '@heimlig/pendingInviteCodeSavedAt';
+// A code that for any unforeseen reason never gets cleared (a bug, an error path nobody
+// anticipated) must not be able to block a user forever — cap how long it's honored.
+const PENDING_CODE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export async function savePendingInviteCode(code: string): Promise<void> {
-  try { await AsyncStorage.setItem(PENDING_CODE_KEY, code); } catch { /* best-effort */ }
+  try {
+    await AsyncStorage.setItem(PENDING_CODE_KEY, code);
+    await AsyncStorage.setItem(PENDING_CODE_SAVED_AT_KEY, String(Date.now()));
+  } catch { /* best-effort */ }
 }
 
 export async function getPendingInviteCode(): Promise<string | null> {
-  try { return await AsyncStorage.getItem(PENDING_CODE_KEY); } catch { return null; }
+  try {
+    const code = await AsyncStorage.getItem(PENDING_CODE_KEY);
+    if (!code) return null;
+    const savedAtRaw = await AsyncStorage.getItem(PENDING_CODE_SAVED_AT_KEY);
+    const savedAt = savedAtRaw ? Number(savedAtRaw) : 0;
+    // No timestamp (savedAt === 0) means this code was written by a build from before this
+    // fix — treat it as expired too, which also self-heals any code already stuck in
+    // AsyncStorage on a device from the production bug this fix addresses.
+    if (Date.now() - savedAt > PENDING_CODE_TTL_MS) {
+      await clearPendingInviteCode();
+      return null;
+    }
+    return code;
+  } catch { return null; }
 }
 
 export async function clearPendingInviteCode(): Promise<void> {
   try {
     await AsyncStorage.removeItem(PENDING_CODE_KEY);
+    await AsyncStorage.removeItem(PENDING_CODE_SAVED_AT_KEY);
     // Same lifecycle as the pending code itself: this join journey is over (completed or
     // abandoned in favor of creating a household), so a later new attempt — even with the same
     // code — should be free to log join_opened again.
     await AsyncStorage.removeItem(JOIN_OPENED_LOGGED_FOR_KEY);
+    loggedOrInFlightJoinOpenedCodes.clear();
   } catch { /* best-effort */ }
+}
+
+// Whether `code` resolves to a household the caller already belongs to. Used to skip redirecting
+// to app/join/[code].tsx altogether when it would just be a dead end: join_household_by_code can
+// only ever answer "already a member" for that combination (see the RPC's definition). Returns
+// false (safe default: keep the normal join flow) if the code can't be resolved at all.
+export async function isPendingCodeAlreadyMember(code: string, memberHouseholdIds: string[]): Promise<boolean> {
+  const resolved = await resolveInviteCode(code);
+  return !!resolved && memberHouseholdIds.includes(resolved.household_id);
 }

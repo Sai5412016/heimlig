@@ -15,7 +15,7 @@ import { initBilling, restorePurchases } from '../lib/billing';
 import WhatsNewModal from '../components/WhatsNewModal';
 import ErrorFallback from '../components/ErrorFallback';
 import { initSentry, Sentry } from '../lib/sentry';
-import { getPendingInviteCode } from '../lib/inviteFunnel';
+import { getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember } from '../lib/inviteFunnel';
 import '../lib/i18n';
 import type { SupportedLanguage } from '../lib/i18n';
 
@@ -149,6 +149,18 @@ function RootLayout() {
       // Prefer the household with the most members (the shared one) over an
       // accidental solo household, so users always land in the "real" home.
       const householdIds = memberships.map((m: any) => m.household_id);
+
+      // A pending code can point at a household this user is already a member of — e.g. a
+      // previous join attempt actually succeeded but the code was never cleared, or they joined
+      // that exact household through some other path since the code was first captured.
+      // Redirecting to /join/[code] for that case is a dead end (join_household_by_code can only
+      // answer "already a member" — see that RPC), so drop the code up front instead of showing
+      // the screen and logging a join_opened event for nothing.
+      if (pendingJoinCode && await isPendingCodeAlreadyMember(pendingJoinCode, householdIds)) {
+        await clearPendingInviteCode();
+        pendingJoinCode = null;
+      }
+
       const { data: allMems } = await supabase.from('members').select('household_id').in('household_id', householdIds);
       const counts: Record<string, number> = {};
       (allMems || []).forEach((r: any) => { counts[r.household_id] = (counts[r.household_id] || 0) + 1; });
