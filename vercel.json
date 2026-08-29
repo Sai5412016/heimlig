@@ -1,5 +1,6 @@
 {
   "rewrites": [
-    { "source": "/((?!\\.well-known/).*)", "destination": "/index.html" }
+    { "source": "/", "destination": "/landing.html" },
+    { "source": "/((?!\\.well-known/|landing\\.html).*)", "destination": "/index.html" }
   ]
 }
