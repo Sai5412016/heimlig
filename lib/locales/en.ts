@@ -245,7 +245,7 @@ export const en: AppTranslations = {
     openList: 'Open list →',
   },
   household: {
-    inviteMessage: '🏡 I\'m inviting you to our household "{{name}}" on Heimlig!\n\n👉 Just tap here to join:\nhttps://heimlig.vercel.app/join/{{code}}\n\nIf the link doesn\'t work, enter this code in the app:\n🔑 {{code}}',
+    inviteMessage: '🏡 I\'m inviting you to our household "{{name}}" on Heimlig!\n\n👉 Just tap here to join:\nhttps://heimlig.app/join/{{code}}\n\nIf the link doesn\'t work, enter this code in the app:\n🔑 {{code}}',
     copiedTitle: 'Copied! ✓',
     copiedClipboardBody: 'Invite text copied to clipboard.',
     inviteCodeFallbackTitle: 'Invite code',
