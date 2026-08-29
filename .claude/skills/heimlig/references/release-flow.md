@@ -22,11 +22,9 @@ nachgezogen, der In-App-Update-Hinweis feuert dadurch nicht.
 
 Zwei Wege, einer genügt:
 
-**Automatisch (Regelfall):** Der Workflow `.github/workflows/eas-build.yml` startet bei Push auf
-`main` — **aber nur, wenn `app.json` im Push enthalten ist** (`paths: - 'app.json'`). Ein
-`versionCode`-Bump erfüllt das automatisch. Ein Push, der `app.json` nicht anfasst, löst **keinen**
-Build aus. Zusätzlich manuell startbar über GitHub → Actions → "EAS Build (Android Production)" →
-"Run workflow" (`workflow_dispatch`).
+**Automatisch (Regelfall):** Der Workflow `.github/workflows/eas-build.yml` startet bei **jedem**
+Push auf `main` (kein `paths`-Filter mehr). Zusätzlich manuell startbar über GitHub → Actions →
+"EAS Build (Android Production)" → "Run workflow" (`workflow_dispatch`).
 
 **Manuell per CLI:**
 

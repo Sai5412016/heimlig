@@ -69,7 +69,7 @@ Der Betreiber ist **kein ausgebildeter Entwickler**. Deshalb verbindlich:
 - `supabase/functions/` — 5 Edge Functions: `extract-recipe`, `extract-receipt`, `extract-event`, `notify-message`, `verify-purchase`
 - `supabase/manual_migrations/` — SQL zum **manuellen** Ausführen; Schema wird nicht als echte Migrations-Historie getrackt
 - `eas.json` — Profile `development`, `preview` (APK), `production` (AAB); Supabase-URL und Publishable Key stehen dort als `EXPO_PUBLIC_*`-Env
-- `.github/workflows/eas-build.yml` — startet EAS-Production-Build bei Push auf `main`, **aber nur wenn `app.json` geändert wurde** (`paths`-Filter), plus manuell per `workflow_dispatch`
+- `.github/workflows/eas-build.yml` — startet EAS-Production-Build bei **jedem** Push auf `main`, plus manuell per `workflow_dispatch`
 - `graphify-out/` — automatisch erzeugte Code-Struktur-Karte, gitignored, nie als Wahrheit über Historie nutzen
 
 ## Supabase-Client-Setup
