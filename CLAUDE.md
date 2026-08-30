@@ -14,3 +14,28 @@ questions:
 
 This is a structural map of what the code currently looks like, not a log of past decisions —
 for "why was this built this way", CONTEXT.md is still the source of truth.
+
+## Release Notes
+
+Immer wenn der `versionCode` in `app.json` erhöht wird, gehören in denselben Bericht fertige
+Play-Store-Versionshinweise für de-DE und en-US, in genau diesem Format zum Direkt-Einfügen in
+die Play Console:
+
+```
+<de-DE>
+...
+</de-DE>
+<en-US>
+...
+</en-US>
+```
+
+Regeln für den Text:
+- Aus Nutzersicht schreiben, nicht aus Entwicklersicht. Keine Dateinamen, keine Funktionsnamen,
+  keine internen Begriffe.
+- Maximal 500 Zeichen pro Sprache (Play-Limit).
+- Erste Zeile ist ein Satz, der sagt was sich für den Nutzer ändert. Danach maximal drei
+  Stichpunkte.
+- Nichts erfinden und nichts aufblasen: wenn ein Release für Nutzer kaum sichtbare Änderungen
+  bringt, sag das nüchtern statt Marketing zu texten.
+- Beide Sprachen inhaltlich identisch, kein Google-Translate-Deutsch.
