@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { isMemberLimitError } from '../../lib/premium';
 import { DEFAULT_STORE_URL } from '../../lib/appUpdate';
-import { logInviteFunnelStep, logJoinOpenedOnce, resolveInviteCode, savePendingInviteCode, clearPendingInviteCode } from '../../lib/inviteFunnel';
+import { logInviteFunnelStep, logJoinOpenedOnce, resolveInviteCode, savePendingInviteCode, clearPendingInviteCode, isAlreadyMemberError } from '../../lib/inviteFunnel';
 
 type Status = 'idle' | 'joining' | 'done' | 'error' | 'login' | 'web';
 
@@ -19,7 +19,7 @@ export default function JoinByCode() {
   const code = String(rawCode || '').toUpperCase().trim();
   const router = useRouter();
   const { t } = useTranslation();
-  const { currentMember } = useStore();
+  const { currentMember, switchHousehold, setUserId } = useStore();
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
 
@@ -74,6 +74,11 @@ export default function JoinByCode() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setStatus('login'); return; }
+      // switchHousehold (store/useStore.ts) below reads userId from the store — nothing sets it
+      // when this screen is reached via onboarding.tsx's login/signup redirect (only
+      // app/_layout.tsx's checkSession does), so without this switchHousehold would silently
+      // no-op for that path.
+      setUserId(user.id);
 
       // Need a display name + colour: prefer the loaded member, otherwise look one up
       let member = currentMember;
@@ -91,10 +96,10 @@ export default function JoinByCode() {
       // Transient vs. final, so the pending code (see lib/inviteFunnel.ts) is only thrown away
       // once it's actually dead:
       // - Member limit reached (trg_enforce_member_limit's exception, surfaced as `error` and
-      //   matched by isMemberLimitError) and the RPC's own business errors below ("already a
-      //   member", unknown/invalid code — which also covers a household deleted after the code
-      //   was shared, since it then simply doesn't resolve to anything) are FINAL: retrying with
-      //   the same code will never succeed, so the code must stop resurfacing on later logins.
+      //   matched by isMemberLimitError) and the RPC's own business errors below (unknown/invalid
+      //   code — which also covers a household deleted after the code was shared, since it then
+      //   simply doesn't resolve to anything) are FINAL: retrying with the same code will never
+      //   succeed, so the code must stop resurfacing on later logins.
       // - Any other `error` here means the request got a definite non-2xx response from the
       //   server (not a dropped connection — see the catch block below for that case). We don't
       //   have a reliable way to tell a genuine 5xx apart from it here, so we conservatively keep
@@ -106,12 +111,34 @@ export default function JoinByCode() {
         setStatus('error'); setMessage(t('household.memberLimitBody')); return;
       }
       if (error) { setStatus('error'); setMessage(error.message); return; }
+
+      // "Already a member" is the recipient's evident intent, not a failure — e.g. they opened
+      // an old link from a chat after having joined some other way already, or tapped the link a
+      // second time. Switch them into that household and open it instead of dead-ending on an
+      // error (see join_household_by_code — this branch doesn't return household_id, so it needs
+      // a separate lookup via resolveInviteCode).
+      if (result?.error && isAlreadyMemberError(result.error)) {
+        const resolved = await resolveInviteCode(code);
+        if (resolved) {
+          await switchHousehold(resolved.household_id);
+          await clearPendingInviteCode();
+          setStatus('done');
+          setMessage(resolved.household_name);
+          setTimeout(() => router.replace('/(tabs)'), 1400);
+          return;
+        }
+        // Couldn't resolve it after all (code vanished between the two calls) — fall through to
+        // the generic error path below instead of silently doing nothing.
+      }
       if (result?.error) {
         await clearPendingInviteCode();
         setStatus('error'); setMessage(result.error); return;
       }
 
-      if (result?.household_id) logInviteFunnelStep('join_completed', result.household_id);
+      if (result?.household_id) {
+        logInviteFunnelStep('join_completed', result.household_id);
+        await switchHousehold(result.household_id);
+      }
       await clearPendingInviteCode();
       setStatus('done');
       setMessage(result?.household_name ?? '');

@@ -28,7 +28,7 @@ import PremiumModal from '../../components/PremiumModal';
 import FeedbackModal from '../../components/FeedbackModal';
 import { hasPremiumAccess, memberLimit, isMemberLimitError } from '../../lib/premium';
 import { captureScreenshot } from '../../lib/screenshotTool';
-import { logInviteFunnelStep } from '../../lib/inviteFunnel';
+import { logInviteFunnelStep, isAlreadyMemberError, resolveInviteCode } from '../../lib/inviteFunnel';
 
 // Only these accounts see the screenshot tool (web-only, dev use for refreshing store/marketing
 // screenshots) — everyone else's settings screen renders exactly as before. The test account is
@@ -378,13 +378,27 @@ export default function HouseholdScreen() {
       return;
     }
 
-    if (result?.error) {
+    // "Already a member" is the recipient's evident intent, not a failure — switch them into
+    // that household instead of showing an error. That branch of the RPC doesn't return
+    // household_id (see join_household_by_code's definition), so it needs a separate lookup.
+    let household_id = result?.household_id;
+    let household_name = result?.household_name;
+    if (result?.error && isAlreadyMemberError(result.error)) {
+      const resolved = await resolveInviteCode(code);
+      household_id = resolved?.household_id;
+      household_name = resolved?.household_name;
+    } else if (result?.error) {
       Alert.alert(t('household.notFoundTitle'), result.error);
       return;
     }
+    if (!household_id) {
+      Alert.alert(t('household.notFoundTitle'), t('household.joinFailed'));
+      return;
+    }
 
-    if (result?.household_id) logInviteFunnelStep('join_completed', result.household_id);
-    Alert.alert(t('household.welcomeTitle'), t('household.welcomeBody', { name: result.household_name }));
+    if (!result?.error) logInviteFunnelStep('join_completed', household_id);
+    await switchHousehold(household_id);
+    Alert.alert(t('household.welcomeTitle'), t('household.welcomeBody', { name: household_name }));
     setShowJoin(false);
   };
 
