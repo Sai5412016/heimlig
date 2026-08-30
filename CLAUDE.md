@@ -39,3 +39,20 @@ Regeln für den Text:
 - Nichts erfinden und nichts aufblasen: wenn ein Release für Nutzer kaum sichtbare Änderungen
   bringt, sag das nüchtern statt Marketing zu texten.
 - Beide Sprachen inhaltlich identisch, kein Google-Translate-Deutsch.
+
+## Abschlussbericht zum Kopieren
+
+Jede abgeschlossene Aufgabe endet mit einem Bericht in einem Codeblock — gedacht zum 1:1-Kopieren
+zwischen dieser Claude-Code-Session und einem separaten Claude-Chat-Fenster (claude.ai), in beide
+Richtungen. Der Bericht muss deshalb für sich allein verständlich sein, ohne Bezug auf den
+vorherigen Chat-Verlauf.
+
+Format wie bereits etabliert (je nach Aufgabe, nicht jeder Punkt ist immer zutreffend):
+- Ursache/Kontext in Kurzform
+- geänderte Dateien
+- Testschritte mit erwartetem Ergebnis
+- Ergebnis von `npx tsc --noEmit` (vorher/nachher, falls Code geändert wurde)
+- PR-Link und Merge-Commit
+- bei einem `versionCode`-Bump: die Play-Store-Versionshinweise nach der Regel oben
+
+Gilt zusätzlich zu den einzelnen Aufgaben-Instruktionen des Nutzers, nicht als Ersatz dafür.
