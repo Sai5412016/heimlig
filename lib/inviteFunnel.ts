@@ -107,6 +107,19 @@ export async function resolveInviteCode(code: string): Promise<{ household_id: s
   }
 }
 
+// join_household_by_code's own static business-error text for "you're already a member of this
+// household" (see that RPC's definition — it's the only branch that returns this exact string,
+// no interpolation). Exact-string match, same pattern as isMemberLimitError in lib/premium.ts.
+// This case is NOT a failure: the recipient's evident intent was to end up in that household, so
+// every join call site treats it as success (switch to the household) rather than showing an
+// error. Note the RPC does NOT return household_id in this branch — callers need
+// resolveInviteCode() to get it.
+const ALREADY_MEMBER_ERROR = 'Du bist bereits Mitglied in diesem Haushalt.';
+
+export function isAlreadyMemberError(message: string | null | undefined): boolean {
+  return message === ALREADY_MEMBER_ERROR;
+}
+
 // ─── Pending invite code — survives the auth flow (signup, email confirmation, login) ─────────
 // Written as soon as app/join/[code].tsx sees a code, read by app/_layout.tsx (cold boot /
 // login) and app/onboarding.tsx (post-signup), cleared once the join actually completes.

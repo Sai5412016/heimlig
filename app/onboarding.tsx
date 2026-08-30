@@ -17,7 +17,7 @@ import { CURRENCIES } from '../lib/currency';
 import { TIMEZONES } from '../lib/timezones';
 import { SUPPORTED_COUNTRIES } from '../lib/holidays';
 import { isMemberLimitError } from '../lib/premium';
-import { logInviteFunnelStep, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember } from '../lib/inviteFunnel';
+import { logInviteFunnelStep, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember, isAlreadyMemberError, resolveInviteCode } from '../lib/inviteFunnel';
 
 type Step = 'welcome' | 'type' | 'auth' | 'verify' | 'name' | 'invite';
 type HouseholdType = 'couple' | 'wg' | 'family' | 'solo';
@@ -25,7 +25,7 @@ type HouseholdType = 'couple' | 'wg' | 'family' | 'solo';
 export default function OnboardingScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { household, setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems, language } = useStore();
+  const { household, setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems, switchHousehold, setUserId, language } = useStore();
   const HOUSEHOLD_TYPES: { key: HouseholdType; emoji: string; label: string; sub: string }[] = [
     { key: 'couple', emoji: '💑', label: t('onboarding.typeCouple'), sub: t('onboarding.typeCoupleSub') },
     { key: 'wg',     emoji: '🏠', label: t('onboarding.typeWg'),     sub: t('onboarding.typeWgSub') },
@@ -195,29 +195,29 @@ export default function OnboardingScreen() {
         return;
       }
       if (rpcError) throw rpcError;
-      if (result?.error) {
+
+      // "Already a member" is the recipient's evident intent, not a failure — switch them into
+      // that household instead of dead-ending on an error. That branch of the RPC doesn't return
+      // household_id (see join_household_by_code's definition), so it needs a separate lookup.
+      let household_id = result?.error && isAlreadyMemberError(result.error)
+        ? (await resolveInviteCode(inviteCode.toUpperCase().trim()))?.household_id
+        : result?.household_id;
+
+      if (!household_id) {
         await clearPendingInviteCode();
-        setErrorMsg(result.error);
+        setErrorMsg(result?.error ?? t('household.joinFailed'));
         return;
       }
+      if (!result?.error) logInviteFunnelStep('join_completed', household_id);
 
-      const household_id = result.household_id;
-      const { data: household } = await supabase.from('households').select('*').eq('id', household_id).single();
-      const { data: member } = await supabase.from('members').select('*').eq('id', result.member_id).single();
-
-      const { data: lists } = await supabase.from('shopping_lists').select('*').eq('household_id', household_id);
-      const { data: allMembers } = await supabase.from('members').select('*').eq('household_id', household_id);
-
-      if (household) setHousehold(household);
-      if (member) setCurrentMember(member);
-      if (allMembers) setMembers(allMembers);
-      if (lists && lists.length > 0) {
-        setShoppingLists(lists);
-        setActiveListId(lists[0].id);
-        const { data: items } = await supabase.from('shopping_items').select('*').eq('list_id', lists[0].id);
-        if (items) setItems(items);
-      }
-      if (household_id) logInviteFunnelStep('join_completed', household_id);
+      // switchHousehold (store/useStore.ts) looks the membership row up by user_id + household_id
+      // itself, so it works uniformly for both a fresh join (result.member_id) and the
+      // already-a-member case (no member_id in the RPC result at all). It reads userId from the
+      // store though, which — unlike app/_layout.tsx's checkSession — nothing on this screen ever
+      // sets; without this, switchHousehold would silently no-op here.
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserId(user.id);
+      await switchHousehold(household_id);
       await clearPendingInviteCode();
       router.replace('/(tabs)');
     } catch (e: any) {
