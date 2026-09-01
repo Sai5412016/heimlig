@@ -27,7 +27,7 @@ import ThemeMotif from '../../components/ThemeMotif';
 import ReceiptScanModal, { ReceiptDraft } from '../../components/ReceiptScanModal';
 import PremiumModal from '../../components/PremiumModal';
 import PayerPicker from '../../components/PayerPicker';
-import { hasPremiumAccess } from '../../lib/premium';
+import { hasPremiumAccess, isGrandfathered } from '../../lib/premium';
 import { uploadReceiptImage, deleteReceiptImage, getReceiptImageUrl } from '../../lib/receiptAttachments';
 
 import { CAT_EMOJIS, ALL_CATEGORIES, CAT_COLORS, categoryLabel } from '../../lib/budgetCategories';
@@ -458,7 +458,11 @@ export default function BudgetScreen() {
 
   // ─── EXPORT ───────────────────────────────────────────────
   const handleExport = async () => {
-    if (!hasPremiumAccess(household)) { setShowPremium(true); return; }
+    // CSV export costs us nothing to serve, unlike the AI quota — so it stays gated on real
+    // Premium OR the legacy grandfathered flag. Taking it away from the earliest households
+    // would save nothing and just be unnecessary risk; what actually costs money (the AI
+    // actions in lib/aiUsage.ts) is what grandfathering no longer covers, see lib/premium.ts.
+    if (!hasPremiumAccess(household) && !isGrandfathered(household)) { setShowPremium(true); return; }
     if (transactions.length === 0) { Alert.alert(t('budget.noDataTitle'), t('budget.noDataBody')); return; }
     try {
       const nameById: Record<string, string> = {};
