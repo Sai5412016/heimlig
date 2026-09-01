@@ -19,7 +19,14 @@ function escape(value: string): string {
 }
 
 // Build a CSV string from the full transaction history
-export function buildTransactionsCsv(transactions: Transaction[], memberNameById: Record<string, string>): string {
+// `formerMemberLabel` fills the Mitglied column for a row whose payer deleted their account.
+// Without it that row would export as an empty cell — indistinguishable from a genuinely shared
+// expense, which is a different thing entirely and would misread the household's split.
+export function buildTransactionsCsv(
+  transactions: Transaction[],
+  memberNameById: Record<string, string>,
+  formerMemberLabel: string,
+): string {
   const header = ['Datum', 'Typ', 'Kategorie', 'Betrag', 'Beschreibung', 'Mitglied'];
   const rows = transactions.map(t => [
     t.transaction_date,
@@ -27,7 +34,7 @@ export function buildTransactionsCsv(transactions: Transaction[], memberNameById
     t.category,
     String(t.amount),
     t.description ?? '',
-    t.member_id ? (memberNameById[t.member_id] ?? '') : '',
+    t.member_id ? (memberNameById[t.member_id] ?? formerMemberLabel) : '',
   ].map(escape).join(DELIM));
   return [header.join(DELIM), ...rows].join('\n');
 }

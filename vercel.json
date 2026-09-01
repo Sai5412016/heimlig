@@ -3,6 +3,6 @@
     { "source": "/", "destination": "/landing.html", "permanent": false }
   ],
   "rewrites": [
-    { "source": "/((?!\\.well-known/|landing\\.html).*)", "destination": "/index.html" }
+    { "source": "/((?!\\.well-known/|landing\\.html|datenschutz\\.html|impressum\\.html|konto-loeschen\\.html).*)", "destination": "/index.html" }
   ]
 }

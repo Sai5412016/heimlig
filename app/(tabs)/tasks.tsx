@@ -23,6 +23,7 @@ import { colors, spacing, radius, typography, shadow, APP_THEMES, type ColorPale
 import { useTheme } from '../../hooks/useTheme';
 import { supabase, Task, MealPlan, MealType } from '../../lib/supabase';
 import { readAiLimitError } from '../../lib/aiUsage';
+import { memberName, memberNameById, memberInitial } from '../../lib/memberNames';
 import { useStore } from '../../store/useStore';
 import { scheduleTaskNotification, cancelTaskNotification, requestNotificationPermission } from '../../lib/notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -657,9 +658,12 @@ function TaskCard({ task, onComplete, onDelete, members, showPoints, onOpen }: {
                 : recurrenceOptions(t).find(r => r.key === task.recurrence)?.label}</Text>
             </View>
           )}
-          {assignedMember && (
-            <View style={[styles.assignBadge, { backgroundColor: assignedMember.avatar_color + '22' }]}>
-              <Text style={[styles.assignBadgeText, { color: assignedMember.avatar_color }]}>{assignedMember.display_name[0]}</Text>
+          {/* Keyed off assigned_to, not off the member being found: a task assigned to someone
+              who has since deleted their account is still an assigned task, and dropping the
+              badge would silently make it look unassigned. */}
+          {task.assigned_to && (
+            <View style={[styles.assignBadge, { backgroundColor: (assignedMember?.avatar_color ?? colors.textMuted) + '22' }]}>
+              <Text style={[styles.assignBadgeText, { color: assignedMember?.avatar_color ?? colors.textMuted }]}>{memberInitial(t, assignedMember)}</Text>
             </View>
           )}
           {task.location_url && <Text style={styles.taskMetaIcon}>📍</Text>}
@@ -822,9 +826,9 @@ function TaskDetailModal({ task, members, onClose, onComplete, onDelete, onEdit,
             <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailEffort')}</Text><Text style={styles.detailValue}>{t('tasksTab.detailEffortPoints', { label: priorityLabels(t)[task.priority as Priority] })}</Text></View>
             {recurrenceText && <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailRecurrence')}</Text><Text style={styles.detailValue}>{recurrenceText}</Text></View>}
             {task.rotation && task.rotation.length > 1 && (
-              <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailRotation')}</Text><Text style={styles.detailValue}>{task.rotation.map(id => members.find(m => m.id === id)?.display_name ?? '?').join(' → ')}</Text></View>
+              <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailRotation')}</Text><Text style={styles.detailValue}>{task.rotation.map(id => memberNameById(t, members, id)).join(' → ')}</Text></View>
             )}
-            <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailAssigned')}</Text><Text style={styles.detailValue}>{assignedMember ? assignedMember.display_name : t('tasksTab.detailAssignedAll')}</Text></View>
+            <View style={styles.detailRow}><Text style={styles.detailLabel}>{t('tasksTab.detailAssigned')}</Text><Text style={styles.detailValue}>{task.assigned_to ? memberName(t, assignedMember) : t('tasksTab.detailAssignedAll')}</Text></View>
 
             {task.location_url && (
               <TouchableOpacity style={styles.attachmentBtn} onPress={() => Linking.openURL(task.location_url!)}>

@@ -31,6 +31,7 @@ import { hasPremiumAccess, isGrandfathered } from '../../lib/premium';
 import { uploadReceiptImage, deleteReceiptImage, getReceiptImageUrl } from '../../lib/receiptAttachments';
 
 import { CAT_EMOJIS, ALL_CATEGORIES, CAT_COLORS, categoryLabel } from '../../lib/budgetCategories';
+import { memberName, memberInitial } from '../../lib/memberNames';
 
 // Quick-select presets set both a category and a canned description — presetKey drives the
 // translated text for both the chip label and the description that actually gets typed in,
@@ -219,7 +220,10 @@ function CategoryBar({ label, amount, total, color, emoji, members, transactions
   // Last transaction for this category
   const lastTx = catTx.sort((a, b) => b.transaction_date.localeCompare(a.transaction_date))[0];
   const lastPayer = lastTx ? members.find(m => m.id === lastTx.member_id) : null;
-  const lastPayerLabel = lastTx ? (lastPayer ? lastPayer.display_name : t('common.shared')) : null;
+  // member_id NULL means paid together; member_id set but not found means the payer deleted
+  // their account. Collapsing the second into "Gemeinsam" would claim an expense was shared
+  // when it wasn't.
+  const lastPayerLabel = lastTx ? (lastTx.member_id ? memberName(t, lastPayer) : t('common.shared')) : null;
 
   return (
     <View style={styles.catBarRow}>
@@ -274,12 +278,15 @@ function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: 
         <Text style={styles.txTitle}>{tx.description || categoryLabel(t, tx.category)}{tx.recurrence ? ' 🔄' : ''}</Text>
         <View style={styles.txMetaRow}>
           <Text style={styles.txDate}>{format(parseISO(tx.transaction_date), 'dd. MMM', { locale: dateLocale })}</Text>
-          {payer && (
+          {/* Same distinction as lastPayerLabel above: the badge is driven by member_id, so a
+              transaction whose payer is gone still shows a payer — an unnamed one — rather than
+              quietly looking like a shared expense. */}
+          {tx.member_id && (
             <View style={styles.txPayerBadge}>
-              <View style={[styles.txPayerAvatar, { backgroundColor: payer.avatar_color }]}>
-                <Text style={styles.txPayerAvatarText}>{payer.display_name[0]}</Text>
+              <View style={[styles.txPayerAvatar, { backgroundColor: payer?.avatar_color ?? colors.textMuted }]}>
+                <Text style={styles.txPayerAvatarText}>{memberInitial(t, payer)}</Text>
               </View>
-              <Text style={styles.txPayerName}>{payer.display_name}</Text>
+              <Text style={styles.txPayerName}>{memberName(t, payer)}</Text>
             </View>
           )}
           {showShared && (
@@ -467,7 +474,7 @@ export default function BudgetScreen() {
     try {
       const nameById: Record<string, string> = {};
       members.forEach(m => { nameById[m.id] = m.display_name; });
-      const csv = buildTransactionsCsv(transactions, nameById);
+      const csv = buildTransactionsCsv(transactions, nameById, t('common.formerMember'));
       await exportCsv(`heimlig-budget-${format(new Date(), 'yyyy-MM-dd')}.csv`, csv);
     } catch (e: any) {
       Alert.alert(t('common.error'), e?.message ?? t('budget.exportFailed'));

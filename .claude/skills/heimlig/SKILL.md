@@ -174,8 +174,11 @@ Versionsnummer zählt trotzdem hoch. Mit Supabase-MCP `get_edge_function` den ec
 deployten Quelltext holen und mit `main` vergleichen. Das hat schon einmal eine halbe
 Fehlersuche gekostet.
 
-**`app_config.latest_version_code` ist veraltet.** Steht auf `50`, `app.json` ist bei `73`.
-Der In-App-Update-Hinweis feuert dadurch nicht. Nach dem nächsten Play-Store-Upload nachziehen.
+**`app_config.latest_version_code` nie aus einer Datei ablesen.** Der Wert steht in der Datenbank
+(`select latest_version_code from app_config where id = 1;`) und wird nach jedem Play-Store-Rollout
+dort auf den neuen `versionCode` gesetzt. Jede in Markdown notierte Zahl ist nach dem nächsten
+Release falsch. Dass er unter dem `versionCode` aus `app.json` liegt, ist normal, solange der Build
+noch nicht veröffentlicht ist — der In-App-Update-Hinweis soll erst nach dem Rollout feuern.
 
 **`lib/billing.ts`** — `initBilling(householdId)` friert die Haushalts-ID einmalig im
 `purchaseUpdatedListener`-Closure ein (`connected`-Guard verhindert erneutes Init). Wechselt der

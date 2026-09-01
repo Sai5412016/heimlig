@@ -9,6 +9,7 @@ import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { formatCurrency } from '../lib/currency';
+import { memberNameById } from '../lib/memberNames';
 
 export default function BudgetSplitModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
@@ -53,7 +54,7 @@ export default function BudgetSplitModal({ visible, onClose }: { visible: boolea
     return { net, suggestions };
   }, [transactions, members, settlements]);
 
-  const name = (id: string) => members.find(m => m.id === id)?.display_name ?? '?';
+  const name = (id: string) => memberNameById(t, members, id);
 
   const settle = (from: string, to: string, amount: number) => {
     Alert.alert(t('split.confirmTitle'), t('split.confirmBody', { from: name(from), to: name(to), amount: eur(amount) }), [

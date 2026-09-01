@@ -83,7 +83,7 @@ export default function JoinByCode() {
       // Need a display name + colour: prefer the loaded member, otherwise look one up
       let member = currentMember;
       if (!member) {
-        const { data } = await supabase.from('members').select('*').eq('user_id', user.id).limit(1);
+        const { data } = await supabase.from('members').select('*').eq('user_id', user.id).is('deleted_at', null).limit(1);
         member = data?.[0] ?? null;
       }
 

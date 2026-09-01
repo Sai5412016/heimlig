@@ -42,7 +42,9 @@ export async function monthlyScores(householdId: string, members: Member[], mont
 
   // share_events is keyed by auth user_id (not member_id) — map through the member list.
   const memberIdByUserId: Record<string, string> = {};
-  members.forEach(m => { memberIdByUserId[m.user_id] = m.id; });
+  // A row without a user_id is an anonymised member (see lib/supabase.ts) — there is no auth
+  // user left to match a share event against, so it simply isn't in the map.
+  members.forEach(m => { if (m.user_id) memberIdByUserId[m.user_id] = m.id; });
   (shares || []).forEach(s => {
     const memberId = memberIdByUserId[s.user_id];
     if (!memberId) return;

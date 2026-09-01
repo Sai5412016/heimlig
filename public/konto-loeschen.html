@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Konto löschen — Heimlig</title>
+<meta name="description" content="So löschst du dein Heimlig-Konto: direkt in der App unter Einstellungen → Konto → Konto löschen oder per E-Mail. Welche Daten gelöscht werden und welche bleiben.">
+<link rel="canonical" href="https://heimlig.app/konto-loeschen.html">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#2D6A4F">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232D6A4F'/%3E%3Cpath d='M22 46 50 24l28 22' fill='none' stroke='%23fff' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M31 43v30a4 4 0 0 0 4 4h30a4 4 0 0 0 4-4V43' fill='none' stroke='%23fff' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M43 77V60h14v17' fill='none' stroke='%23fff' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Karla:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --brand:#2D6A4F; --brand-pale:#D8F3DC; --brand-dark:#1B4332; --accent:#FF6B35;
+  --bg:#F7F9F7; --surface:#FFFFFF; --border:#E5EDE9;
+  --text:#1A2E1F; --text-2:#5A7A65; --text-3:#9AB5A0;
+  --shadow-sm:0 1px 2px rgba(26,46,31,.06),0 1px 3px rgba(26,46,31,.04);
+  --r-md:12px; --r-lg:18px; --maxw:760px;
+  --font-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --font-body:"Karla","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --brand:#52B788; --brand-pale:#1B3D28; --brand-dark:#95D5B2; --accent:#FF8355;
+    --bg:#0D1F15; --surface:#162A1C; --border:#2A4030;
+    --text:#E8F5EC; --text-2:#89B89A; --text-3:#5A7A65;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --brand:#52B788; --brand-pale:#1B3D28; --brand-dark:#95D5B2; --accent:#FF8355;
+  --bg:#0D1F15; --surface:#162A1C; --border:#2A4030;
+  --text:#E8F5EC; --text-2:#89B89A; --text-3:#5A7A65;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{width:100%;max-width:var(--maxw);margin-inline:auto;padding-inline:24px}
+a{color:var(--brand)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}
+.site-head{border-bottom:1px solid var(--border);background:var(--surface)}
+.head-in{display:flex;align-items:center;height:68px}
+.brandmark{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-family:var(--font-display);font-weight:800;font-size:20px;letter-spacing:-.02em}
+.brandmark .glyph{width:34px;height:34px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center;flex:none;font-size:18px}
+main{padding:44px 0 8px}
+h1{font-family:var(--font-display);font-weight:800;font-size:36px;line-height:1.1;letter-spacing:-.02em;margin:0 0 10px}
+h2{font-family:var(--font-display);font-weight:700;font-size:21px;line-height:1.25;letter-spacing:-.01em;margin:36px 0 10px}
+p{margin:0 0 14px}
+.lede{color:var(--text-2);font-size:15px;margin-bottom:28px}
+ul,ol{margin:0 0 14px;padding-left:22px}
+li{margin-bottom:10px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px;box-shadow:var(--shadow-sm);margin:0 0 14px}
+.card p:last-child,.card ol:last-child,.card ul:last-child{margin-bottom:0}
+.app-id{display:flex;flex-direction:column;gap:4px;font-size:15px;color:var(--text-2)}
+.app-id strong{color:var(--text);font-size:17px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;background:var(--brand-pale);color:var(--brand-dark);padding:2px 7px;border-radius:6px}
+.table-scroll{overflow-x:auto;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;min-width:520px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;font-size:16px}
+th,td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--border);vertical-align:top}
+thead th{background:var(--brand-pale);color:var(--brand-dark);font-family:var(--font-display);font-weight:700;font-size:15px}
+tbody tr:last-child td{border-bottom:none}
+td:first-child{font-weight:600;white-space:nowrap}
+.note{border-left:3px solid var(--accent);padding-left:16px;color:var(--text-2);font-size:16px;margin:0 0 14px}
+address{font-style:normal}
+footer{margin-top:56px;border-top:1px solid var(--border);background:var(--surface)}
+.foot-in{padding:32px 0 40px}
+.foot-links{display:flex;flex-direction:column;gap:12px;margin-bottom:24px}
+.foot-links a{color:var(--text-2);text-decoration:none;font-weight:600;width:fit-content}
+.foot-links a:hover{color:var(--brand)}
+.foot-legal{color:var(--text-3);font-size:14px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap head-in">
+    <a class="brandmark" href="/">
+      <span class="glyph" aria-hidden="true">🏠</span>
+      <span>Heimlig</span>
+    </a>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>Konto löschen</h1>
+  <p class="lede">Du kannst dein Konto jederzeit selbst löschen — direkt in der App oder per E-Mail. Diese Seite erklärt beide Wege und was dabei mit deinen Daten passiert.</p>
+
+  <div class="card app-id">
+    <strong>Heimlig: Haushalt &amp; WG-Planer</strong>
+    <span>Android-App, Paketname: <code>com.fledderman.heimlig</code></span>
+    <span>Anbieter: Andreas Schilling, Gut Feeling Labs</span>
+  </div>
+
+  <h2>Weg 1: In der App (empfohlen)</h2>
+  <div class="card">
+    <ol>
+      <li>Öffne Heimlig und tippe unten auf den Tab <strong>Haushalt</strong>.</li>
+      <li>Scrolle nach unten bis zum Abschnitt <strong>Konto</strong>.</li>
+      <li>Tippe auf <strong>Konto löschen</strong>.</li>
+      <li>Lies die Übersicht, was gelöscht wird, und tippe auf <strong>Weiter</strong>.</li>
+      <li>Tippe zur Bestätigung das Wort <strong>LÖSCHEN</strong> in das Feld und bestätige.</li>
+    </ol>
+  </div>
+  <p class="note">Bist du in einem Haushalt die letzte Person mit Admin-Rechten und es sind noch andere Mitglieder da, zeigt dir die App vor dem Absenden, wer die Admin-Rolle übernimmt. Bist du allein im Haushalt, wird der Haushalt mit allen Inhalten gelöscht.</p>
+
+  <h2>Weg 2: Per E-Mail (ohne App)</h2>
+  <div class="card">
+    <p>Schreib von der <strong>E-Mail-Adresse, mit der dein Konto registriert ist</strong>, eine Nachricht an:</p>
+    <p>
+      <strong>An:</strong> <a href="mailto:heimlig.app@gmail.com?subject=Kontol%C3%B6schung">heimlig.app@gmail.com</a><br>
+      <strong>Betreff:</strong> Kontolöschung
+    </p>
+    <p>Die Absenderadresse muss mit der registrierten Adresse übereinstimmen — nur so können wir sicherstellen, dass niemand ein fremdes Konto löschen lässt. Weitere Angaben sind nicht nötig.</p>
+  </div>
+
+  <h2>Welche Daten gelöscht werden</h2>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Wird sofort gelöscht</th>
+          <th>Was das umfasst</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Konto</td>
+          <td>E-Mail-Adresse, Passwort und die gesamte Anmeldung. Du kannst dich danach nicht mehr einloggen.</td>
+        </tr>
+        <tr>
+          <td>Mitgliedschaften</td>
+          <td>Deine Zugehörigkeit zu allen Haushalten, dein Anzeigename und deine Avatarfarbe. Bist du allein im Haushalt, wird der komplette Haushalt samt Listen, Aufgaben, Budget und Rezepten gelöscht.</td>
+        </tr>
+        <tr>
+          <td>Käufe</td>
+          <td>Deine gespeicherten Kaufbelege für ein Premium-Abo.</td>
+        </tr>
+        <tr>
+          <td>Feedback</td>
+          <td>Alle Nachrichten, die du über „Feedback &amp; Wünsche“ geschickt hast.</td>
+        </tr>
+        <tr>
+          <td>Nutzungsstatistik</td>
+          <td>Zähler für KI-Aktionen und Rezept-Importe sowie technische Nutzungszähler.</td>
+        </tr>
+        <tr>
+          <td>Gerät &amp; Standort</td>
+          <td>Push-Token deines Geräts, geteilte Standorte und deine Punktestände.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Was bleibt</th>
+          <th>Warum</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Gemeinsame Inhalte</td>
+          <td>Einkaufslisten, Aufgaben, Termine, Budget-Buchungen, Rezepte und Notizen bleiben erhalten, wenn noch andere Mitglieder im Haushalt sind — sie brauchen diese Inhalte weiter. Sie sind danach <strong>keinem Namen mehr zugeordnet</strong> und erscheinen in der App als „Ehemaliges Mitglied“.</td>
+        </tr>
+        <tr>
+          <td>Buchungen im Budget</td>
+          <td>Bleiben als Betrag erhalten, damit die Abrechnung der anderen Mitglieder nicht rückwirkend verfälscht wird — ebenfalls ohne Namenszuordnung.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Wie lange es dauert</h2>
+  <p>Die Löschung erfolgt <strong>sofort</strong>: Sobald du in der App bestätigst, wird dein Konto unmittelbar entfernt. Löschanfragen per E-Mail werden zeitnah manuell bearbeitet.</p>
+  <p>Aus technischen Sicherungskopien (Backups) verschwinden deine Daten <strong>nach spätestens 30 Tagen</strong>, sobald die Sicherungen turnusmäßig überschrieben werden.</p>
+  <p>Eine Löschung lässt sich nicht rückgängig machen. Wenn du deine Budget-Daten behalten möchtest, exportiere sie vorher in der App als CSV (Tab <strong>Budget</strong>).</p>
+
+  <h2>Fragen?</h2>
+  <p>Schreib uns an <a href="mailto:heimlig.app@gmail.com">heimlig.app@gmail.com</a>. Details zur Datenverarbeitung stehen in der <a href="/datenschutz.html">Datenschutzerklärung</a>.</p>
+</main>
+
+<footer>
+  <div class="wrap foot-in">
+    <nav class="foot-links">
+      <a href="/">← Zurück zur Startseite</a>
+      <a href="/impressum.html">Impressum</a>
+      <a href="/datenschutz.html">Datenschutz</a>
+      <a href="/konto-loeschen.html">Konto löschen</a>
+      <a href="mailto:heimlig.app@gmail.com">Kontakt</a>
+    </nav>
+    <div class="foot-legal">
+      <address>Gut Feeling Labs · Andreas Schilling · heimlig.app@gmail.com</address>
+      <span>© 2026 Gut Feeling Labs</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
