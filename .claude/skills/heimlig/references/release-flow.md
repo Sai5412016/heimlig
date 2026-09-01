@@ -3,9 +3,19 @@
 heimlig ist **live im Play Store** als Production-Release (kein geschlossener Alpha-Test mehr).
 Web braucht keinen Build: Push auf `main` reicht, Vercel deployt automatisch.
 
-Aktueller Stand: `app.json` → `versionCode` **73**, `version` (versionName) **1.1.0**.
-`app_config.latest_version_code` in der DB steht auf **50** — also seit mehreren Releases nicht
-nachgezogen, der In-App-Update-Hinweis feuert dadurch nicht.
+Den aktuellen `versionCode` immer in `app.json` (`expo.android.versionCode`) nachsehen,
+`version` (versionName) steht daneben — beides veraltet hier sonst bei jedem Release.
+
+`app_config.latest_version_code` **steht in der Datenbank und wird dort abgefragt**, nicht in
+dieser Datei gepflegt:
+
+```sql
+select latest_version_code from app_config where id = 1;
+```
+
+Ein Wert unterhalb des `versionCode` aus `app.json` ist normal, solange der Build noch nicht im
+Play Store veröffentlicht ist — der In-App-Update-Hinweis feuert absichtlich erst nach dem
+Rollout. Stand 01.09.2026: **80**.
 
 ## Die Schritte
 
