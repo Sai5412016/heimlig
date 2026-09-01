@@ -17,6 +17,9 @@ import { format } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
 import { ALL_CATEGORIES, CAT_EMOJIS, CAT_COLORS, categoryLabel } from '../lib/budgetCategories';
 import PayerPicker from './PayerPicker';
+import AiQuotaHint from './AiQuotaHint';
+import PremiumModal from './PremiumModal';
+import { readAiLimitError } from '../lib/aiUsage';
 
 export interface ReceiptDraft {
   amount: number; description?: string; category: string; date: string;
@@ -48,6 +51,7 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
   const [category, setCategory] = useState('Lebensmittel');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [paidBy, setPaidBy] = useState<string | null>(currentMember?.id ?? null);
+  const [showPremium, setShowPremium] = useState(false);
 
   const reset = () => {
     setStep('pick'); setImageB64(null); setImageMime('image/jpeg');
@@ -72,7 +76,9 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('extract-receipt', {
-        body: { imageBase64: asset.base64, imageMediaType: mime },
+        // householdId is what lets the server count this against the shared AI quota — without
+        // it the edge function deliberately fails open and the scan wouldn't be metered at all.
+        body: { imageBase64: asset.base64, imageMediaType: mime, householdId: household?.id },
       });
       if (error) throw error;
       setAmount(data.amount != null ? String(data.amount).replace('.', language === 'en' ? '.' : ',') : '');
@@ -80,8 +86,16 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
       setCategory(data.category || 'Lebensmittel');
       setDate(data.date || format(new Date(), 'yyyy-MM-dd'));
       setStep('review');
-    } catch {
-      Alert.alert(t('common.error'), t('receiptScan.extractErrorBody'));
+    } catch (e: any) {
+      const limit = await readAiLimitError(e);
+      if (limit) {
+        Alert.alert(t('aiQuota.limitReachedTitle'), t('aiQuota.limitReachedBody', { limit: limit.limit }), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('aiQuota.upgradeButton'), onPress: () => setShowPremium(true) },
+        ]);
+      } else {
+        Alert.alert(t('common.error'), t('receiptScan.extractErrorBody'));
+      }
     } finally {
       setLoading(false);
     }
@@ -107,6 +121,7 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
 
             {step === 'pick' ? (
               <>
+                <AiQuotaHint refreshKey={visible} />
                 <TouchableOpacity style={s.imagePick} onPress={pickAndExtract} disabled={loading}>
                   <Text style={s.imagePickText}>{loading ? t('receiptScan.extracting') : t('receiptScan.pickPlaceholder')}</Text>
                 </TouchableOpacity>
@@ -155,6 +170,7 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
           </View>
         </View>
       </KeyboardAvoidingView>
+      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />
     </Modal>
   );
 }

@@ -439,9 +439,6 @@ export interface AppTranslations {
     calendarOnlyButton: string;
     saveOnlyButton: string;
     stepsRecognized: string;
-    limitReachedTitle: string;
-    limitReachedBody: string;
-    upgradeButton: string;
   };
   recipeDetail: {
     ingredientsLabel: string;
@@ -527,12 +524,21 @@ export interface AppTranslations {
     failedTitle: string;
     failedBody: string;
   };
+  aiQuota: {
+    settingsLabel: string;
+    settingsValueUsed: string;
+    settingsValueUnlimited: string;
+    modalRemaining: string;
+    modalRemainingNone: string;
+    limitReachedTitle: string;
+    limitReachedBody: string;
+    upgradeButton: string;
+  };
   premiumModal: {
     title: string;
     subtitle: string;
     benefit: {
-      members: { emoji: string; text: string };
-      unlimitedImports: { emoji: string; text: string };
+      aiActions: { emoji: string; text: string };
       csvExport: { emoji: string; text: string };
     };
     alreadyPremium: string;

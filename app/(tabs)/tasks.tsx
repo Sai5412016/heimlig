@@ -22,6 +22,7 @@ import { de, enUS } from 'date-fns/locale';
 import { colors, spacing, radius, typography, shadow, APP_THEMES, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { supabase, Task, MealPlan, MealType } from '../../lib/supabase';
+import { readAiLimitError } from '../../lib/aiUsage';
 import { useStore } from '../../store/useStore';
 import { scheduleTaskNotification, cancelTaskNotification, requestNotificationPermission } from '../../lib/notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -1402,7 +1403,9 @@ export default function TasksScreen() {
     setExtractingPhoto(true);
     try {
       const { data, error } = await supabase.functions.invoke('extract-event', {
-        body: { imageBase64: asset.base64, imageMediaType: asset.mimeType || 'image/jpeg' },
+        // householdId is what lets the server count this against the shared AI quota — without
+        // it the edge function deliberately fails open and this wouldn't be metered at all.
+        body: { imageBase64: asset.base64, imageMediaType: asset.mimeType || 'image/jpeg', householdId: household?.id },
       });
       if (error || !data) throw error || new Error('no data');
       if (!data.title) {
@@ -1417,8 +1420,15 @@ export default function TasksScreen() {
         location_url: data.location || undefined,
       });
       setShowModal(true);
-    } catch {
-      Alert.alert(t('common.error'), t('tasksTab.photoFailedBody'));
+    } catch (e: any) {
+      // Unlike the recipe/receipt modals there is no pre-action surface here (the icon opens the
+      // image picker straight away), so this alert is the only place the quota can be surfaced.
+      const limit = await readAiLimitError(e);
+      if (limit) {
+        Alert.alert(t('aiQuota.limitReachedTitle'), t('aiQuota.limitReachedBody', { limit: limit.limit }));
+      } else {
+        Alert.alert(t('common.error'), t('tasksTab.photoFailedBody'));
+      }
     } finally {
       setExtractingPhoto(false);
     }

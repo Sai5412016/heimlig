@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, radius, typography, shadow } from '../../constants/theme';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
-import { isMemberLimitError } from '../../lib/premium';
+import { isMemberLimitError, HOUSEHOLD_MEMBER_CAP } from '../../lib/premium';
 import { DEFAULT_STORE_URL } from '../../lib/appUpdate';
 import { logInviteFunnelStep, logJoinOpenedOnce, resolveInviteCode, savePendingInviteCode, clearPendingInviteCode, isAlreadyMemberError } from '../../lib/inviteFunnel';
 
@@ -108,7 +108,7 @@ export default function JoinByCode() {
       //   — network drop, timeout — the textbook transient case, so the code survives.
       if (isMemberLimitError(error)) {
         await clearPendingInviteCode();
-        setStatus('error'); setMessage(t('household.memberLimitBody')); return;
+        setStatus('error'); setMessage(t('household.memberLimitBody', { limit: HOUSEHOLD_MEMBER_CAP })); return;
       }
       if (error) { setStatus('error'); setMessage(error.message); return; }
 
