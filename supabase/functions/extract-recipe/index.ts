@@ -155,44 +155,51 @@ serve(async (req) => {
     }
 
     const { url, text, imageBase64, imageMediaType, householdId } = await req.json();
-    if (!householdId) {
-      return new Response(JSON.stringify({ error: 'missing householdId' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
-    }
 
-    // Confirm the caller actually belongs to the household they're importing for — this is
-    // about to check (and consume) that household's import quota.
-    const { data: membership } = await authClient
-      .from('members').select('id').eq('user_id', user.id).eq('household_id', householdId).maybeSingle();
-    if (!membership) {
-      return new Response(JSON.stringify({ error: 'not a member of this household' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
-    }
-
-    // ── Premium gate: free (non-grandfathered) households get FREE_MONTHLY_IMPORT_LIMIT
-    // imports per calendar month. Checked (and logged) BEFORE the Anthropic call, so a
-    // household that's already at its limit never triggers the cost this limit exists for. ──
-    // NOTE: this condition intentionally mirrors hasPremiumAccess() in lib/premium.ts. It
-    // can't import it — that's app code in the Node/Metro bundle, this runs in Deno — so if
-    // the premium rule ever changes, it has to change in both places.
-    const { data: household } = await authClient
-      .from('households').select('plan_tier, grandfathered').eq('id', householdId).single();
-    const hasUnlimitedImports = household?.plan_tier !== 'free' || household?.grandfathered === true;
-
-    if (!hasUnlimitedImports) {
-      const monthStart = new Date();
-      monthStart.setUTCDate(1);
-      monthStart.setUTCHours(0, 0, 0, 0);
-      const { count } = await authClient
-        .from('recipe_import_events')
-        .select('id', { count: 'exact', head: true })
-        .eq('household_id', householdId)
-        .gte('created_at', monthStart.toISOString());
-
-      if ((count ?? 0) >= FREE_MONTHLY_IMPORT_LIMIT) {
-        return new Response(JSON.stringify({ error: 'import_limit_reached', limit: FREE_MONTHLY_IMPORT_LIMIT }), {
-          status: 403, headers: { ...cors, 'Content-Type': 'application/json' },
-        });
+    // ── Missing householdId: fail OPEN, on purpose ────────────────────────────────────
+    // App builds from before the premium gate shipped (~versionCode 72) don't send a
+    // householdId at all. Rejecting those with a 400 would break recipe import outright for
+    // every user still on an older build. Weighed against that, letting those imports run
+    // unmetered is the cheaper mistake: the limit currently gates no paying customers, while
+    // a hard-broken core feature costs real users and store reviews. So without a
+    // householdId the import proceeds, but is NEITHER counted NOR limit-checked.
+    // This can go back to being a hard requirement once old builds have aged out.
+    if (householdId) {
+      // Confirm the caller actually belongs to the household they're importing for — this is
+      // about to check (and consume) that household's import quota.
+      const { data: membership } = await authClient
+        .from('members').select('id').eq('user_id', user.id).eq('household_id', householdId).maybeSingle();
+      if (!membership) {
+        return new Response(JSON.stringify({ error: 'not a member of this household' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
       }
-      await authClient.from('recipe_import_events').insert({ household_id: householdId, user_id: user.id });
+
+      // ── Premium gate: free (non-grandfathered) households get FREE_MONTHLY_IMPORT_LIMIT
+      // imports per calendar month. Checked (and logged) BEFORE the Anthropic call, so a
+      // household that's already at its limit never triggers the cost this limit exists for. ──
+      // NOTE: this condition intentionally mirrors hasPremiumAccess() in lib/premium.ts. It
+      // can't import it — that's app code in the Node/Metro bundle, this runs in Deno — so if
+      // the premium rule ever changes, it has to change in both places.
+      const { data: household } = await authClient
+        .from('households').select('plan_tier, grandfathered').eq('id', householdId).single();
+      const hasUnlimitedImports = household?.plan_tier !== 'free' || household?.grandfathered === true;
+
+      if (!hasUnlimitedImports) {
+        const monthStart = new Date();
+        monthStart.setUTCDate(1);
+        monthStart.setUTCHours(0, 0, 0, 0);
+        const { count } = await authClient
+          .from('recipe_import_events')
+          .select('id', { count: 'exact', head: true })
+          .eq('household_id', householdId)
+          .gte('created_at', monthStart.toISOString());
+
+        if ((count ?? 0) >= FREE_MONTHLY_IMPORT_LIMIT) {
+          return new Response(JSON.stringify({ error: 'import_limit_reached', limit: FREE_MONTHLY_IMPORT_LIMIT }), {
+            status: 403, headers: { ...cors, 'Content-Type': 'application/json' },
+          });
+        }
+        await authClient.from('recipe_import_events').insert({ household_id: householdId, user_id: user.id });
+      }
     }
 
     let recipeContent = text || '';
