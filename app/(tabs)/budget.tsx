@@ -268,7 +268,13 @@ function TransactionRow({ tx, onDelete, members }: { tx: Transaction; onDelete: 
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const catColor = CAT_COLORS[tx.category] || colors.brand;
   const payer = members.find(m => m.id === tx.member_id);
-  const showShared = !tx.member_id && members.length > 1;
+  // No members.length condition: member_id IS NULL is a real, valid state ("gemeinsam bezahlt"),
+  // and a row in that state has to say so. It used to be hidden in a one-person household, which
+  // left the booking standing there with no payer information at all — indistinguishable from
+  // missing data. PayerPicker still only OFFERS "gemeinsam" when there is more than one member
+  // (splitting with yourself is meaningless); that is about creating rows, this is about showing
+  // ones that already exist, including any a CSV import created.
+  const showShared = !tx.member_id;
   return (
     <View style={styles.txRow}>
       <View style={[styles.txCatIcon, { backgroundColor: catColor + '22' }]}>
