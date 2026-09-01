@@ -8,6 +8,13 @@ const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
+// Free households get this many AI actions per calendar month, counted across recipe import,
+// receipt scan and event extraction TOGETHER — not this many each. Premium is unlimited.
+// Keep in sync with FREE_MONTHLY_AI_ACTIONS in lib/premium.ts, which drives what the UI shows.
+const FREE_MONTHLY_AI_ACTIONS = 5;
+const AI_ACTION_TYPE = 'event_extract';
+
+
 const ALLOWED_ORIGINS = new Set([
   'https://heimlig.app',
   'https://heimlig.vercel.app',
@@ -60,9 +67,51 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Zu viele Anfragen, bitte später erneut versuchen.' }), { status: 429, headers: { ...cors, 'Content-Type': 'application/json' } });
     }
 
-    const { imageBase64, imageMediaType } = await req.json();
+    const { imageBase64, imageMediaType, householdId } = await req.json();
     if (!imageBase64) {
       return new Response(JSON.stringify({ error: 'missing image' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+
+    // ── Missing householdId: fail OPEN, on purpose ────────────────────────────────
+    // App builds from before this shipped don't send a householdId. Rejecting them would break
+    // the feature outright for users on older builds; letting those calls run unmetered is the
+    // cheaper mistake. Without a householdId the call proceeds, NEITHER counted NOR limit-checked.
+    if (householdId) {
+      // Confirm the caller actually belongs to the household whose quota is about to be spent.
+      const { data: membership } = await authClient
+        .from('members').select('id').eq('user_id', user.id).eq('household_id', householdId).maybeSingle();
+      if (!membership) {
+        return new Response(JSON.stringify({ error: 'not a member of this household' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+
+      // plan_tier ONLY — households.grandfathered deliberately does not lift this. That flag
+      // existed for the old member limit, which no longer exists (see lib/premium.ts and
+      // sql/member_cap.sql), so a grandfathered household gets the same free allowance as any other.
+      const { data: household } = await authClient
+        .from('households').select('plan_tier').eq('id', householdId).single();
+      const unlimited = household?.plan_tier !== 'free';
+
+      if (!unlimited) {
+        // UTC month start — must match monthStartIso() in lib/aiUsage.ts, or the number the app
+        // shows and the number enforced here would drift apart.
+        const monthStart = new Date();
+        monthStart.setUTCDate(1);
+        monthStart.setUTCHours(0, 0, 0, 0);
+        const { count } = await authClient
+          .from('ai_usage_events')
+          .select('id', { count: 'exact', head: true })
+          .eq('household_id', householdId)
+          .gte('created_at', monthStart.toISOString());
+
+        const used = count ?? 0;
+        if (used >= FREE_MONTHLY_AI_ACTIONS) {
+          // `used` and `limit` go back so the app can say "5 of 5 used" instead of a bare refusal.
+          return new Response(JSON.stringify({ error: 'ai_limit_reached', used, limit: FREE_MONTHLY_AI_ACTIONS }), {
+            status: 403, headers: { ...cors, 'Content-Type': 'application/json' },
+          });
+        }
+        await authClient.from('ai_usage_events').insert({ household_id: householdId, user_id: user.id, action_type: AI_ACTION_TYPE });
+      }
     }
 
     const today = new Date().toISOString().slice(0, 10);

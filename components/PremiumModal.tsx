@@ -15,7 +15,8 @@ import { hasPremiumAccess } from '../lib/premium';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 
 // Matches the exact perks advertised in the Play Store listing — keep in sync with it.
-const BENEFIT_KEYS = ['members', 'unlimitedImports', 'csvExport'] as const;
+// Household size is deliberately NOT in here any more: it is no longer a paid feature.
+const BENEFIT_KEYS = ['aiActions', 'csvExport'] as const;
 
 export default function PremiumModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { colors } = useTheme();
@@ -68,9 +69,8 @@ export default function PremiumModal({ visible, onClose }: { visible: boolean; o
     }
   };
 
-  // Grandfathered households count as "already premium" here on purpose: they get every
-  // benefit this modal advertises for free, so letting them pay would charge them for
-  // something they already have.
+  // plan_tier only — households.grandfathered no longer grants any of the benefits this modal
+  // advertises (see lib/premium.ts), so a grandfathered household must still be able to buy.
   const alreadyPremium = hasPremiumAccess(household);
 
   return (

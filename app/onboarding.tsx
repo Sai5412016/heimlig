@@ -16,7 +16,7 @@ import { useStore } from '../store/useStore';
 import { CURRENCIES } from '../lib/currency';
 import { TIMEZONES } from '../lib/timezones';
 import { SUPPORTED_COUNTRIES } from '../lib/holidays';
-import { isMemberLimitError } from '../lib/premium';
+import { isMemberLimitError, HOUSEHOLD_MEMBER_CAP } from '../lib/premium';
 import { logInviteFunnelStep, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember, isAlreadyMemberError, resolveInviteCode } from '../lib/inviteFunnel';
 
 type Step = 'welcome' | 'type' | 'auth' | 'verify' | 'name' | 'invite';
@@ -191,7 +191,7 @@ export default function OnboardingScreen() {
       // response) is the one case that stays transient and keeps the pending code.
       if (isMemberLimitError(rpcError)) {
         await clearPendingInviteCode();
-        setErrorMsg(t('household.memberLimitBody'));
+        setErrorMsg(t('household.memberLimitBody', { limit: HOUSEHOLD_MEMBER_CAP }));
         return;
       }
       if (rpcError) throw rpcError;

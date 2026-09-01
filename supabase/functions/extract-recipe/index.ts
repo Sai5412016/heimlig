@@ -7,10 +7,11 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 const BASICS = ['salz', 'pfeffer', 'wasser', 'öl', 'olivenöl', 'zucker', 'mehl', 'butter', 'backpulver', 'natron', 'hefe', 'essig', 'senf'];
 
-// Free-plan households (not premium, not grandfathered) get this many recipe imports per
-// calendar month — each call here costs a real Anthropic API request, so this is enforced
-// server-side against recipe_import_events, never trusting a client-sent count.
-const FREE_MONTHLY_IMPORT_LIMIT = 3;
+// Free households get this many AI actions per calendar month, counted across recipe import,
+// receipt scan and event extraction TOGETHER — not this many each. Premium is unlimited.
+// Keep in sync with FREE_MONTHLY_AI_ACTIONS in lib/premium.ts, which drives what the UI shows.
+const FREE_MONTHLY_AI_ACTIONS = 5;
+const AI_ACTION_TYPE = 'recipe_import';
 
 // Decode common HTML entities (fractions, nbsp, etc.) so quantities arrive cleanly
 function decodeEntities(s: string): string {
@@ -156,49 +157,45 @@ serve(async (req) => {
 
     const { url, text, imageBase64, imageMediaType, householdId } = await req.json();
 
-    // ── Missing householdId: fail OPEN, on purpose ────────────────────────────────────
-    // App builds from before the premium gate shipped (~versionCode 72) don't send a
-    // householdId at all. Rejecting those with a 400 would break recipe import outright for
-    // every user still on an older build. Weighed against that, letting those imports run
-    // unmetered is the cheaper mistake: the limit currently gates no paying customers, while
-    // a hard-broken core feature costs real users and store reviews. So without a
-    // householdId the import proceeds, but is NEITHER counted NOR limit-checked.
-    // This can go back to being a hard requirement once old builds have aged out.
+    // ── Missing householdId: fail OPEN, on purpose ────────────────────────────────
+    // App builds from before this shipped don't send a householdId. Rejecting them would break
+    // the feature outright for users on older builds; letting those calls run unmetered is the
+    // cheaper mistake. Without a householdId the call proceeds, NEITHER counted NOR limit-checked.
     if (householdId) {
-      // Confirm the caller actually belongs to the household they're importing for — this is
-      // about to check (and consume) that household's import quota.
+      // Confirm the caller actually belongs to the household whose quota is about to be spent.
       const { data: membership } = await authClient
         .from('members').select('id').eq('user_id', user.id).eq('household_id', householdId).maybeSingle();
       if (!membership) {
         return new Response(JSON.stringify({ error: 'not a member of this household' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
       }
 
-      // ── Premium gate: free (non-grandfathered) households get FREE_MONTHLY_IMPORT_LIMIT
-      // imports per calendar month. Checked (and logged) BEFORE the Anthropic call, so a
-      // household that's already at its limit never triggers the cost this limit exists for. ──
-      // NOTE: this condition intentionally mirrors hasPremiumAccess() in lib/premium.ts. It
-      // can't import it — that's app code in the Node/Metro bundle, this runs in Deno — so if
-      // the premium rule ever changes, it has to change in both places.
+      // plan_tier ONLY — households.grandfathered deliberately does not lift this. That flag
+      // existed for the old member limit, which no longer exists (see lib/premium.ts and
+      // sql/member_cap.sql), so a grandfathered household gets the same free allowance as any other.
       const { data: household } = await authClient
-        .from('households').select('plan_tier, grandfathered').eq('id', householdId).single();
-      const hasUnlimitedImports = household?.plan_tier !== 'free' || household?.grandfathered === true;
+        .from('households').select('plan_tier').eq('id', householdId).single();
+      const unlimited = household?.plan_tier !== 'free';
 
-      if (!hasUnlimitedImports) {
+      if (!unlimited) {
+        // UTC month start — must match monthStartIso() in lib/aiUsage.ts, or the number the app
+        // shows and the number enforced here would drift apart.
         const monthStart = new Date();
         monthStart.setUTCDate(1);
         monthStart.setUTCHours(0, 0, 0, 0);
         const { count } = await authClient
-          .from('recipe_import_events')
+          .from('ai_usage_events')
           .select('id', { count: 'exact', head: true })
           .eq('household_id', householdId)
           .gte('created_at', monthStart.toISOString());
 
-        if ((count ?? 0) >= FREE_MONTHLY_IMPORT_LIMIT) {
-          return new Response(JSON.stringify({ error: 'import_limit_reached', limit: FREE_MONTHLY_IMPORT_LIMIT }), {
+        const used = count ?? 0;
+        if (used >= FREE_MONTHLY_AI_ACTIONS) {
+          // `used` and `limit` go back so the app can say "5 of 5 used" instead of a bare refusal.
+          return new Response(JSON.stringify({ error: 'ai_limit_reached', used, limit: FREE_MONTHLY_AI_ACTIONS }), {
             status: 403, headers: { ...cors, 'Content-Type': 'application/json' },
           });
         }
-        await authClient.from('recipe_import_events').insert({ household_id: householdId, user_id: user.id });
+        await authClient.from('ai_usage_events').insert({ household_id: householdId, user_id: user.id, action_type: AI_ACTION_TYPE });
       }
     }
 

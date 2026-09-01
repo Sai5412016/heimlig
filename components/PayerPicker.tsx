@@ -8,9 +8,11 @@
 // 2. The row WRAPS instead of scrolling horizontally. The previous horizontal ScrollView had
 //    `showsHorizontalScrollIndicator={false}`, so on a narrow viewport the last chip sat off the
 //    right edge with no visual hint that anything was there — and with a mouse on the web PWA
-//    there is no swipe gesture to reach it either. Wrapping is safe here because the number of
-//    chips is hard-capped: at most 6 members (MEMBER_LIMIT_PREMIUM) plus the shared chip, so the
-//    row can never grow beyond ~3 lines.
+//    there is no swipe gesture to reach it either. Wrapping stays the right trade-off: the chip
+//    count is bounded by HOUSEHOLD_MEMBER_CAP (20) plus the shared chip, and while that upper
+//    bound would wrap to several lines, it is an abuse guard rather than a realistic household —
+//    real ones sit in the low single digits. A long row that wraps still beats one that hides
+//    chips off-screen with no way to reach them.
 //
 // `value === null` means "gemeinsam" (stored as transactions.member_id IS NULL).
 import React, { useMemo } from 'react';

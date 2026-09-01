@@ -26,7 +26,8 @@ import ThemeMotif from '../../components/ThemeMotif';
 import ShareModal from '../../components/ShareModal';
 import PremiumModal from '../../components/PremiumModal';
 import FeedbackModal from '../../components/FeedbackModal';
-import { hasPremiumAccess, memberLimit, isMemberLimitError } from '../../lib/premium';
+import { hasPremiumAccess, isMemberLimitError, HOUSEHOLD_MEMBER_CAP, FREE_MONTHLY_AI_ACTIONS } from '../../lib/premium';
+import { fetchAiActionsUsed } from '../../lib/aiUsage';
 import { captureScreenshot } from '../../lib/screenshotTool';
 import { logInviteFunnelStep, isAlreadyMemberError, resolveInviteCode } from '../../lib/inviteFunnel';
 
@@ -252,8 +253,13 @@ export default function HouseholdScreen() {
   const [weekScores, setWeekScores] = useState<Record<string, number>>({});
   const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
   const [capturingScreens, setCapturingScreens] = useState(false);
+  // AI actions this household has spent this month — null while loading or if it can't be
+  // read, in which case the row simply isn't shown rather than showing a wrong number.
+  const [aiUsed, setAiUsed] = useState<number | null>(null);
 
   useEffect(() => { loadMyHouseholds(); }, [household?.id]);
+
+  useEffect(() => { fetchAiActionsUsed(household?.id).then(setAiUsed); }, [household?.id]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -369,7 +375,7 @@ export default function HouseholdScreen() {
     });
 
     if (isMemberLimitError(error)) {
-      Alert.alert(t('household.memberLimitTitle'), t('household.memberLimitBody'));
+      Alert.alert(t('household.memberLimitTitle'), t('household.memberLimitBody', { limit: HOUSEHOLD_MEMBER_CAP }));
       return;
     }
 
@@ -555,9 +561,9 @@ export default function HouseholdScreen() {
             <Text style={styles.infoLabel}>{t('household.infoName')}</Text>
             <Text style={styles.infoValue}>{household?.name}{currentMember?.role === 'admin' ? '  ✏️' : ''}</Text>
           </TouchableOpacity>
-          {/* Everything user-facing keys off hasPremiumAccess(), not plan_tier — a
-              grandfathered household is still on the free tier but has every premium benefit,
-              so upselling it (or showing it the lower member allowance) would be wrong. */}
+          {/* hasPremiumAccess() is now plan_tier only: households.grandfathered no longer grants
+              anything (it existed for the old member limit, which is gone — see lib/premium.ts),
+              so a grandfathered household is a free household here and does get the upsell. */}
           <TouchableOpacity
             style={styles.infoRow}
             onPress={() => { if (!premium) setShowPremium(true); }}
@@ -572,8 +578,20 @@ export default function HouseholdScreen() {
           </TouchableOpacity>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('household.infoMembers')}</Text>
-            <Text style={styles.infoValue}>{members.length} / {memberLimit(household)}</Text>
+            <Text style={styles.infoValue}>{members.length}</Text>
           </View>
+          {/* The one thing Premium actually lifts — so it belongs next to the plan row, where
+              someone checks "where do I stand" without having to open an AI feature first. */}
+          {(premium || aiUsed !== null) && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>{t('aiQuota.settingsLabel')}</Text>
+              <Text style={styles.infoValue}>
+                {premium
+                  ? t('aiQuota.settingsValueUnlimited')
+                  : t('aiQuota.settingsValueUsed', { used: aiUsed, limit: FREE_MONTHLY_AI_ACTIONS })}
+              </Text>
+            </View>
+          )}
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>{t('household.infoInviteCode')}</Text>
             <Text style={[styles.infoValue, { fontFamily: 'monospace', color: colors.brand }]}>{household?.invite_code}</Text>

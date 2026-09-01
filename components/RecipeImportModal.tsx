@@ -14,6 +14,9 @@ import { format, addDays } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import * as ImagePicker from 'expo-image-picker';
 import PremiumModal from './PremiumModal';
+import AiQuotaHint from './AiQuotaHint';
+import { readAiLimitError } from '../lib/aiUsage';
+import { FREE_MONTHLY_AI_ACTIONS } from '../lib/premium';
 
 export interface RecipeAddOpts {
   sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean;
@@ -84,15 +87,13 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
       setInstructions(Array.isArray(data.instructions) ? data.instructions : []);
       setStep('review');
     } catch (e: any) {
-      // extract-recipe returns a specific { error: 'import_limit_reached' } body on the
-      // free-plan monthly cap — supabase-js doesn't parse it automatically on a non-2xx
-      // response, so read it off the raw Response (see FunctionsHttpError.context).
-      let serverError: string | undefined;
-      try { serverError = (await e?.context?.json())?.error; } catch { /* best-effort */ }
-      if (serverError === 'import_limit_reached') {
-        Alert.alert(t('recipeImport.limitReachedTitle'), t('recipeImport.limitReachedBody'), [
+      // The shared monthly AI quota is spent — same rejection shape in all three AI features,
+      // read via the helper so the FunctionsHttpError quirk lives in one place.
+      const limit = await readAiLimitError(e);
+      if (limit) {
+        Alert.alert(t('aiQuota.limitReachedTitle'), t('aiQuota.limitReachedBody', { limit: limit.limit }), [
           { text: t('common.cancel'), style: 'cancel' },
-          { text: t('recipeImport.upgradeButton'), onPress: () => setShowPremium(true) },
+          { text: t('aiQuota.upgradeButton'), onPress: () => setShowPremium(true) },
         ]);
       } else {
         Alert.alert(t('common.error'), t('recipeImport.extractErrorBody'));
@@ -174,7 +175,8 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
                   />
                 )}
 
-                <TouchableOpacity style={[s.addBtn, (!canExtract || loading) && s.addBtnDisabled]} onPress={handleExtract} disabled={!canExtract || loading}>
+                <AiQuotaHint refreshKey={visible} />
+              <TouchableOpacity style={[s.addBtn, (!canExtract || loading) && s.addBtnDisabled]} onPress={handleExtract} disabled={!canExtract || loading}>
                   <Text style={s.addBtnText}>{loading ? t('recipeImport.extracting') : t('recipeImport.extractButton')}</Text>
                 </TouchableOpacity>
               </>
