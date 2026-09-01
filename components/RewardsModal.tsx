@@ -9,6 +9,7 @@ import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import type { Reward } from '../lib/supabase';
+import { memberNameById } from '../lib/memberNames';
 
 const REWARD_EMOJIS = ['🎁', '🍕', '🍦', '🎮', '📺', '🎬', '💸', '🛍️', '⚽', '🏖️', '🍫', '😴'];
 
@@ -25,7 +26,7 @@ export default function RewardsModal({ visible, onClose }: { visible: boolean; o
   useEffect(() => { if (visible) loadRewards(); }, [visible]);
 
   const myBalance = currentMember ? rewardBalance(currentMember.id) : 0;
-  const memberName = (id: string) => members.find(m => m.id === id)?.display_name ?? '?';
+  const memberName = (id: string) => memberNameById(t, members, id);
 
   const handleAdd = async () => {
     if (!title.trim()) return;

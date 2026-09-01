@@ -32,6 +32,9 @@ export interface AppTranslations {
     shared: string;
     all: string;
     back: string;
+    // Shown wherever content still points at somebody who deleted their account. Their member
+    // row is either gone or anonymised, so there is no name left to show.
+    formerMember: string;
   };
   shopping: {
     defaultListName: string;
@@ -321,6 +324,8 @@ export interface AppTranslations {
     imprintLabel: string;
     privacyLabel: string;
     leaveHouseholdLabel: string;
+    accountSectionTitle: string;
+    deleteAccountLabel: string;
     signOutButton: string;
     signOutConfirmTitle: string;
     signOutConfirmBody: string;
@@ -883,5 +888,38 @@ export interface AppTranslations {
     containsAdditives_other: string;
     organicCertified: string;
     unknownProduct: string;
+  };
+  accountDelete: {
+    title: string;
+    intro: string;
+    goesTitle: string;
+    goesAccount: string;
+    goesMemberships: string;
+    goesPurchases: string;
+    goesFeedback: string;
+    goesUsage: string;
+    staysTitle: string;
+    staysContent: string;
+    staysBudget: string;
+    householdsTitle: string;
+    householdsLoading: string;
+    householdsNone: string;
+    householdWillBeDeleted: string;
+    householdHandover: string;
+    householdStays: string;
+    timingTitle: string;
+    timingBody: string;
+    exportHint: string;
+    continueButton: string;
+    confirmTitle: string;
+    confirmBody: string;
+    // The word the user has to type. Translated on purpose — typing a German word in an English
+    // UI (or the other way round) is a needless stumbling block.
+    confirmWord: string;
+    deleteButton: string;
+    deleting: string;
+    loadFailed: string;
+    errorTitle: string;
+    errorBody: string;
   };
 }

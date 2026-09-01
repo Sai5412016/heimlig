@@ -120,6 +120,7 @@ export default function OnboardingScreen() {
       .from('members')
       .select('*, households(*)')
       .eq('user_id', userId)
+      .is('deleted_at', null)
       .limit(1);
 
     if (!memberRows || memberRows.length === 0) {
@@ -132,7 +133,7 @@ export default function OnboardingScreen() {
     setHousehold(household);
     setCurrentMember(myMember);
 
-    const { data: allMembers } = await supabase.from('members').select('*').eq('household_id', household.id);
+    const { data: allMembers } = await supabase.from('members').select('*').eq('household_id', household.id).is('deleted_at', null);
     if (allMembers) setMembers(allMembers);
 
     let { data: lists } = await supabase.from('shopping_lists').select('*').eq('household_id', household.id);
@@ -161,7 +162,7 @@ export default function OnboardingScreen() {
       // combination, so redirecting there would just be the dead-end loop this fix addresses.
       // Checked across ALL of this user's memberships, not just `household` above (which is only
       // the first one loaded) — someone can belong to more than one household.
-      const { data: allMemberRows } = await supabase.from('members').select('household_id').eq('user_id', userId);
+      const { data: allMemberRows } = await supabase.from('members').select('household_id').eq('user_id', userId).is('deleted_at', null);
       const householdIds = (allMemberRows || []).map((r: any) => r.household_id);
       if (await isPendingCodeAlreadyMember(pending, householdIds)) {
         await clearPendingInviteCode();

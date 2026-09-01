@@ -11,6 +11,7 @@ import { useTheme } from '../hooks/useTheme';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
+import { memberName } from '../lib/memberNames';
 import { format, parseISO, isToday } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 
@@ -88,8 +89,11 @@ export default function ChatModal({ visible, onClose }: { visible: boolean; onCl
                     delayLongPress={350}
                     activeOpacity={0.8}
                   >
+                    {/* member_id NULL has always meant "no author on record" here (the column has
+                        no foreign key); an id that no longer resolves means the author deleted
+                        their account. Kept apart so the first case keeps its wording. */}
                     {!mine && (
-                      <Text style={[styles.author, { color: mem?.avatar_color ?? colors.brand }]}>{mem?.display_name ?? t('chat.someone')}</Text>
+                      <Text style={[styles.author, { color: mem?.avatar_color ?? colors.brand }]}>{m.member_id ? memberName(t, mem) : t('chat.someone')}</Text>
                     )}
                     <Text style={[styles.msgText, mine && { color: '#fff' }]}>{m.text}</Text>
                     <Text style={[styles.time, mine && { color: 'rgba(255,255,255,0.7)' }]}>{time}</Text>

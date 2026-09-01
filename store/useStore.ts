@@ -236,7 +236,11 @@ export const useStore = create<AppState>((set, get) => ({
   loadMyHouseholds: async () => {
     const { userId } = get();
     if (!userId) return [];
-    const { data } = await supabase.from('members').select('*, households(*)').eq('user_id', userId);
+    // `deleted_at is null` on every members query: an anonymised row (see lib/supabase.ts's
+    // Member) is an anchor for old content, not a person, and must never reach the UI. Here it
+    // is belt and braces — a tombstone has user_id NULL and so can't match the filter above —
+    // but the rule is easier to keep if it holds without exception.
+    const { data } = await supabase.from('members').select('*, households(*)').eq('user_id', userId).is('deleted_at', null);
     const memberships = data || [];
     set({ myHouseholds: memberships.map((m: any) => m.households).filter(Boolean) });
     return memberships;
@@ -254,7 +258,10 @@ export const useStore = create<AppState>((set, get) => ({
     // attributing purchases to whichever household happened to be active at app start.
     setBillingHousehold(household.id);
 
-    const { data: allMembers } = await supabase.from('members').select('*').eq('household_id', household.id);
+    // The one that matters most: this fills the `members` array every screen reads. Filtering
+    // here is what keeps tombstones out of member lists, pickers, rotations, the scoreboard and
+    // every members.length used for splitting the budget.
+    const { data: allMembers } = await supabase.from('members').select('*').eq('household_id', household.id).is('deleted_at', null);
     if (allMembers) set({ members: allMembers });
 
     let lists = await shoppingRepo.fetchShoppingLists(household.id);
@@ -278,7 +285,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (!userId) return;
     const { data: rows } = await supabase
       .from('members').select('*, households(*)')
-      .eq('user_id', userId).eq('household_id', householdId).limit(1);
+      .eq('user_id', userId).eq('household_id', householdId).is('deleted_at', null).limit(1);
     const row: any = rows?.[0];
     if (!row) return;
     const household = row.households;
@@ -290,8 +297,9 @@ export const useStore = create<AppState>((set, get) => ({
     const { userId } = get();
     if (!userId) return [];
     await supabase.from('members').delete().eq('user_id', userId).eq('household_id', householdId);
-    // If nobody is left in that household, remove it entirely
-    const { data: remaining } = await supabase.from('members').select('id').eq('household_id', householdId);
+    // If nobody is left in that household, remove it entirely. Tombstones must not count here:
+    // they would make an empty household look occupied and leave it behind forever.
+    const { data: remaining } = await supabase.from('members').select('id').eq('household_id', householdId).is('deleted_at', null);
     if (!remaining || remaining.length === 0) {
       await supabase.from('households').delete().eq('id', householdId);
     }

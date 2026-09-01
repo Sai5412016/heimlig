@@ -769,6 +769,14 @@ export default function HouseholdScreen() {
           <Text style={[styles.settingsBtnText, { color: colors.error }]}>{t('household.leaveHouseholdLabel')}</Text>
         </TouchableOpacity>
 
+        {/* Account — its own section because deleting the account is not a household setting:
+            it spans every household the user is in. Google Play requires this to be reachable
+            in-app, which is why it sits here rather than behind a support email. */}
+        <Text style={styles.sectionTitle}>{t('household.accountSectionTitle')}</Text>
+        <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push('/konto-loeschen')}>
+          <Text style={[styles.settingsBtnText, { color: colors.error }]}>{t('household.deleteAccountLabel')}</Text>
+        </TouchableOpacity>
+
         {/* Sign out */}
         <TouchableOpacity
           style={styles.signOutBtn}

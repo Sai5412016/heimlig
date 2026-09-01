@@ -51,12 +51,19 @@ export interface Household {
 
 export interface Member {
   id: string;
-  user_id: string;
+  // Null on an anonymised row — see `deleted_at`.
+  user_id: string | null;
   household_id: string;
   display_name: string;
   avatar_color: string;
   role: MemberRole;
   joined_at: string;
+  // Set when the person deleted their account while household content still referenced them.
+  // The row survives only as an anchor for that content: no auth user, no name, role reset to
+  // 'member'. Every query that loads members filters these out (`.is('deleted_at', null)`), so a
+  // Member reaching the UI always represents a real person — content still pointing at the row
+  // falls back to common.formerMember via lib/memberNames.ts.
+  deleted_at?: string | null;
 }
 
 export interface ShoppingList {

@@ -17,7 +17,7 @@ export default function DatenschutzScreen() {
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.intro}>
-          Stand: August 2026. Diese Erklärung informiert dich, welche Daten Heimlig verarbeitet, wofür, und welche Rechte du hast.
+          Stand: September 2026. Diese Erklärung informiert dich, welche Daten Heimlig verarbeitet, wofür, und welche Rechte du hast.
         </Text>
 
         <View style={styles.section}>
@@ -46,7 +46,7 @@ export default function DatenschutzScreen() {
             • Anthropic (USA) — in zwei Fällen: (1) wenn du ein Rezept per Foto oder Text importierst oder einen Kassenzettel scannst, wird der Inhalt zur Texterkennung an die Claude-API übermittelt; (2) wenn du Feedback über „Feedback & Wünsche" abschickst, wird der Text deiner Nachricht an die Claude-API übermittelt, um automatisch zu prüfen, ob es sich um eine Rückmeldung zur App handelt — das schützt das Postfach vor Spam. Deine Kontakt-E-Mail wird dabei nicht mit übermittelt. In beiden Fällen findet eine Datenübermittlung in ein Land außerhalb der EU (USA) statt.{'\n\n'}
             • Open Food Facts — beim Scannen eines Produkt-Barcodes wird die Barcode-Nummer an die offene Produktdatenbank Open Food Facts gesendet, um Produktinfos abzurufen. Es werden dabei keine Konto- oder Personendaten übermittelt.{'\n\n'}
             • Google — nur wenn du „Google Kalender verbinden" nutzt: nach deiner ausdrücklichen Anmeldung bei Google werden Kalendertermine zwischen Heimlig und deinem Google-Kalender abgeglichen.{'\n\n'}
-            • Vercel Inc. — Hosting der Web-Version (heimlig.vercel.app).{'\n\n'}
+            • Vercel Inc. — Hosting der Web-Version (heimlig.app, heimlig.vercel.app).{'\n\n'}
             • Expo (EAS Push Service) — wenn du Push-Benachrichtigungen erlaubst, wird bei neuen Haushalts-Nachrichten der Nachrichtentext, der Absendername und dein Geräte-Push-Token an Expos Push-Zustelldienst übermittelt, um die Benachrichtigung an dein Gerät zuzustellen.
           </Text>
         </View>
@@ -75,7 +75,8 @@ export default function DatenschutzScreen() {
         <View style={styles.section}>
           <Text style={styles.h2}>7. Konto & Daten löschen</Text>
           <Text style={styles.p}>
-            Du kannst die Löschung deines Kontos und aller zugehörigen Daten jederzeit per E-Mail an heimlig.app@gmail.com beantragen. Eine Selbstbedienungs-Löschfunktion direkt in der App ist in Vorbereitung.
+            Du kannst dein Konto jederzeit selbst löschen: in der App unter Einstellungen → Konto → Konto löschen. Alternativ genügt eine E-Mail an heimlig.app@gmail.com mit dem Betreff „Kontolöschung“ von der registrierten Adresse.{'\n\n'}
+            Dabei werden Konto, Mitgliedschaften, Käufe, Feedback und Nutzungszähler sofort gelöscht. Inhalte, die deine Haushaltsmitglieder weiter brauchen (Listen, Aufgaben, Termine, Budget-Buchungen, Rezepte), bleiben erhalten — dann ohne Zuordnung zu deinem Namen. Aus Sicherungskopien verschwinden deine Daten nach spätestens 30 Tagen. Ausführlich: heimlig.app/konto-loeschen.html
           </Text>
         </View>
 

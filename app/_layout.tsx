@@ -161,7 +161,9 @@ function RootLayout() {
         pendingJoinCode = null;
       }
 
-      const { data: allMems } = await supabase.from('members').select('household_id').in('household_id', householdIds);
+      // Counts decide which household opens first, so anonymised rows have to stay out — they
+      // would make a household look busier than it is.
+      const { data: allMems } = await supabase.from('members').select('household_id').in('household_id', householdIds).is('deleted_at', null);
       const counts: Record<string, number> = {};
       (allMems || []).forEach((r: any) => { counts[r.household_id] = (counts[r.household_id] || 0) + 1; });
       memberships.sort((a: any, b: any) => (counts[b.household_id] || 0) - (counts[a.household_id] || 0));
@@ -197,6 +199,7 @@ function RootLayout() {
         <Stack.Screen name="reset-password" />
         <Stack.Screen name="impressum" />
         <Stack.Screen name="datenschutz" />
+        <Stack.Screen name="konto-loeschen" />
       </Stack>
       {!ready && (
         <View
