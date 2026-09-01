@@ -47,3 +47,7 @@ google-service-account.json
 
 # graphify — regenerated at session start, not source of truth
 graphify-out/
+
+# Supabase CLI scratch — rewritten by any local CLI call (version cache, linked project),
+# so tracking it just produced phantom diffs on every `npx supabase ...`
+supabase/.temp/
