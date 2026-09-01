@@ -851,6 +851,7 @@ export const en: AppTranslations = {
     goToApp: 'Go to app',
     defaultMemberName: 'Member',
     joinFailedBody: 'Joining failed.',
+    switchFailedBody: 'You joined the household, but it could not be opened. Please restart the app.',
   },
   resetPassword: {
     title: 'New password',

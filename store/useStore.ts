@@ -87,7 +87,8 @@ interface AppState {
   setMyHouseholds: (h: Household[]) => void;
   loadMyHouseholds: () => Promise<any[]>;
   activateHousehold: (household: Household, member: Member) => Promise<void>;
-  switchHousehold: (householdId: string) => Promise<void>;
+  // false = the switch did not happen (no membership found, lookup failed, household hidden).
+  switchHousehold: (householdId: string) => Promise<boolean>;
   leaveHousehold: (householdId: string) => Promise<Household[]>;
 
   shoppingLists: ShoppingList[];
@@ -278,19 +279,59 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     registerPushToken(member.id, household.id); // fire-and-forget, best-effort
+
+    // The household switcher reads `myHouseholds`, which is built from memberships — and joining
+    // a household changes that list. It used to be refreshed only on cold start and by the
+    // household screen's own effect, so a household joined via an invite link was missing from
+    // the switcher until the app was restarted. Refreshing here covers every path that activates
+    // a household (join, switch, cold start) instead of relying on each call site to remember.
+    await get().loadMyHouseholds();
   },
 
+  // Returns whether the switch actually happened. Every branch that gives up says so in the log
+  // and to the caller — this used to return silently in three different places, which is how a
+  // join could report "Willkommen" while leaving the user in their previous household.
   switchHousehold: async (householdId) => {
     const { userId } = get();
-    if (!userId) return;
-    const { data: rows } = await supabase
+    if (!userId) {
+      console.warn('[store] switchHousehold: no userId in the store, cannot look up the membership');
+      return false;
+    }
+
+    // Deliberately NOT filtered with `.is('deleted_at', null)` here. deleted_at is a recently
+    // added column, and PostgREST answers a query naming a column it doesn't know about with an
+    // error, not an empty result — with the error ignored, that would look exactly like "you are
+    // not a member" and would block switching households entirely. The tombstone check happens
+    // below on the row itself, where it cannot take the query down with it. Filtering these rows
+    // out is a display concern anyway; access is governed by RLS.
+    const { data: rows, error } = await supabase
       .from('members').select('*, households(*)')
-      .eq('user_id', userId).eq('household_id', householdId).is('deleted_at', null).limit(1);
+      .eq('user_id', userId).eq('household_id', householdId).limit(1);
+
+    if (error) {
+      console.warn(`[store] switchHousehold: membership lookup for ${householdId} failed —`, error.message);
+      return false;
+    }
     const row: any = rows?.[0];
-    if (!row) return;
+    if (!row) {
+      console.warn(`[store] switchHousehold: user ${userId} has no membership row in household ${householdId}`);
+      return false;
+    }
+    if (row.deleted_at) {
+      console.warn(`[store] switchHousehold: membership in ${householdId} is an anonymised row, not switching`);
+      return false;
+    }
+    if (!row.households) {
+      // The embedded household came back empty — the row exists but RLS hid the household, or it
+      // was deleted between the join and this lookup.
+      console.warn(`[store] switchHousehold: membership in ${householdId} carries no household row`);
+      return false;
+    }
+
     const household = row.households;
     const member = { ...row }; delete (member as any).households;
     await get().activateHousehold(household, member);
+    return true;
   },
 
   leaveHousehold: async (householdId) => {

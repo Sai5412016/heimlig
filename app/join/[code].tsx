@@ -32,6 +32,19 @@ export default function JoinByCode() {
   useEffect(() => {
     if (Platform.OS === 'web') {
       setStatus('web');
+      // Log join_opened here as well. This branch returned before any logging ever ran, and the
+      // browser is exactly where an invite link lands for the recipient this feature is about:
+      // somebody with no Heimlig account, and usually no app, tapping a link in a chat. On
+      // native an "anonymous opener" would have to be someone who installed the app but is not
+      // signed in — a rare combination — which is why the anon_id branch never recorded a single
+      // row. Fire-and-forget and deliberately started before the scheme handoff below: the tab
+      // stays alive for the ~1.5s of the fallback timer, which is the window this insert gets.
+      (async () => {
+        const resolved = await resolveInviteCode(code);
+        if (!resolved) return;
+        const { data: { user } } = await supabase.auth.getUser();
+        logJoinOpenedOnce(code, resolved.household_id, user?.id ?? null);
+      })();
       const fallbackTimer = setTimeout(() => {
         // If the tab is still visible/focused when this fires, the custom-scheme handoff never
         // navigated away — the app isn't installed (or the handoff was blocked).
@@ -120,8 +133,9 @@ export default function JoinByCode() {
       if (result?.error && isAlreadyMemberError(result.error)) {
         const resolved = await resolveInviteCode(code);
         if (resolved) {
-          await switchHousehold(resolved.household_id);
+          const switched = await switchHousehold(resolved.household_id);
           await clearPendingInviteCode();
+          if (!switched) { setStatus('error'); setMessage(t('joinPage.switchFailedBody')); return; }
           setStatus('done');
           setMessage(resolved.household_name);
           setTimeout(() => router.replace('/(tabs)'), 1400);
@@ -135,13 +149,31 @@ export default function JoinByCode() {
         setStatus('error'); setMessage(result.error); return;
       }
 
-      if (result?.household_id) {
-        logInviteFunnelStep('join_completed', result.household_id);
-        await switchHousehold(result.household_id);
+      // No error and no household_id means the RPC answered with something this screen cannot
+      // act on. This used to fall straight through to the success screen: the join may well have
+      // gone through server-side, but nothing switched, so the user was told "Willkommen" while
+      // still sitting in their previous household — and only an app restart, which re-runs
+      // checkSession in app/_layout.tsx, would surface the new one.
+      if (!result?.household_id) {
+        console.warn('[join] join_household_by_code returned neither an error nor a household_id');
+        await clearPendingInviteCode();
+        setStatus('error');
+        setMessage(t('joinPage.joinFailedBody'));
+        return;
       }
+
+      logInviteFunnelStep('join_completed', result.household_id);
+      const switched = await switchHousehold(result.household_id);
+      // The membership row exists at this point either way, so the code has done its job and
+      // must not resurface on the next login.
       await clearPendingInviteCode();
+      if (!switched) {
+        setStatus('error');
+        setMessage(t('joinPage.switchFailedBody'));
+        return;
+      }
       setStatus('done');
-      setMessage(result?.household_name ?? '');
+      setMessage(result.household_name ?? '');
       setTimeout(() => router.replace('/(tabs)'), 1400);
     } catch (e: any) {
       // Never reached a response — see the transient/final note above.

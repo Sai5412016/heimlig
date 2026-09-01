@@ -850,6 +850,7 @@ export const de: AppTranslations = {
     goToApp: 'Zur App',
     defaultMemberName: 'Mitglied',
     joinFailedBody: 'Beitreten fehlgeschlagen.',
+    switchFailedBody: 'Du bist dem Haushalt beigetreten, aber er konnte nicht geöffnet werden. Starte die App neu.',
   },
   resetPassword: {
     title: 'Neues Passwort',

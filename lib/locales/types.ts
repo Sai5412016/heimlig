@@ -851,6 +851,7 @@ export interface AppTranslations {
     goToApp: string;
     defaultMemberName: string;
     joinFailedBody: string;
+    switchFailedBody: string;
   };
   resetPassword: {
     title: string;
