@@ -27,6 +27,7 @@ const MAX_EMAIL_CHARS = 200;
 const MAX_META_CHARS = 40;
 
 const ALLOWED_ORIGINS = new Set([
+  'https://heimlig.app',
   'https://heimlig.vercel.app',
   'http://localhost:8081',
   'http://localhost:19006',

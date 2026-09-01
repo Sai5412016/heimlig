@@ -24,6 +24,7 @@ const ANDROID_PACKAGE_NAME = 'com.fledderman.heimlig';
 const EXPECTED_PRODUCT_ID = 'heimlig_premium_monthly';
 
 const ALLOWED_ORIGINS = new Set([
+  'https://heimlig.app',
   'https://heimlig.vercel.app',
   'http://localhost:8081',
   'http://localhost:19006',

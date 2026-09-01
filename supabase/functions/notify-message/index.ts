@@ -9,6 +9,7 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const ALLOWED_ORIGINS = new Set([
+  'https://heimlig.app',
   'https://heimlig.vercel.app',
   'http://localhost:8081',
   'http://localhost:19006',
