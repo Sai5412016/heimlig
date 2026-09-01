@@ -30,6 +30,7 @@ function decodeEntities(s: string): string {
 
 // ─── CORS: allowlist, not a wildcard ───────────────────────────
 const ALLOWED_ORIGINS = new Set([
+  'https://heimlig.app',
   'https://heimlig.vercel.app',
   'http://localhost:8081',
   'http://localhost:19006',
