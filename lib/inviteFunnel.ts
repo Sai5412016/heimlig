@@ -7,7 +7,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 
-export type InviteFunnelStep = 'invite_opened' | 'invite_shared' | 'join_opened' | 'join_completed';
+// invite_code_copied is tracked separately from invite_shared on purpose: copying the code and
+// pasting it by hand is a different act from the share sheet, and probably the more common
+// one. Folding them together would hide which of the two people actually use.
+export type InviteFunnelStep = 'invite_opened' | 'invite_shared' | 'invite_code_copied' | 'join_opened' | 'join_completed';
 
 export function logInviteFunnelStep(step: InviteFunnelStep, householdId: string): void {
   (async () => {

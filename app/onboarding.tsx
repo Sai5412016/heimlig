@@ -1,5 +1,5 @@
 // app/onboarding.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   KeyboardAvoidingView, Platform, ScrollView, Linking, Share
@@ -311,8 +311,15 @@ export default function OnboardingScreen() {
   };
 
   // ─── INVITE (mandatory-but-skippable step after creating a household) ────
+  // Once per entry into the step, guarded the same way as the invite modal — see
+  // app/(tabs)/household.tsx. invite_opened is what every later rate is divided by, so a double
+  // count here quietly makes the whole funnel look worse than it is.
+  const inviteOpenLogged = useRef(false);
   useEffect(() => {
-    if (step === 'invite' && household) logInviteFunnelStep('invite_opened', household.id);
+    if (step !== 'invite' || !household) { inviteOpenLogged.current = false; return; }
+    if (inviteOpenLogged.current) return;
+    inviteOpenLogged.current = true;
+    logInviteFunnelStep('invite_opened', household.id);
   }, [step, household?.id]);
 
   const handleShareInvite = async () => {
@@ -322,10 +329,15 @@ export default function OnboardingScreen() {
       if (Platform.OS === 'web') {
         await navigator.clipboard.writeText(message);
         Alert.alert(t('household.copiedTitle'), t('household.copiedClipboardBody'));
+        logInviteFunnelStep('invite_shared', household.id);
       } else {
-        await Share.share({ message });
+        const result = await Share.share({ message });
+        // dismissedAction is iOS-only; on Android a swiped-away sheet resolves like a sent one,
+        // so this stays an upper bound there. See app/(tabs)/household.tsx.
+        if (result.action !== Share.dismissedAction) {
+          logInviteFunnelStep('invite_shared', household.id);
+        }
       }
-      logInviteFunnelStep('invite_shared', household.id);
     } catch {
       // user dismissed the share sheet or it failed — either way, don't block onboarding on it
     } finally {
