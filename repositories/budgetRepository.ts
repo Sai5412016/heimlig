@@ -13,16 +13,9 @@ export async function fetchTransactions(householdId: string): Promise<Transactio
   return data;
 }
 
-// Capped read of the newest rows. Currently unused.
-//
-// CAUTION for whoever reaches for this next: its result must never be written into the store's
-// shared `transactions` array. That array is what the budget tab renders its list and its totals
-// from, and the budget tab reloads it only when the household changes — so putting a capped
-// result in there makes older bookings disappear from the budget until the app restarts. That is
-// exactly the bug this comment exists to prevent a second time. Keep capped reads in local state.
-//
+// Used by the Home dashboard preview — same table, capped + no recurring-template filter.
 // Returns null (not []) on a failed fetch so callers can choose to keep stale data instead
-// of wiping the screen on a transient network error.
+// of wiping the dashboard on a transient network error.
 export async function fetchRecentTransactions(householdId: string, limit: number): Promise<Transaction[] | null> {
   const { data } = await supabase
     .from('transactions').select('*')

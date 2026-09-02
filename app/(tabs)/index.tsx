@@ -8,6 +8,7 @@ import { colors, spacing, radius, typography, shadow, type ColorPalette } from '
 import { useTheme } from '../../hooks/useTheme';
 import { useStore } from '../../store/useStore';
 import { supabase } from '../../lib/supabase';
+import { fetchRecentTransactions } from '../../repositories/budgetRepository';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { nextYearlyOccurrence } from '../../lib/dateMath';
@@ -79,13 +80,11 @@ export default function DashboardScreen() {
   ];
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const router = useRouter();
-  const { household, currentMember, members, tasks, items, setTasks } = useStore();
+  const { household, currentMember, members, tasks, items, transactions, setTasks, setTransactions } = useStore();
   const [refreshing, setRefreshing] = React.useState(false);
   const [showChat, setShowChat] = React.useState(false);
   const [showBirthdays, setShowBirthdays] = React.useState(false);
   const [prevMonthExpenses, setPrevMonthExpenses] = React.useState<number | null>(null);
-  // Summed in the query rather than derived from the store's transaction array — see loadData.
-  const [monthlyExpenses, setMonthlyExpenses] = React.useState(0);
 
   // Birthdays live in the calendar + the dedicated widget below — keep them out of "open tasks".
   const openTasks = tasks.filter(t => !t.completed_at && t.category !== 'Geburtstag');
@@ -114,6 +113,9 @@ export default function DashboardScreen() {
 
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthlyExpenses = transactions
+    .filter(t => t.type === 'expense' && t.transaction_date.startsWith(monthKey))
+    .reduce((sum, t) => sum + Number(t.amount), 0);
 
   // Open tasks that are actually due this month (drives the "Offen · diesen Monat" card).
   const openTasksThisMonth = openTasks.filter(t => t.due_date && t.due_date.startsWith(monthKey));
@@ -122,26 +124,14 @@ export default function DashboardScreen() {
     if (!household) return;
     const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const prevMonthKey = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
-    const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const nextMonthKey = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
-    // This tile used to load the 50 most recent transactions with fetchRecentTransactions() and
-    // write them into the SHARED store array via setTransactions(). That array is what the budget
-    // tab renders its list and its totals from, and the budget tab only reloads it when the
-    // household changes — so every visit to this dashboard silently truncated the budget to its
-    // 50 newest rows, and older bookings vanished from the list until the app was restarted.
-    //
-    // The tile only ever needed one number, so it now asks for exactly that and keeps it to
-    // itself. Scoping the sum in the query also fixes the tile's own version of the same bug: a
-    // household with more than 50 transactions in one month was under-reporting here too.
-    const [tasksRes, thisTx, prevTx] = await Promise.all([
+    const [tasksRes, recentTx, prevTx] = await Promise.all([
       supabase.from('tasks').select('*').eq('household_id', household.id).is('completed_at', null).order('due_date'),
-      supabase.from('transactions').select('amount').eq('household_id', household.id).eq('type', 'expense')
-        .gte('transaction_date', `${monthKey}-01`).lt('transaction_date', `${nextMonthKey}-01`),
+      fetchRecentTransactions(household.id, 50),
       supabase.from('transactions').select('amount').eq('household_id', household.id).eq('type', 'expense')
         .gte('transaction_date', `${prevMonthKey}-01`).lt('transaction_date', `${monthKey}-01`),
     ]);
     if (tasksRes.data) setTasks(tasksRes.data);
-    if (thisTx.data) setMonthlyExpenses(thisTx.data.reduce((sum, t) => sum + Number(t.amount), 0));
+    if (recentTx) setTransactions(recentTx);
     if (prevTx.data) setPrevMonthExpenses(prevTx.data.reduce((sum, t) => sum + Number(t.amount), 0));
   };
 
