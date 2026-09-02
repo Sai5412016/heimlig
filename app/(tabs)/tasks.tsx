@@ -38,6 +38,8 @@ import { mapTimeTreeEvents, type RawTimeTreeEvent } from '../../lib/timetreeEven
 import { holidayName } from '../../lib/holidays';
 import ThemeMotif from '../../components/ThemeMotif';
 import TimeTreeWebViewModal from '../../components/TimeTreeWebViewModal';
+import PremiumModal from '../../components/PremiumModal';
+import AiQuotaWallModal from '../../components/AiQuotaWallModal';
 
 type ViewMode = 'week' | 'month' | 'list' | 'day';
 type Priority = 'low' | 'normal' | 'high';
@@ -1156,6 +1158,8 @@ export default function TasksScreen() {
   const [showModal, setShowModal] = useState(false);
   const [photoPrefill, setPhotoPrefill] = useState<{ title?: string; description?: string; due_date?: string; due_time?: string; location_url?: string } | null>(null);
   const [extractingPhoto, setExtractingPhoto] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
+  const [quotaWall, setQuotaWall] = useState<{ used: number; limit: number } | null>(null);
   const [showQuickstart, setShowQuickstart] = useState(false);
   const [showTimeTreeLogin, setShowTimeTreeLogin] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -1429,7 +1433,7 @@ export default function TasksScreen() {
       // image picker straight away), so this alert is the only place the quota can be surfaced.
       const limit = await readAiLimitError(e);
       if (limit) {
-        Alert.alert(t('aiQuota.limitReachedTitle'), t('aiQuota.limitReachedBody', { limit: limit.limit }));
+        setQuotaWall({ used: limit.used, limit: limit.limit });
       } else {
         Alert.alert(t('common.error'), t('tasksTab.photoFailedBody'));
       }
@@ -1755,6 +1759,16 @@ export default function TasksScreen() {
       )}
 
       <RewardsModal visible={showRewards} onClose={() => setShowRewards(false)} />
+
+      <AiQuotaWallModal
+        visible={!!quotaWall}
+        used={quotaWall?.used ?? 0}
+        limit={quotaWall?.limit ?? 0}
+        source="event_photo"
+        onClose={() => setQuotaWall(null)}
+        onUpgrade={() => { setQuotaWall(null); setShowPremium(true); }}
+      />
+      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />
 
       <AddTaskModal
         visible={showModal || !!editingTask}

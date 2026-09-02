@@ -536,8 +536,13 @@ export interface AppTranslations {
     modalRemaining: string;
     modalRemainingNone: string;
     limitReachedTitle: string;
-    limitReachedBody: string;
     upgradeButton: string;
+    wallBody: string;
+    // Pluralised on `count` (days until the quota returns) — i18next picks the suffix.
+    wallReset_one: string;
+    wallReset_other: string;
+    wallPremiumBenefit: string;
+    wallLaterButton: string;
   };
   premiumModal: {
     title: string;

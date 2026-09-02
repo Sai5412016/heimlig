@@ -536,8 +536,12 @@ export const en: AppTranslations = {
     modalRemaining: '{{remaining}} of {{limit}} AI actions left this month',
     modalRemainingNone: 'No AI actions left this month',
     limitReachedTitle: 'AI allowance used up',
-    limitReachedBody: "You've used all {{limit}} AI actions this month. Recipe import, receipt scan and event photo all share the same allowance. Heimlig Premium makes them unlimited.",
     upgradeButton: 'See Premium',
+    wallBody: 'You have used all {{used}} of {{limit}} AI actions this month. Recipe import, receipt scan and event photo share the same allowance.',
+    wallReset_one: 'New allowance on {{date}} — tomorrow already.',
+    wallReset_other: 'New allowance on {{date}} — in {{count}} days.',
+    wallPremiumBenefit: 'With Heimlig Premium, AI actions are unlimited — for the whole household.',
+    wallLaterButton: 'Later',
   },
   premiumModal: {
     title: '✨ Heimlig Premium',

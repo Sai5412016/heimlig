@@ -535,8 +535,12 @@ export const de: AppTranslations = {
     modalRemaining: 'Noch {{remaining}} von {{limit}} KI-Aktionen diesen Monat',
     modalRemainingNone: 'KI-Kontingent für diesen Monat aufgebraucht',
     limitReachedTitle: 'KI-Kontingent aufgebraucht',
-    limitReachedBody: 'Ihr habt diesen Monat alle {{limit}} KI-Aktionen genutzt. Rezept-Import, Kassenbon-Scan und Termin-Foto teilen sich dasselbe Kontingent. Mit Heimlig Premium sind sie unbegrenzt.',
     upgradeButton: 'Premium ansehen',
+    wallBody: 'Ihr habt diesen Monat alle {{used}} von {{limit}} KI-Aktionen genutzt. Rezept-Import, Kassenbon-Scan und Termin-Foto teilen sich dasselbe Kontingent.',
+    wallReset_one: 'Neues Kontingent am {{date}} — schon morgen.',
+    wallReset_other: 'Neues Kontingent am {{date}} — in {{count}} Tagen.',
+    wallPremiumBenefit: 'Mit Heimlig Premium sind KI-Aktionen unbegrenzt — für den ganzen Haushalt.',
+    wallLaterButton: 'Später',
   },
   premiumModal: {
     title: '✨ Heimlig Premium',
