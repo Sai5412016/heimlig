@@ -19,12 +19,17 @@ Rollout. Stand 01.09.2026: **80**.
 
 ## Die Schritte
 
-### 1. `versionCode` in `app.json` erhöhen
+### 1. `versionCode` **und** `expo.version` in `app.json` erhöhen
 
 - Datei `app.json`, Pfad `expo.android.versionCode`
 - **Aktuellen Wert vorher lesen, nicht annehmen.** Immer um genau 1 erhöhen
-- `expo.version` (versionName, aktuell `1.1.0`) nur bei einem inhaltlich größeren Release anheben —
-  nicht bei jedem Build
+- **`expo.version` (versionName) wird jedes Mal mitgezählt** — den `versionCode` nie allein erhöhen:
+  - Standard: **Patch +1** (`1.1.0` → `1.1.1`)
+  - Sichtbare neue Funktion: **Minor +1, Patch auf 0** (`1.1.3` → `1.2.0`)
+- Grund: Play leitet den **Release-Namen aus dem `versionName`** ab. Der stand monatelang auf
+  `1.1.0`, während in der Play Console von Hand `1.1.7` und `1.1.8` vergeben wurden — dadurch
+  stimmte weder die in der App sichtbare Version mit dem Store überein, noch ließ sich aus einem
+  Play-Release der `versionCode` ablesen. Hat schon einmal eine Fehlersuche gekostet.
 - Commit-Message-Muster: `chore: bump version for <thema> build`
 - Dieser Bump darf direkt auf `main` (Ausnahme von der Branch-Regel), weil er den Build auslöst
 
