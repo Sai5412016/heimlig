@@ -1,5 +1,5 @@
 // app/(tabs)/household.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Share, Modal, Pressable, TextInput, Platform, KeyboardAvoidingView
@@ -29,7 +29,8 @@ import FeedbackModal from '../../components/FeedbackModal';
 import { hasPremiumAccess, isMemberLimitError, HOUSEHOLD_MEMBER_CAP, FREE_MONTHLY_AI_ACTIONS } from '../../lib/premium';
 import { fetchAiActionsUsed } from '../../lib/aiUsage';
 import { captureScreenshot } from '../../lib/screenshotTool';
-import { logInviteFunnelStep, isAlreadyMemberError, resolveInviteCode } from '../../lib/inviteFunnel';
+import * as Clipboard from 'expo-clipboard';
+import { logInviteFunnelStep, logJoinOpenedOnce, isAlreadyMemberError, resolveInviteCode } from '../../lib/inviteFunnel';
 
 // Only these accounts see the screenshot tool (web-only, dev use for refreshing store/marketing
 // screenshots) — everyone else's settings screen renders exactly as before. The test account is
@@ -66,25 +67,61 @@ function InviteModal({ visible, onClose, inviteCode, householdName, householdId 
   const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  useEffect(() => { if (visible && householdId) logInviteFunnelStep('invite_opened', householdId); }, [visible, householdId]);
+  // One invite_opened per opening, not per render. This used to fire from a plain effect, so any
+  // re-render while the modal was up logged another row — which is part of why "11 opens by 5
+  // people" cannot be read as 11 intentions. Same ref guard as AiQuotaWallModal.
+  const openLogged = useRef(false);
+  useEffect(() => {
+    if (!visible) { openLogged.current = false; return; }
+    if (openLogged.current || !householdId) return;
+    openLogged.current = true;
+    logInviteFunnelStep('invite_opened', householdId);
+  }, [visible, householdId]);
 
   const handleShare = async () => {
     const message = t('household.inviteMessage', { name: householdName, code: inviteCode });
     if (Platform.OS === 'web') {
-      try { await navigator.clipboard.writeText(message); Alert.alert(t('household.copiedTitle'), t('household.copiedClipboardBody')); }
+      try {
+        await navigator.clipboard.writeText(message);
+        Alert.alert(t('household.copiedTitle'), t('household.copiedClipboardBody'));
+        // Was missing entirely: the web branch handed the invite over just as much as the native
+        // one, and logged nothing. Every web share was invisible in the funnel.
+        if (householdId) logInviteFunnelStep('invite_shared', householdId);
+      }
       catch { Alert.alert(t('household.inviteCodeFallbackTitle'), message); }
     } else {
       try {
-        await Share.share({ message, title: t('household.shareTitle') });
-        if (householdId) logInviteFunnelStep('invite_shared', householdId);
+        const result = await Share.share({ message, title: t('household.shareTitle') });
+        // Share.dismissedAction is iOS-only — Android does not report a dismissed sheet at all,
+        // so there it resolves the same whether the invite was sent or swiped away. Checking the
+        // action removes the false positives we can detect; on Android invite_shared stays an
+        // UPPER BOUND, and any reading of the funnel has to treat it as one.
+        if (householdId && result.action !== Share.dismissedAction) {
+          logInviteFunnelStep('invite_shared', householdId);
+        }
       }
       catch { Alert.alert(t('common.error'), t('household.shareFailedBody')); }
     }
   };
 
-  const handleCopy = () => {
-    hapticNotification(Haptics.NotificationFeedbackType.Success);
-    Alert.alert(t('household.copiedTitle'), t('household.copiedCodeBody', { code: inviteCode }));
+  const handleCopy = async () => {
+    // This button said "Kopiert! ✓" and copied nothing: there was no clipboard call on native at
+    // all, and expo-clipboard was not even a dependency. Anyone who tapped it, switched to
+    // WhatsApp and pasted got whatever had been on their clipboard before. On the critical path
+    // of the one thing this screen exists for.
+    try {
+      await Clipboard.setStringAsync(inviteCode);
+      hapticNotification(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(t('household.copiedTitle'), t('household.copiedCodeBody', { code: inviteCode }));
+      // Its own step, not folded into invite_shared: copying the code and pasting it by hand is a
+      // different act from the share sheet, and probably the more common one. Counting them
+      // together would hide which of the two people actually use.
+      if (householdId) logInviteFunnelStep('invite_code_copied', householdId);
+    } catch {
+      // Clipboard refused — say so instead of claiming success, and show the code so it can still
+      // be typed over.
+      Alert.alert(t('household.inviteCodeFallbackTitle'), inviteCode);
+    }
   };
 
   return (
@@ -409,6 +446,25 @@ export default function HouseholdScreen() {
 
   const handleJoinHousehold = async (code: string) => {
     if (!currentMember) return;
+
+    // join_opened was only ever logged on the deep-link route (app/join/[code].tsx), while
+    // join_completed was logged from all three — which is how the funnel ended up reporting more
+    // completions than opens. Typing the code into "Anderem Haushalt beitreten" is the route most
+    // people actually take, so it has to count too.
+    //
+    // Semantics from here on: join_opened means "somebody holds an invite code and is trying to
+    // join", not "somebody opened a deep link". Logged before the RPC on purpose, so an attempt
+    // that then fails (wrong code, member cap) still shows up as an attempt.
+    //
+    // Deduped by code inside logJoinOpenedOnce — see the note there and in onboarding.tsx.
+    // resolveInviteCode is the only way to get a household_id without joining; if it comes back
+    // null we simply skip the logging and let the join proceed, because analytics must never
+    // stand in the way of the flow.
+    const normalizedCode = code.toUpperCase().trim();
+    const resolvedForFunnel = await resolveInviteCode(normalizedCode);
+    if (resolvedForFunnel) {
+      logJoinOpenedOnce(normalizedCode, resolvedForFunnel.household_id, currentMember.user_id ?? null);
+    }
 
     const { data: result, error } = await supabase.rpc('join_household_by_code', {
       p_invite_code: code,

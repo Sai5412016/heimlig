@@ -4,19 +4,37 @@
 //
 // Fire-and-forget everywhere: a failed analytics write must never break the actual invite/join
 // flow, so every function here swallows its own errors instead of throwing into the caller.
+//
+// SWALLOWED, BUT NOT SILENT. Every write below logs a warning when it fails. supabase-js RETURNS
+// an { error } on a rejected insert rather than throwing, so a try/catch alone catches nothing —
+// an RLS denial or a violated CHECK used to leave no trace at all: no row, no warning, nothing.
+//
+// That gap has misled us three times in one week, always the same way: an empty analytics table
+// was read as "nobody does this", when the truth was "nothing was written". recipe_import_events
+// looked like nobody imported recipes while the function simply wasn't writing; share_events was
+// read as "invites never get sent" while that table measures something else entirely; and
+// invite_funnel_events' anon_id column looked broken when the branch was merely never reached.
+//
+// So: an empty table only ever proves that nothing was written. It never proves that nothing
+// happened. These warnings are what makes the difference visible.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 
-export type InviteFunnelStep = 'invite_opened' | 'invite_shared' | 'join_opened' | 'join_completed';
+// invite_code_copied is tracked separately from invite_shared on purpose: copying the code and
+// pasting it by hand is a different act from the share sheet, and probably the more common
+// one. Folding them together would hide which of the two people actually use.
+export type InviteFunnelStep = 'invite_opened' | 'invite_shared' | 'invite_code_copied' | 'join_opened' | 'join_completed';
 
 export function logInviteFunnelStep(step: InviteFunnelStep, householdId: string): void {
   (async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return; // no user_id to log yet
-      await supabase.from('invite_funnel_events').insert({ household_id: householdId, user_id: user.id, step });
-    } catch {
-      // analytics only, never surfaced to the user
+      const { error } = await supabase.from('invite_funnel_events').insert({ household_id: householdId, user_id: user.id, step });
+      if (error) console.warn(`[inviteFunnel] ${step} was not recorded —`, error.code, error.message);
+    } catch (e: any) {
+      // Never surfaced to the user, but never invisible either — see the header.
+      console.warn(`[inviteFunnel] ${step} threw before reaching the server —`, e?.message ?? e);
     }
   })();
 }
@@ -42,9 +60,10 @@ export function logAnonymousJoinOpened(householdId: string): void {
   (async () => {
     try {
       const anonId = await getOrCreateAnonId();
-      await supabase.from('invite_funnel_events').insert({ household_id: householdId, anon_id: anonId, step: 'join_opened' });
-    } catch {
-      // analytics only, never surfaced to the user
+      const { error } = await supabase.from('invite_funnel_events').insert({ household_id: householdId, anon_id: anonId, step: 'join_opened' });
+      if (error) console.warn('[inviteFunnel] anonymous join_opened was not recorded —', error.code, error.message);
+    } catch (e: any) {
+      console.warn('[inviteFunnel] anonymous join_opened threw before reaching the server —', e?.message ?? e);
     }
   })();
 }
@@ -79,9 +98,21 @@ async function markJoinOpenedLogged(code: string): Promise<void> {
 // closes that gap for calls within the same JS session, which is exactly where the race happens.
 const loggedOrInFlightJoinOpenedCodes = new Set<string>();
 
-// Single entry point app/join/[code].tsx calls on every mount — folds in the dedup check so the
-// call site can't accidentally log without it. authenticatedUserId is null for an anonymous
-// opener (routes to logAnonymousJoinOpened instead).
+// Single entry point for join_opened — folds in the dedup check so a call site can't accidentally
+// log without it. authenticatedUserId is null for an anonymous opener (routes to
+// logAnonymousJoinOpened instead).
+//
+// WHAT join_opened MEANS: "somebody holds an invite code and is trying to join". NOT "somebody
+// opened a deep link". It used to mean the narrower thing purely by accident — app/join/[code].tsx
+// was the only caller, while join_completed was logged from all three join routes, so the funnel
+// reported more completions than opens. The other two callers are app/onboarding.tsx and
+// app/(tabs)/household.tsx, both of which take a typed-in code, which is the route most people
+// actually use.
+//
+// Because of that, the dedup below is load-bearing rather than a nicety: one recipient can pass
+// through two of these call sites for a single arrival (deep link with no account -> onboarding
+// -> sign up -> join). Every call site must pass the code normalised the same way
+// (`.toUpperCase().trim()`), since the code string is the dedup key.
 export function logJoinOpenedOnce(code: string, householdId: string, authenticatedUserId: string | null): void {
   if (loggedOrInFlightJoinOpenedCodes.has(code)) return;
   loggedOrInFlightJoinOpenedCodes.add(code);

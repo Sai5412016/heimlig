@@ -802,10 +802,15 @@ export default function ShoppingScreen() {
       if (Platform.OS === 'web') {
         await navigator.clipboard.writeText(message);
         Alert.alert(t('household.copiedTitle'), t('household.copiedClipboardBody'));
+        logInviteFunnelStep('invite_shared', household.id);
       } else {
-        await Share.share({ message });
+        const result = await Share.share({ message });
+        // dismissedAction is iOS-only; on Android a swiped-away sheet resolves like a sent one,
+        // so this stays an upper bound there. See app/(tabs)/household.tsx.
+        if (result.action !== Share.dismissedAction) {
+          logInviteFunnelStep('invite_shared', household.id);
+        }
       }
-      logInviteFunnelStep('invite_shared', household.id);
     } catch {
       // user dismissed the share sheet — no error needed, they can just tap the banner again
     }
