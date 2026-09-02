@@ -19,12 +19,17 @@ Rollout. Stand 01.09.2026: **80**.
 
 ## Die Schritte
 
-### 1. `versionCode` in `app.json` erhöhen
+### 1. `versionCode` **und** `expo.version` in `app.json` erhöhen
 
 - Datei `app.json`, Pfad `expo.android.versionCode`
 - **Aktuellen Wert vorher lesen, nicht annehmen.** Immer um genau 1 erhöhen
-- `expo.version` (versionName, aktuell `1.1.0`) nur bei einem inhaltlich größeren Release anheben —
-  nicht bei jedem Build
+- **`expo.version` (versionName) wird jedes Mal mitgezählt** — den `versionCode` nie allein erhöhen:
+  - Standard: **Patch +1** (`1.1.0` → `1.1.1`)
+  - Sichtbare neue Funktion: **Minor +1, Patch auf 0** (`1.1.3` → `1.2.0`)
+- Grund: Play leitet den **Release-Namen aus dem `versionName`** ab. Der stand monatelang auf
+  `1.1.0`, während in der Play Console von Hand `1.1.7` und `1.1.8` vergeben wurden — dadurch
+  stimmte weder die in der App sichtbare Version mit dem Store überein, noch ließ sich aus einem
+  Play-Release der `versionCode` ablesen. Hat schon einmal eine Fehlersuche gekostet.
 - Commit-Message-Muster: `chore: bump version for <thema> build`
 - Dieser Bump darf direkt auf `main` (Ausnahme von der Branch-Regel), weil er den Build auslöst
 
@@ -118,6 +123,19 @@ Direktaufruf nicht in einen 404 laufen.
       und der deployte Stand mit `get_edge_function` gegengeprüft
 - [ ] Demo-Haushalte (`Familie Berger`, `Berger Family`) haben keinen gültigen Einladungscode mehr,
       der öffentlich sichtbar wäre
+
+## Nach dem Rollout prüfen
+
+- [ ] **Mitglied entfernen mit Tombstone** (ab Build 86). `test1234` steht absichtlich in
+      `Demo Household` — er hat 2 Buchungen in `transactions.member_id` und ist damit der
+      vorbereitete Fall für beide Hälften in einem Durchgang. Als `test123` entfernen:
+      - er verschwindet aus der Mitgliederliste und bleibt nach dem Neuladen weg
+      - seine 2 Buchungen sind weiterhin da und zeigen „Ehemaliges Mitglied"
+      - in der DB: `members.deleted_at` gesetzt, `user_id` NULL, `display_name` leer,
+        `role` zurück auf `member` — die Zeile ist ein Tombstone, nicht gelöscht
+      Schlägt der erste Punkt fehl, läuft noch der alte Direkt-Delete-Pfad; bleibt der zweite
+      leer, greift der Tombstone-Fallback nicht und die Fremdschlüssel haben stattdessen die
+      Buchungen mitgerissen.
 
 ## Bekannte Play-Console-Warnungen — kein Blocker
 

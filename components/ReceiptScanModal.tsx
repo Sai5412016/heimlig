@@ -19,6 +19,7 @@ import { ALL_CATEGORIES, CAT_EMOJIS, CAT_COLORS, categoryLabel } from '../lib/bu
 import PayerPicker from './PayerPicker';
 import AiQuotaHint from './AiQuotaHint';
 import PremiumModal from './PremiumModal';
+import AiQuotaWallModal from './AiQuotaWallModal';
 import { readAiLimitError } from '../lib/aiUsage';
 
 export interface ReceiptDraft {
@@ -52,6 +53,9 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [paidBy, setPaidBy] = useState<string | null>(currentMember?.id ?? null);
   const [showPremium, setShowPremium] = useState(false);
+  // Non-null while the quota wall is up; carries the numbers the server rejected with,
+  // so the wall shows what was actually counted rather than a locally guessed figure.
+  const [quotaWall, setQuotaWall] = useState<{ used: number; limit: number } | null>(null);
 
   const reset = () => {
     setStep('pick'); setImageB64(null); setImageMime('image/jpeg');
@@ -89,10 +93,7 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
     } catch (e: any) {
       const limit = await readAiLimitError(e);
       if (limit) {
-        Alert.alert(t('aiQuota.limitReachedTitle'), t('aiQuota.limitReachedBody', { limit: limit.limit }), [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('aiQuota.upgradeButton'), onPress: () => setShowPremium(true) },
-        ]);
+        setQuotaWall({ used: limit.used, limit: limit.limit });
       } else {
         Alert.alert(t('common.error'), t('receiptScan.extractErrorBody'));
       }
@@ -170,6 +171,16 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
           </View>
         </View>
       </KeyboardAvoidingView>
+      <AiQuotaWallModal
+        visible={!!quotaWall}
+        used={quotaWall?.used ?? 0}
+        limit={quotaWall?.limit ?? 0}
+        source="receipt_scan"
+        onClose={() => setQuotaWall(null)}
+        // Wall closes before the premium sheet opens — two Modals visible at once is
+        // unreliable on Android.
+        onUpgrade={() => { setQuotaWall(null); setShowPremium(true); }}
+      />
       <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />
     </Modal>
   );

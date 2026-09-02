@@ -23,7 +23,7 @@ Heimlig ist **live im Play Store** (offizieller Production-Release, kein geschlo
 3. Fertige **AAB** in Play Console → **Production** → „Neuen Release erstellen" → Versionshinweise (de-DE) eintragen → hochladen → veröffentlichen. *(Upload macht Andi manuell – kein API-Zugang.)*
 4. Nach Veröffentlichung: in Supabase `app_config.latest_version_code` auf den neuen versionCode setzen → löst das In-App-„Update verfügbar"-Popup für ältere Nutzer aus.
 - **Web** braucht keinen Build – Push auf `main` reicht (Vercel).
-- Der aktuelle `versionCode` steht in `app.json` (`expo.android.versionCode`) — dort nachsehen, nicht hier. Der EAS-Build läuft automatisch über die GitHub-Integration bei jedem Push auf `main`. versionName = `1.1.0`.
+- `versionCode` **und** versionName stehen in `app.json` (`expo.android.versionCode` bzw. `expo.version`) — dort nachsehen, nicht hier, sonst veraltet der Wert wie schon einmal geschehen. Beide werden **immer gemeinsam** erhöht, siehe die Regel in `CLAUDE.md`. Der EAS-Build läuft automatisch über die GitHub-Integration bei jedem Push auf `main`.
 - `app_config.latest_version_code` **lebt in der Datenbank und wird dort nachgesehen**, nicht in dieser Datei gepflegt — jeder hier notierte Wert ist nach dem nächsten Release wieder falsch:
   ```sql
   select latest_version_code from app_config where id = 1;

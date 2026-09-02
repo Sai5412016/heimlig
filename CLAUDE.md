@@ -15,6 +15,18 @@ questions:
 This is a structural map of what the code currently looks like, not a log of past decisions —
 for "why was this built this way", CONTEXT.md is still the source of truth.
 
+## Versionsname mitziehen
+
+Bei **jedem** Bump von `expo.android.versionCode` in `app.json` wird `expo.version` (der
+Versionsname) mitgezählt. Standard ist **Patch +1** (`1.1.0` → `1.1.1`). Bringt das Release eine
+für Nutzer **sichtbare neue Funktion**, stattdessen **Minor +1 und Patch auf 0** (`1.1.3` → `1.2.0`).
+Den `versionCode` **nie allein** erhöhen.
+
+Grund: Play leitet den Release-Namen aus dem `versionName` ab. Der stand monatelang auf `1.1.0`,
+während in der Play Console von Hand `1.1.7` und `1.1.8` vergeben wurden — dadurch stimmte weder
+das, was Nutzer in der App sehen, mit dem Store überein, noch ließ sich aus einem Play-Release der
+`versionCode` ablesen. Das hat schon einmal eine Fehlersuche gekostet.
+
 ## Release Notes
 
 Immer wenn der `versionCode` in `app.json` erhöht wird, gehören in denselben Bericht fertige

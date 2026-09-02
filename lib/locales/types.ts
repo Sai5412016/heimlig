@@ -324,6 +324,14 @@ export interface AppTranslations {
     imprintLabel: string;
     privacyLabel: string;
     leaveHouseholdLabel: string;
+    leaveFailedBody: string;
+    // Shown instead of the leave wording when the user is the last active member: leaving
+    // then deletes the household and everything in it.
+    deleteHouseholdConfirmTitle: string;
+    deleteHouseholdConfirmBody: string;
+    deleteHouseholdButton: string;
+    leaveHandoverNote: string;
+    removeMemberFailedBody: string;
     accountSectionTitle: string;
     deleteAccountLabel: string;
     signOutButton: string;
@@ -536,8 +544,13 @@ export interface AppTranslations {
     modalRemaining: string;
     modalRemainingNone: string;
     limitReachedTitle: string;
-    limitReachedBody: string;
     upgradeButton: string;
+    wallBody: string;
+    // Pluralised on `count` (days until the quota returns) — i18next picks the suffix.
+    wallReset_one: string;
+    wallReset_other: string;
+    wallPremiumBenefit: string;
+    wallLaterButton: string;
   };
   premiumModal: {
     title: string;

@@ -288,14 +288,56 @@ export default function HouseholdScreen() {
     await switchHousehold(id);
   };
 
-  const handleLeave = () => {
-    if (!household) return;
-    Alert.alert(t('household.leaveConfirmTitle'), t('household.leaveConfirmBody', { name: household.name }), [
+  const handleLeave = async () => {
+    if (!household || !currentMember) return;
+
+    // Leaving as the last active member deletes the household and everything in it — and that is
+    // the COMMON case here, not an edge one: most households have exactly one person. Warning for
+    // that has to be different in wording and in the button, otherwise somebody taps "verlassen"
+    // and irreversibly loses their lists, tasks, budget and recipes.
+    //
+    // Read fresh rather than using the in-memory `members`: if the only other member left in the
+    // meantime, the cached list would still show them and we would warn far too mildly for what
+    // is about to happen. One light read, no second pass through the deletion logic — that lives
+    // in remove_membership_unchecked() and stays the authority on what actually happens.
+    const { data: active, error: previewError } = await supabase
+      .from('members').select('id, role, display_name, joined_at')
+      .eq('household_id', household.id).is('deleted_at', null)
+      .order('joined_at', { ascending: true });
+
+    if (previewError) {
+      console.warn('[household] leave preview failed —', previewError.message);
+      Alert.alert(t('common.error'), t('household.leaveFailedBody'));
+      return;
+    }
+
+    const others = (active ?? []).filter(m => m.id !== currentMember.id);
+    const alone = others.length === 0;
+    // Same rule as the server: hand over only when no other admin is left, to the longest-standing
+    // member (the query is ordered by joined_at).
+    const successor = currentMember.role === 'admin' && !others.some(m => m.role === 'admin')
+      ? others[0]
+      : null;
+
+    const title = alone ? t('household.deleteHouseholdConfirmTitle') : t('household.leaveConfirmTitle');
+    const body = alone
+      ? t('household.deleteHouseholdConfirmBody', { name: household.name })
+      : t('household.leaveConfirmBody', { name: household.name })
+        + (successor ? `\n\n${t('household.leaveHandoverNote', { name: successor.display_name })}` : '');
+    const confirmLabel = alone ? t('household.deleteHouseholdButton') : t('household.leaveButton');
+
+    Alert.alert(title, body, [
       { text: t('common.cancel'), style: 'cancel' },
-      { text: t('household.leaveButton'), style: 'destructive', onPress: async () => {
-          const remaining = await leaveHousehold(household.id);
-          if (remaining.length > 0) {
-            await switchHousehold(remaining[0].id);
+      { text: confirmLabel, style: 'destructive', onPress: async () => {
+          const result = await leaveHousehold(household.id);
+          if (!result.ok) {
+            // Used to fall through to the "you left" path regardless, so a refused delete looked
+            // exactly like a successful one until the user reloaded and was still a member.
+            Alert.alert(t('common.error'), t('household.leaveFailedBody'));
+            return;
+          }
+          if (result.remaining.length > 0) {
+            await switchHousehold(result.remaining[0].id);
           } else {
             setHousehold(null);
             await supabase.auth.signOut();
@@ -421,7 +463,15 @@ export default function HouseholdScreen() {
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('household.removeButton'), style: 'destructive', onPress: async () => {
-          await supabase.from('members').delete().eq('id', memberId);
+          // Same story as leaving: the plain delete is refused for any member who has created
+          // content, and the error used to be discarded before updating the list locally — so the
+          // member vanished from the screen and was back on the next load.
+          const { error } = await supabase.rpc('remove_membership', { p_member_id: memberId });
+          if (error) {
+            console.warn('[household] remove_membership failed —', error.message);
+            Alert.alert(t('common.error'), t('household.removeMemberFailedBody'));
+            return;
+          }
           setMembers(members.filter(m => m.id !== memberId));
           hapticNotification(Haptics.NotificationFeedbackType.Warning);
         }

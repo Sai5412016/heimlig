@@ -14,6 +14,7 @@ import { format, addDays } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import * as ImagePicker from 'expo-image-picker';
 import PremiumModal from './PremiumModal';
+import AiQuotaWallModal from './AiQuotaWallModal';
 import AiQuotaHint from './AiQuotaHint';
 import { readAiLimitError } from '../lib/aiUsage';
 import { FREE_MONTHLY_AI_ACTIONS } from '../lib/premium';
@@ -34,6 +35,9 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
   const household = useStore(state => state.household);
   const dateLocale = language === 'en' ? enUS : de;
   const [showPremium, setShowPremium] = useState(false);
+  // Non-null while the quota wall is up; carries the numbers the server rejected with,
+  // so the wall shows what was actually counted rather than a locally guessed figure.
+  const [quotaWall, setQuotaWall] = useState<{ used: number; limit: number } | null>(null);
   const mealLabels: Record<MealType, string> = { fruehstueck: t('recipes.mealBreakfast'), mittag: t('recipes.mealLunch'), abendessen: t('recipes.mealDinner') };
   const s = useMemo(() => makeStyles(colors), [colors]);
   const [inputMode, setInputMode] = useState<'url' | 'text' | 'image'>('url');
@@ -91,10 +95,7 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
       // read via the helper so the FunctionsHttpError quirk lives in one place.
       const limit = await readAiLimitError(e);
       if (limit) {
-        Alert.alert(t('aiQuota.limitReachedTitle'), t('aiQuota.limitReachedBody', { limit: limit.limit }), [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('aiQuota.upgradeButton'), onPress: () => setShowPremium(true) },
-        ]);
+        setQuotaWall({ used: limit.used, limit: limit.limit });
       } else {
         Alert.alert(t('common.error'), t('recipeImport.extractErrorBody'));
       }
@@ -244,6 +245,16 @@ export default function RecipeImportModal({ visible, onClose, onAdd }: {
           </View>
         </View>
       </KeyboardAvoidingView>
+      <AiQuotaWallModal
+        visible={!!quotaWall}
+        used={quotaWall?.used ?? 0}
+        limit={quotaWall?.limit ?? 0}
+        source="recipe_import"
+        onClose={() => setQuotaWall(null)}
+        // Wall closes before the premium sheet opens — two Modals visible at once is
+        // unreliable on Android.
+        onUpgrade={() => { setQuotaWall(null); setShowPremium(true); }}
+      />
       <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />
     </Modal>
   );
