@@ -325,6 +325,12 @@ export interface AppTranslations {
     privacyLabel: string;
     leaveHouseholdLabel: string;
     leaveFailedBody: string;
+    // Shown instead of the leave wording when the user is the last active member: leaving
+    // then deletes the household and everything in it.
+    deleteHouseholdConfirmTitle: string;
+    deleteHouseholdConfirmBody: string;
+    deleteHouseholdButton: string;
+    leaveHandoverNote: string;
     removeMemberFailedBody: string;
     accountSectionTitle: string;
     deleteAccountLabel: string;
