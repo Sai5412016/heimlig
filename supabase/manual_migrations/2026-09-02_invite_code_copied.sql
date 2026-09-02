@@ -27,6 +27,11 @@ alter table public.invite_funnel_events
 
 
 -- 2) The funnel view: count a hand-off, not just a share ----------------------------------------
+-- SUPERSEDED by 2026-09-02_invite_funnel_pct_note.sql, which suppresses the percentage between
+-- invite_handed_off and join_opened. Those two steps are reached by DIFFERENT people — the sender
+-- hands off, the recipient joins — and codes also travel by word of mouth, so the ratio between
+-- them is not a conversion rate. The view as written below prints 400 % there, which is not bad
+-- data but a question with no answer.
 -- Step 3 becomes "invite_handed_off" = shared OR code copied. That is the question the funnel is
 -- actually asking — did the invite leave the app — and keeping the chain four steps long means
 -- pct_of_previous_step still works (a fifth row would break the lag() chain).

@@ -4,6 +4,19 @@
 //
 // Fire-and-forget everywhere: a failed analytics write must never break the actual invite/join
 // flow, so every function here swallows its own errors instead of throwing into the caller.
+//
+// SWALLOWED, BUT NOT SILENT. Every write below logs a warning when it fails. supabase-js RETURNS
+// an { error } on a rejected insert rather than throwing, so a try/catch alone catches nothing —
+// an RLS denial or a violated CHECK used to leave no trace at all: no row, no warning, nothing.
+//
+// That gap has misled us three times in one week, always the same way: an empty analytics table
+// was read as "nobody does this", when the truth was "nothing was written". recipe_import_events
+// looked like nobody imported recipes while the function simply wasn't writing; share_events was
+// read as "invites never get sent" while that table measures something else entirely; and
+// invite_funnel_events' anon_id column looked broken when the branch was merely never reached.
+//
+// So: an empty table only ever proves that nothing was written. It never proves that nothing
+// happened. These warnings are what makes the difference visible.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 
@@ -17,9 +30,11 @@ export function logInviteFunnelStep(step: InviteFunnelStep, householdId: string)
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return; // no user_id to log yet
-      await supabase.from('invite_funnel_events').insert({ household_id: householdId, user_id: user.id, step });
-    } catch {
-      // analytics only, never surfaced to the user
+      const { error } = await supabase.from('invite_funnel_events').insert({ household_id: householdId, user_id: user.id, step });
+      if (error) console.warn(`[inviteFunnel] ${step} was not recorded —`, error.code, error.message);
+    } catch (e: any) {
+      // Never surfaced to the user, but never invisible either — see the header.
+      console.warn(`[inviteFunnel] ${step} threw before reaching the server —`, e?.message ?? e);
     }
   })();
 }
@@ -45,9 +60,10 @@ export function logAnonymousJoinOpened(householdId: string): void {
   (async () => {
     try {
       const anonId = await getOrCreateAnonId();
-      await supabase.from('invite_funnel_events').insert({ household_id: householdId, anon_id: anonId, step: 'join_opened' });
-    } catch {
-      // analytics only, never surfaced to the user
+      const { error } = await supabase.from('invite_funnel_events').insert({ household_id: householdId, anon_id: anonId, step: 'join_opened' });
+      if (error) console.warn('[inviteFunnel] anonymous join_opened was not recorded —', error.code, error.message);
+    } catch (e: any) {
+      console.warn('[inviteFunnel] anonymous join_opened threw before reaching the server —', e?.message ?? e);
     }
   })();
 }
