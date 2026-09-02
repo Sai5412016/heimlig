@@ -751,7 +751,9 @@ export const useStore = create<AppState>((set, get) => ({
     // Toggle: uncomplete if already done
     set(s => ({
       tasks: s.tasks.map(t => t.id === taskId
-        ? { ...t, completed_at: isAlreadyCompleted ? undefined : now, completed_by: isAlreadyCompleted ? undefined : currentMember?.id }
+        // null, matching the update below — so the optimistic state is identical to what a
+        // reload from the database would produce, instead of undefined here and null there.
+        ? { ...t, completed_at: isAlreadyCompleted ? null : now, completed_by: isAlreadyCompleted ? null : currentMember?.id }
         : t
       )
     }));
