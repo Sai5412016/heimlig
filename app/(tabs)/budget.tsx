@@ -447,6 +447,10 @@ export default function BudgetScreen() {
     }
     setTransactions([tx, ...transactions]);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
+    // Same act as a manual entry, just with less typing — booking a scanned receipt is exactly
+    // the kind of use the review threshold is meant to notice. It was missing here, so the more
+    // effortful and more satisfying of the two routes was the one that did not count.
+    notifyUserAction();
   };
 
   const handleDelete = (id: string) => {
@@ -505,6 +509,10 @@ export default function BudgetScreen() {
             const { data, error } = await budgetRepo.insertTransactionsChecked(payload);
             if (error) { Alert.alert(t('common.error'), error); return; }
             if (data) setTransactions([...data, ...transactions]);
+            // Deliberately NO notifyUserAction() here, and please leave it that way. A CSV import
+            // is a one-off move of old data, not a sign that somebody likes the app — and since
+            // it inserts any number of rows in one go, counting it would blow straight through
+            // the three-day activity threshold in a single tap.
             hapticNotification(Haptics.NotificationFeedbackType.Success);
             Alert.alert(t('budget.importedTitle'), t('budget.importedBody', { count: data?.length ?? rows.length }));
           } },

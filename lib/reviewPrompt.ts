@@ -34,6 +34,14 @@ async function maybeRequestReview(): Promise<void> {
   const days: string[] = raw ? JSON.parse(raw) : [];
   if (days.length < THRESHOLD_DAYS) return;
 
+  // The platform check lives HERE, not in notifyUserAction. It used to sit at the top of that
+  // function and cut it short before recordActivityDay ran, so browser use never counted towards
+  // the threshold at all: somebody who mostly uses Heimlig on the web and then picks up their
+  // phone started from zero. Days are cheap to record and platform-independent; only this native
+  // flow is not. expo-store-review has no web implementation — from a browser, the manual
+  // "Heimlig bewerten" entry in the household settings is the way to rate.
+  if (Platform.OS === 'web') return;
+
   const available = await StoreReview.isAvailableAsync();
   if (!available) return;
 
@@ -48,7 +56,7 @@ async function maybeRequestReview(): Promise<void> {
 // recipe/note, adding a transaction). Fire-and-forget from call sites — never awaited, never
 // allowed to throw into the caller.
 export function notifyUserAction(): void {
-  if (Platform.OS === 'web') return;
+  // Counted on every platform, web included — see the note in maybeRequestReview.
   recordActivityDay()
     .then(maybeRequestReview)
     .catch(() => {
