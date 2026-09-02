@@ -137,6 +137,28 @@ Direktaufruf nicht in einen 404 laufen.
       leer, greift der Tombstone-Fallback nicht und die Fremdschlüssel haben stattdessen die
       Buchungen mitgerissen.
 
+- [ ] **Einladungs-Trichter: Schritt 4 muss unter 100 % liegen** (ab Build 87, prüfbar ~2 Wochen
+      nach dem Rollout):
+      ```sql
+      select * from analytics.v_invite_funnel;
+      ```
+      `join_completed` kann nicht häufiger sein als `join_opened` — es ist dieselbe Person
+      nacheinander, also eine echte Teilmenge. Vor Build 87 stand der Wert bei **125 %**
+      (5 gegen 4), weil `join_opened` nur an einer von drei Beitritts-Stellen geloggt wurde und
+      `join_completed` an allen dreien. Build 87 hat die beiden fehlenden ergänzt
+      (`app/onboarding.tsx`, `app/(tabs)/household.tsx`).
+
+      Der Altbestand verwässert den Wert noch eine Weile; er sollte sich mit neuen Zeilen
+      einpendeln. **Steht er zwei Wochen nach dem Rollout immer noch über 100 %, wurde ein
+      Aufrufer übersehen** — dann alle `join_household_by_code`-Aufrufe suchen und prüfen, ob vor
+      jedem auch `logJoinOpenedOnce` steht:
+      ```
+      grep -rn "join_household_by_code" app/
+      ```
+      Schritt 3 hat aus gutem Grund gar keinen Prozentwert, siehe
+      `supabase/manual_migrations/2026-09-02_invite_funnel_pct_note.sql` — nicht mit diesem
+      Kontrollwert verwechseln.
+
 ## Bekannte Play-Console-Warnungen — kein Blocker
 
 Zwei wiederkehrende Hinweise im Release-Dashboard, beide bewusst offen gelassen:
