@@ -323,6 +323,8 @@ export const de: AppTranslations = {
     imprintLabel: '📄 Impressum',
     privacyLabel: '🔒 Datenschutz',
     leaveHouseholdLabel: '🚪 Haushalt verlassen',
+    leaveFailedBody: 'Du konntest den Haushalt nicht verlassen. Versuch es später noch einmal.',
+    removeMemberFailedBody: 'Das Mitglied konnte nicht entfernt werden. Versuch es später noch einmal.',
     accountSectionTitle: 'Konto',
     deleteAccountLabel: '🗑️ Konto löschen',
     signOutButton: 'Abmelden',

@@ -89,7 +89,8 @@ interface AppState {
   activateHousehold: (household: Household, member: Member) => Promise<void>;
   // false = the switch did not happen (no membership found, lookup failed, household hidden).
   switchHousehold: (householdId: string) => Promise<boolean>;
-  leaveHousehold: (householdId: string) => Promise<Household[]>;
+  // ok=false means the membership is still there — the caller must not pretend otherwise.
+  leaveHousehold: (householdId: string) => Promise<{ ok: boolean; error?: string; remaining: Household[] }>;
 
   shoppingLists: ShoppingList[];
   activeListId: string | null;
@@ -334,18 +335,39 @@ export const useStore = create<AppState>((set, get) => ({
     return true;
   },
 
+  // Was: delete the members row directly, then delete the household if nothing was left. That
+  // delete is REFUSED for anyone who has ever created a task, transaction, recipe, list or item —
+  // nine of the ten foreign keys pointing at `members` are NO ACTION — and the error was never
+  // checked, so leaving a household reported success while the row stayed put. Now goes through
+  // remove_membership(), which falls back to an anonymised tombstone when the row is still
+  // referenced, hands over admin if needed, and removes the household when the last active member
+  // leaves. See supabase/manual_migrations/2026-09-02_remove_membership.sql.
   leaveHousehold: async (householdId) => {
     const { userId } = get();
-    if (!userId) return [];
-    await supabase.from('members').delete().eq('user_id', userId).eq('household_id', householdId);
-    // If nobody is left in that household, remove it entirely. Tombstones must not count here:
-    // they would make an empty household look occupied and leave it behind forever.
-    const { data: remaining } = await supabase.from('members').select('id').eq('household_id', householdId).is('deleted_at', null);
-    if (!remaining || remaining.length === 0) {
-      await supabase.from('households').delete().eq('id', householdId);
+    if (!userId) {
+      console.warn('[store] leaveHousehold: no userId in the store');
+      return { ok: false, error: 'no_user', remaining: [] };
     }
+
+    // The RPC works on a member id, not a household id — look up which membership this is.
+    const { data: rows, error: lookupError } = await supabase
+      .from('members').select('id')
+      .eq('user_id', userId).eq('household_id', householdId).limit(1);
+    if (lookupError || !rows?.[0]) {
+      console.warn(`[store] leaveHousehold: no membership found in ${householdId} —`, lookupError?.message ?? 'no row');
+      return { ok: false, error: lookupError?.message ?? 'member_not_found', remaining: [] };
+    }
+
+    const { error } = await supabase.rpc('remove_membership', { p_member_id: rows[0].id });
+    if (error) {
+      // Surfaced, not swallowed: reporting success here while the membership survives is the
+      // actual defect this replaced.
+      console.warn('[store] leaveHousehold: remove_membership failed —', error.message);
+      return { ok: false, error: error.message, remaining: [] };
+    }
+
     const memberships = await get().loadMyHouseholds();
-    return memberships.map((m: any) => m.households).filter(Boolean);
+    return { ok: true, remaining: memberships.map((m: any) => m.households).filter(Boolean) };
   },
 
   shoppingLists: [],

@@ -293,9 +293,15 @@ export default function HouseholdScreen() {
     Alert.alert(t('household.leaveConfirmTitle'), t('household.leaveConfirmBody', { name: household.name }), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('household.leaveButton'), style: 'destructive', onPress: async () => {
-          const remaining = await leaveHousehold(household.id);
-          if (remaining.length > 0) {
-            await switchHousehold(remaining[0].id);
+          const result = await leaveHousehold(household.id);
+          if (!result.ok) {
+            // Used to fall through to the "you left" path regardless, so a refused delete looked
+            // exactly like a successful one until the user reloaded and was still a member.
+            Alert.alert(t('common.error'), t('household.leaveFailedBody'));
+            return;
+          }
+          if (result.remaining.length > 0) {
+            await switchHousehold(result.remaining[0].id);
           } else {
             setHousehold(null);
             await supabase.auth.signOut();
@@ -421,7 +427,15 @@ export default function HouseholdScreen() {
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('household.removeButton'), style: 'destructive', onPress: async () => {
-          await supabase.from('members').delete().eq('id', memberId);
+          // Same story as leaving: the plain delete is refused for any member who has created
+          // content, and the error used to be discarded before updating the list locally — so the
+          // member vanished from the screen and was back on the next load.
+          const { error } = await supabase.rpc('remove_membership', { p_member_id: memberId });
+          if (error) {
+            console.warn('[household] remove_membership failed —', error.message);
+            Alert.alert(t('common.error'), t('household.removeMemberFailedBody'));
+            return;
+          }
           setMembers(members.filter(m => m.id !== memberId));
           hapticNotification(Haptics.NotificationFeedbackType.Warning);
         }

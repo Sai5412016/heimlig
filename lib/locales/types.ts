@@ -324,6 +324,8 @@ export interface AppTranslations {
     imprintLabel: string;
     privacyLabel: string;
     leaveHouseholdLabel: string;
+    leaveFailedBody: string;
+    removeMemberFailedBody: string;
     accountSectionTitle: string;
     deleteAccountLabel: string;
     signOutButton: string;

@@ -324,6 +324,8 @@ export const en: AppTranslations = {
     imprintLabel: '📄 Imprint',
     privacyLabel: '🔒 Privacy',
     leaveHouseholdLabel: '🚪 Leave household',
+    leaveFailedBody: 'You could not leave the household. Please try again later.',
+    removeMemberFailedBody: 'The member could not be removed. Please try again later.',
     accountSectionTitle: 'Account',
     deleteAccountLabel: '🗑️ Delete account',
     signOutButton: 'Sign out',
