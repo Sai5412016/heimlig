@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Share, Modal, Pressable, TextInput, Platform, KeyboardAvoidingView
+  Share, Modal, Pressable, TextInput, Platform, KeyboardAvoidingView, Linking
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,6 +30,9 @@ import { hasPremiumAccess, isMemberLimitError, HOUSEHOLD_MEMBER_CAP, FREE_MONTHL
 import { fetchAiActionsUsed } from '../../lib/aiUsage';
 import { captureScreenshot } from '../../lib/screenshotTool';
 import * as Clipboard from 'expo-clipboard';
+import * as StoreReview from 'expo-store-review';
+import { DEFAULT_STORE_URL } from '../../lib/appUpdate';
+import { logReviewEvent } from '../../lib/reviewEvents';
 import { logInviteFunnelStep, logJoinOpenedOnce, isAlreadyMemberError, resolveInviteCode } from '../../lib/inviteFunnel';
 
 // Only these accounts see the screenshot tool (web-only, dev use for refreshing store/marketing
@@ -323,6 +326,47 @@ export default function HouseholdScreen() {
     setShowSwitcher(false);
     if (id === household?.id) return;
     await switchHousehold(id);
+  };
+
+  // Play's review policy forbids gating this on sentiment — no "do you like the app?" in front
+  // of it, no incentive, the same entry for everyone. That is also why there is nothing to
+  // measure beyond the tap itself: the In-App Review API reports nothing back, and once the store
+  // listing opens the user is outside anything we can see.
+  const handleRateApp = async () => {
+    logReviewEvent('review_tapped', household?.id);
+
+    // Preferred route: the native sheet, which rates without leaving the app. isAvailableAsync()
+    // is false on web and on devices without Play Services, and requestReview() can still do
+    // nothing if Google decides not to show anything — which is exactly why the fallback below
+    // is not optional.
+    try {
+      if (Platform.OS !== 'web' && await StoreReview.isAvailableAsync()) {
+        logReviewEvent('review_route', household?.id, 'in_app');
+        await StoreReview.requestReview();
+        return;
+      }
+    } catch (e: any) {
+      console.warn('[household] in-app review unavailable, falling back to the store —', e?.message ?? e);
+    }
+
+    // Always-works route. market:// hands straight to the Play app; Linking.openURL rejects when
+    // nothing can handle it (Android 11+ package visibility can hide the scheme), so the https
+    // listing is the backstop — and the only option on web.
+    logReviewEvent('review_route', household?.id, 'store');
+    if (Platform.OS !== 'web') {
+      try {
+        await Linking.openURL('market://details?id=com.fledderman.heimlig');
+        return;
+      } catch {
+        // no Play app / scheme not visible — fall through to the web listing
+      }
+    }
+    try {
+      await Linking.openURL(DEFAULT_STORE_URL);
+    } catch (e: any) {
+      console.warn('[household] could not open the store listing —', e?.message ?? e);
+      Alert.alert(t('common.error'), t('household.rateFailedBody'));
+    }
   };
 
   const handleLeave = async () => {
@@ -879,6 +923,9 @@ export default function HouseholdScreen() {
             it spans every household the user is in. Google Play requires this to be reachable
             in-app, which is why it sits here rather than behind a support email. */}
         <Text style={styles.sectionTitle}>{t('household.accountSectionTitle')}</Text>
+        <TouchableOpacity style={styles.settingsBtn} onPress={handleRateApp}>
+          <Text style={styles.settingsBtnText}>{t('household.rateAppLabel')}</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push('/konto-loeschen')}>
           <Text style={[styles.settingsBtnText, { color: colors.error }]}>{t('household.deleteAccountLabel')}</Text>
         </TouchableOpacity>

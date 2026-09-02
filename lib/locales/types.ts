@@ -333,6 +333,8 @@ export interface AppTranslations {
     leaveHandoverNote: string;
     removeMemberFailedBody: string;
     accountSectionTitle: string;
+    rateAppLabel: string;
+    rateFailedBody: string;
     deleteAccountLabel: string;
     signOutButton: string;
     signOutConfirmTitle: string;

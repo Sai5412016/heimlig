@@ -331,6 +331,8 @@ export const en: AppTranslations = {
     leaveHandoverNote: '{{name}} takes over as admin.',
     removeMemberFailedBody: 'The member could not be removed. Please try again later.',
     accountSectionTitle: 'Account',
+    rateAppLabel: '⭐ Rate Heimlig',
+    rateFailedBody: 'The Play Store could not be opened.',
     deleteAccountLabel: '🗑️ Delete account',
     signOutButton: 'Sign out',
     signOutConfirmTitle: 'Sign out',
