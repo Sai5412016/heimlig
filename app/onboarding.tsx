@@ -17,7 +17,7 @@ import { CURRENCIES } from '../lib/currency';
 import { TIMEZONES } from '../lib/timezones';
 import { SUPPORTED_COUNTRIES } from '../lib/holidays';
 import { isMemberLimitError, HOUSEHOLD_MEMBER_CAP } from '../lib/premium';
-import { logInviteFunnelStep, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember, isAlreadyMemberError, resolveInviteCode } from '../lib/inviteFunnel';
+import { logInviteFunnelStep, logJoinOpenedOnce, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember, isAlreadyMemberError, resolveInviteCode } from '../lib/inviteFunnel';
 
 type Step = 'welcome' | 'type' | 'auth' | 'verify' | 'name' | 'invite';
 type HouseholdType = 'couple' | 'wg' | 'family' | 'solo';
@@ -181,8 +181,28 @@ export default function OnboardingScreen() {
     setLoading(true);
     setErrorMsg(null);
     try {
+      const normalizedCode = inviteCode.toUpperCase().trim();
+
+      // join_opened for the code-entry route — see the same block in app/(tabs)/household.tsx for
+      // why it was missing. Read once here and reused for setUserId further down, rather than
+      // asking the auth server twice.
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // The dedup inside logJoinOpenedOnce matters most at THIS call site. A recipient who taps a
+      // deep link without an account goes: app/join/[code].tsx (logs join_opened for the code) ->
+      // no session -> onboarding -> signs up -> lands back here with the same code. Logging again
+      // would make one arrival look like two, and would inflate exactly the number every later
+      // rate is divided by. The code is normalised the same way in both places, which is what
+      // makes the dedup key match; the guard is per code in memory and in AsyncStorage, and is
+      // cleared by clearPendingInviteCode() once the journey is over, so a genuinely new attempt
+      // later still counts.
+      const resolvedForFunnel = await resolveInviteCode(normalizedCode);
+      if (resolvedForFunnel) {
+        logJoinOpenedOnce(normalizedCode, resolvedForFunnel.household_id, user?.id ?? null);
+      }
+
       const { data: result, error: rpcError } = await supabase.rpc('join_household_by_code', {
-        p_invite_code: inviteCode.toUpperCase().trim(),
+        p_invite_code: normalizedCode,
         p_display_name: displayName,
         p_avatar_color: avatarColor,
       });
@@ -201,7 +221,7 @@ export default function OnboardingScreen() {
       // that household instead of dead-ending on an error. That branch of the RPC doesn't return
       // household_id (see join_household_by_code's definition), so it needs a separate lookup.
       let household_id = result?.error && isAlreadyMemberError(result.error)
-        ? (await resolveInviteCode(inviteCode.toUpperCase().trim()))?.household_id
+        ? (await resolveInviteCode(normalizedCode))?.household_id
         : result?.household_id;
 
       if (!household_id) {
@@ -216,7 +236,6 @@ export default function OnboardingScreen() {
       // already-a-member case (no member_id in the RPC result at all). It reads userId from the
       // store though, which — unlike app/_layout.tsx's checkSession — nothing on this screen ever
       // sets; without this, switchHousehold would silently no-op here.
-      const { data: { user } } = await supabase.auth.getUser();
       if (user) setUserId(user.id);
       await switchHousehold(household_id);
       await clearPendingInviteCode();

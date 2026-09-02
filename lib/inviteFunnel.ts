@@ -82,9 +82,21 @@ async function markJoinOpenedLogged(code: string): Promise<void> {
 // closes that gap for calls within the same JS session, which is exactly where the race happens.
 const loggedOrInFlightJoinOpenedCodes = new Set<string>();
 
-// Single entry point app/join/[code].tsx calls on every mount — folds in the dedup check so the
-// call site can't accidentally log without it. authenticatedUserId is null for an anonymous
-// opener (routes to logAnonymousJoinOpened instead).
+// Single entry point for join_opened — folds in the dedup check so a call site can't accidentally
+// log without it. authenticatedUserId is null for an anonymous opener (routes to
+// logAnonymousJoinOpened instead).
+//
+// WHAT join_opened MEANS: "somebody holds an invite code and is trying to join". NOT "somebody
+// opened a deep link". It used to mean the narrower thing purely by accident — app/join/[code].tsx
+// was the only caller, while join_completed was logged from all three join routes, so the funnel
+// reported more completions than opens. The other two callers are app/onboarding.tsx and
+// app/(tabs)/household.tsx, both of which take a typed-in code, which is the route most people
+// actually use.
+//
+// Because of that, the dedup below is load-bearing rather than a nicety: one recipient can pass
+// through two of these call sites for a single arrival (deep link with no account -> onboarding
+// -> sign up -> join). Every call site must pass the code normalised the same way
+// (`.toUpperCase().trim()`), since the code string is the dedup key.
 export function logJoinOpenedOnce(code: string, householdId: string, authenticatedUserId: string | null): void {
   if (loggedOrInFlightJoinOpenedCodes.has(code)) return;
   loggedOrInFlightJoinOpenedCodes.add(code);

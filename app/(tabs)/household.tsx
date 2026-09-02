@@ -30,7 +30,7 @@ import { hasPremiumAccess, isMemberLimitError, HOUSEHOLD_MEMBER_CAP, FREE_MONTHL
 import { fetchAiActionsUsed } from '../../lib/aiUsage';
 import { captureScreenshot } from '../../lib/screenshotTool';
 import * as Clipboard from 'expo-clipboard';
-import { logInviteFunnelStep, isAlreadyMemberError, resolveInviteCode } from '../../lib/inviteFunnel';
+import { logInviteFunnelStep, logJoinOpenedOnce, isAlreadyMemberError, resolveInviteCode } from '../../lib/inviteFunnel';
 
 // Only these accounts see the screenshot tool (web-only, dev use for refreshing store/marketing
 // screenshots) — everyone else's settings screen renders exactly as before. The test account is
@@ -446,6 +446,25 @@ export default function HouseholdScreen() {
 
   const handleJoinHousehold = async (code: string) => {
     if (!currentMember) return;
+
+    // join_opened was only ever logged on the deep-link route (app/join/[code].tsx), while
+    // join_completed was logged from all three — which is how the funnel ended up reporting more
+    // completions than opens. Typing the code into "Anderem Haushalt beitreten" is the route most
+    // people actually take, so it has to count too.
+    //
+    // Semantics from here on: join_opened means "somebody holds an invite code and is trying to
+    // join", not "somebody opened a deep link". Logged before the RPC on purpose, so an attempt
+    // that then fails (wrong code, member cap) still shows up as an attempt.
+    //
+    // Deduped by code inside logJoinOpenedOnce — see the note there and in onboarding.tsx.
+    // resolveInviteCode is the only way to get a household_id without joining; if it comes back
+    // null we simply skip the logging and let the join proceed, because analytics must never
+    // stand in the way of the flow.
+    const normalizedCode = code.toUpperCase().trim();
+    const resolvedForFunnel = await resolveInviteCode(normalizedCode);
+    if (resolvedForFunnel) {
+      logJoinOpenedOnce(normalizedCode, resolvedForFunnel.household_id, currentMember.user_id ?? null);
+    }
 
     const { data: result, error } = await supabase.rpc('join_household_by_code', {
       p_invite_code: code,
