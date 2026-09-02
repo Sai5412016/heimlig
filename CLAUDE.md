@@ -52,6 +52,26 @@ Regeln für den Text:
   bringt, sag das nüchtern statt Marketing zu texten.
 - Beide Sprachen inhaltlich identisch, kein Google-Translate-Deutsch.
 
+## Nur gemessene Ergebnisse berichten
+
+In Berichten steht nur, was der Lauf ausgegeben hat. Kein Satz aus `CONTEXT.md`, `SKILL.md` oder
+einem früheren Bericht wird als Ergebnis übernommen. Widersprechen sich eine Notiz und ein Lauf,
+**gewinnt der Lauf**, und die Notiz wird **im selben Zug** korrigiert.
+
+Gilt für jede Zeile, die wie eine Messung aussieht: `tsc`-Ergebnisse, Zeilen- und Trefferzahlen,
+Datenbank-Zustände, Build- und Deploy-Status, „X Stellen geprüft".
+
+Grund — zwei Fälle in einer Woche, dieselbe Fehlerklasse (eine dokumentierte Annahme als Messung
+ausgegeben):
+- Eine leere Analytics-Tabelle wurde als „das Feature wurde nie benutzt" berichtet. Eine leere
+  Tabelle belegt nur, dass nichts geschrieben wurde — nie, dass nichts passiert ist. Der Insert
+  war stillschweigend abgelehnt worden (`supabase-js` liefert `{ error }` zurück, statt zu
+  werfen, deshalb fängt ein `try`/`catch` allein gar nichts).
+- „Bekannter, vorbestehender tsc-Fehler in `store/useStore.ts`" stand als Konvention in
+  `CONTEXT.md` und wurde in einen Abschlussbericht übernommen, ohne `npx tsc --noEmit` laufen zu
+  lassen. Den Fehler gab es in der gesamten vorhandenen Git-Historie nicht; die Notiz war
+  veraltet. Der Nutzer hatte sich an dem Tag mehrfach auf diese Zeile verlassen.
+
 ## Abschlussbericht zum Kopieren
 
 Jede abgeschlossene Aufgabe endet mit einem Bericht in einem Codeblock — gedacht zum 1:1-Kopieren
