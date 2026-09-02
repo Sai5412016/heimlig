@@ -65,8 +65,16 @@ Zwei wiederkehrende Hinweise im Play-Console-Release-Dashboard, beide **kein Blo
 
 ## Konventionen
 - Web-spezifische Layout-Fixes mit `Platform.OS === 'web'` (z.B. Modals oben verankern, damit Tastatur nichts verdeckt).
-- Bekannter, **vorbestehender** tsc-Fehler in `store/useStore.ts` (completeTask `completed_at` null vs undefined) – harmlos, blockiert den Metro-Build nicht.
-- Nach Code-Änderung: `npx tsc --noEmit` über die geänderten Dateien laufen lassen.
+- Nach Code-Änderung: `npx tsc --noEmit` laufen lassen. **Außerhalb von `supabase/functions/*` sind
+  null Fehler der Sollzustand** – jeder Fehler dort ist neu und gehört behoben, nicht wegerklärt.
+  Die Deno-Fehler in `supabase/functions/*` (unbekannte URL-Imports, `Deno`-Namespace) sind echt
+  vorbestehend: der tsconfig ist der der React-Native-App, die Edge Functions laufen unter Deno.
+  Filtern mit `npx tsc --noEmit 2>&1 | grep -v '^supabase/functions/'`.
+- Hier stand bis versionCode 88 ein „bekannter, vorbestehender tsc-Fehler in `store/useStore.ts`
+  (completeTask `completed_at` null vs undefined)". Den gab es in der gesamten hier vorhandenen
+  Git-Historie nicht – die Notiz war veraltet und wurde einmal ungeprüft als Testergebnis
+  weitergereicht. **Diese Zeile war der Grund. Nie ein tsc-Ergebnis aus dieser Datei zitieren,
+  immer den Befehl laufen lassen und die echte Ausgabe berichten.**
 
 ## Play-Store-Versionshinweise (statt Google-Group-Mail)
 Seit dem Production-Release gibt's **keine Tester-Ankündigungsmail mehr**. Stattdessen kommen die „Was ist neu"-Texte direkt ins `<de-DE>`-Feld bei „Versionshinweise" in der Play Console beim Release erstellen. Kurz, locker, Du-Form, 1-2 Sätze mit Emoji reichen (kein Betreff/Anrede/Signatur nötig, das ist nur für die alte Tester-Mail).
