@@ -124,6 +124,19 @@ Direktaufruf nicht in einen 404 laufen.
 - [ ] Demo-Haushalte (`Familie Berger`, `Berger Family`) haben keinen gültigen Einladungscode mehr,
       der öffentlich sichtbar wäre
 
+## Nach dem Rollout prüfen
+
+- [ ] **Mitglied entfernen mit Tombstone** (ab Build 86). `test1234` steht absichtlich in
+      `Demo Household` — er hat 2 Buchungen in `transactions.member_id` und ist damit der
+      vorbereitete Fall für beide Hälften in einem Durchgang. Als `test123` entfernen:
+      - er verschwindet aus der Mitgliederliste und bleibt nach dem Neuladen weg
+      - seine 2 Buchungen sind weiterhin da und zeigen „Ehemaliges Mitglied"
+      - in der DB: `members.deleted_at` gesetzt, `user_id` NULL, `display_name` leer,
+        `role` zurück auf `member` — die Zeile ist ein Tombstone, nicht gelöscht
+      Schlägt der erste Punkt fehl, läuft noch der alte Direkt-Delete-Pfad; bleibt der zweite
+      leer, greift der Tombstone-Fallback nicht und die Fremdschlüssel haben stattdessen die
+      Buchungen mitgerissen.
+
 ## Bekannte Play-Console-Warnungen — kein Blocker
 
 Zwei wiederkehrende Hinweise im Release-Dashboard, beide bewusst offen gelassen:
