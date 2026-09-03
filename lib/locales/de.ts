@@ -932,4 +932,8 @@ export const de: AppTranslations = {
     errorTitle: 'Löschen fehlgeschlagen',
     errorBody: 'Dein Konto konnte nicht gelöscht werden. Versuch es später noch einmal oder schreib an heimlig.app@gmail.com.',
   },
+  system: {
+    taskDueTodayTitle: '📋 Aufgabe heute fällig',
+    exportShareTitle: 'Export teilen',
+  },
 };

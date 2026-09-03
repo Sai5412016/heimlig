@@ -938,4 +938,11 @@ export interface AppTranslations {
     errorTitle: string;
     errorBody: string;
   };
+  // Strings the app shows outside its own screens: the OS notification tray and the system
+  // share sheet. They reach the user through lib/*.ts modules that have no React tree, so
+  // these go through i18n.t() rather than the useTranslation() hook.
+  system: {
+    taskDueTodayTitle: string;
+    exportShareTitle: string;
+  };
 }

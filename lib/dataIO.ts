@@ -2,6 +2,10 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Transaction, Member } from './supabase';
+// No React tree here, so the share-sheet title goes through i18n.t() directly rather than the
+// useTranslation() hook — same pattern as lib/appUpdate.ts and lib/productScore.ts. The CSV
+// column headers below stay German on purpose: they are data other tools parse, not UI chrome.
+import i18n from './i18n';
 
 const DELIM = ';';
 
@@ -46,7 +50,7 @@ export async function exportCsv(filename: string, content: string): Promise<stri
   file.create();
   file.write(content);
   if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: 'Export teilen', UTI: 'public.comma-separated-values-text' });
+    await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: i18n.t('system.exportShareTitle'), UTI: 'public.comma-separated-values-text' });
   }
   return file.uri;
 }

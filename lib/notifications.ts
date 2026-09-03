@@ -1,4 +1,8 @@
 // lib/notifications.ts
+// No React tree here, so the notification title goes through i18n.t() directly rather than the
+// useTranslation() hook — same pattern as lib/appUpdate.ts and lib/productScore.ts.
+import i18n from './i18n';
+
 let Notifications: any = null;
 
 // Only load notifications in real builds, not Expo Go
@@ -50,7 +54,7 @@ export async function scheduleTaskNotification(
       const id = await Notifications.scheduleNotificationAsync({
         identifier: taskId,
         content: {
-          title: '📋 Aufgabe heute fällig',
+          title: i18n.t('system.taskDueTodayTitle'),
           body: title,
           data: { taskId },
           sound: true,
