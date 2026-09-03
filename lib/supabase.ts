@@ -102,8 +102,11 @@ export interface Task {
   rotation?: string[];
   created_by?: string;
   due_date?: string;
-  completed_at?: string;
-  completed_by?: string;
+  // null, not just undefined: an open task comes back from Postgres with completed_at = null,
+  // and completeTask writes null to clear it again. Typing these as string | undefined was a
+  // lie about what the row actually holds.
+  completed_at?: string | null;
+  completed_by?: string | null;
   category: string;
   priority: TaskPriority;
   recurrence?: Recurrence;
