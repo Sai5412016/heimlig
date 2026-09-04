@@ -933,7 +933,7 @@ export const en: AppTranslations = {
     deleting: 'Deleting account …',
     loadFailed: 'Could not load the overview. Check your connection.',
     errorTitle: 'Deletion failed',
-    errorBody: 'Your account could not be deleted. Please try again later or write to heimlig.app@gmail.com.',
+    errorBody: 'Your account could not be deleted. Please try again later or write to datenschutz@heimlig.app.',
   },
   system: {
     taskDueTodayTitle: '📋 Task due today',
