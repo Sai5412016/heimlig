@@ -23,7 +23,7 @@ export default function DatenschutzScreen() {
         <View style={styles.section}>
           <Text style={styles.h2}>1. Verantwortlicher</Text>
           <Text style={styles.p}>
-            Andreas Schilling{'\n'}Birkensteig 4, 86845 Großaitingen{'\n'}E-Mail: heimlig.app@gmail.com
+            Andreas Schilling{'\n'}Birkensteig 4, 86845 Großaitingen{'\n'}E-Mail: datenschutz@heimlig.app
           </Text>
         </View>
 
@@ -75,7 +75,7 @@ export default function DatenschutzScreen() {
         <View style={styles.section}>
           <Text style={styles.h2}>7. Konto & Daten löschen</Text>
           <Text style={styles.p}>
-            Du kannst dein Konto jederzeit selbst löschen: in der App unter Einstellungen → Konto → Konto löschen. Alternativ genügt eine E-Mail an heimlig.app@gmail.com mit dem Betreff „Kontolöschung“ von der registrierten Adresse.{'\n\n'}
+            Du kannst dein Konto jederzeit selbst löschen: in der App unter Einstellungen → Konto → Konto löschen. Alternativ genügt eine E-Mail an datenschutz@heimlig.app mit dem Betreff „Kontolöschung“ von der registrierten Adresse.{'\n\n'}
             Dabei werden Konto, Mitgliedschaften, Käufe, Feedback und Nutzungszähler sofort gelöscht. Inhalte, die deine Haushaltsmitglieder weiter brauchen (Listen, Aufgaben, Termine, Budget-Buchungen, Rezepte), bleiben erhalten — dann ohne Zuordnung zu deinem Namen. Aus Sicherungskopien verschwinden deine Daten nach spätestens 30 Tagen. Ausführlich: heimlig.app/konto-loeschen.html
           </Text>
         </View>
@@ -83,7 +83,7 @@ export default function DatenschutzScreen() {
         <View style={styles.section}>
           <Text style={styles.h2}>8. Kontakt</Text>
           <Text style={styles.p}>
-            Bei Fragen zum Datenschutz erreichst du uns unter heimlig.app@gmail.com.
+            Bei Fragen zum Datenschutz erreichst du uns unter datenschutz@heimlig.app.
           </Text>
         </View>
       </ScrollView>
