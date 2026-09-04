@@ -930,6 +930,10 @@ export const de: AppTranslations = {
     deleting: 'Konto wird gelöscht …',
     loadFailed: 'Die Übersicht konnte nicht geladen werden. Prüf deine Verbindung.',
     errorTitle: 'Löschen fehlgeschlagen',
-    errorBody: 'Dein Konto konnte nicht gelöscht werden. Versuch es später noch einmal oder schreib an heimlig.app@gmail.com.',
+    errorBody: 'Dein Konto konnte nicht gelöscht werden. Versuch es später noch einmal oder schreib an datenschutz@heimlig.app.',
+  },
+  system: {
+    taskDueTodayTitle: '📋 Aufgabe heute fällig',
+    exportShareTitle: 'Export teilen',
   },
 };
