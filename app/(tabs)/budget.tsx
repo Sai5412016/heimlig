@@ -346,6 +346,7 @@ export default function BudgetScreen() {
   const [showModal, setShowModal] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [showReceiptScan, setShowReceiptScan] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions'>('overview');
@@ -543,19 +544,19 @@ export default function BudgetScreen() {
           <ThemeMotif />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          {members.length > 1 && (
-            <TouchableOpacity style={styles.ioBtn} onPress={() => setShowSplit(true)}>
-              <Text style={styles.ioBtnText}>💸</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity style={styles.ioBtn} onPress={() => setShowReceiptScan(true)}>
-            <Text style={styles.ioBtnText}>📷</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.ioBtn} onPress={handleExport}>
-            <Text style={styles.ioBtnText}>📤</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.ioBtn} onPress={handleImport}>
-            <Text style={styles.ioBtnText}>📥</Text>
+          {/* Split, export and import moved behind one ⋯ button. They are occasional actions —
+              export is Premium-gated, import is a once-in-a-while migration, splitting needs a
+              second person — and as bare emoji they were a guessing game. Labelling all three
+              in place would not fit next to the title and "+ Eintrag" on a 360dp screen, so the
+              labels live in the menu instead. The camera icon is gone entirely: since build 93
+              "Kassenbon scannen" sits in the entry sheet itself. */}
+          <TouchableOpacity
+            style={styles.ioBtn}
+            onPress={() => setShowMenu(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t('budget.moreActions')}
+          >
+            <Text style={styles.ioBtnText}>⋯</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
             <Text style={styles.addBtnText}>{t('budget.addEntry')}</Text>
@@ -703,16 +704,35 @@ export default function BudgetScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={() => setShowModal(true)}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
-
       <AddTransactionModal
         visible={showModal} onClose={() => setShowModal(false)}
         onSave={handleAddTransaction} members={members}
         onScanReceipt={() => { setShowModal(false); setShowReceiptScan(true); }}
         currentMemberId={currentMember?.id ?? ''}
       />
+      {/* Overflow menu. A plain Modal rather than an anchored popover: no measuring, no layout
+          maths, and it behaves the same on web and native. Each row carries its label, which is
+          the whole point of moving them off the header. */}
+      <Modal visible={showMenu} transparent animationType="fade" onRequestClose={() => setShowMenu(false)}>
+        <Pressable style={styles.menuOverlay} onPress={() => setShowMenu(false)}>
+          <View style={styles.menuSheet}>
+            {members.length > 1 && (
+              <TouchableOpacity style={styles.menuRow} onPress={() => { setShowMenu(false); setShowSplit(true); }}>
+                <Text style={styles.menuEmoji}>💸</Text>
+                <Text style={styles.menuLabel}>{t('budget.menuSplit')}</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.menuRow} onPress={() => { setShowMenu(false); handleExport(); }}>
+              <Text style={styles.menuEmoji}>📤</Text>
+              <Text style={styles.menuLabel}>{t('budget.menuExport')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuRow} onPress={() => { setShowMenu(false); handleImport(); }}>
+              <Text style={styles.menuEmoji}>📥</Text>
+              <Text style={styles.menuLabel}>{t('budget.menuImport')}</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
       <BudgetSplitModal visible={showSplit} onClose={() => setShowSplit(false)} />
       <ReceiptScanModal visible={showReceiptScan} onClose={() => setShowReceiptScan(false)} onConfirm={handleReceiptConfirm} />
       <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} source="csv_export" />
@@ -803,8 +823,6 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   emptyBody: { ...typography.sm, color: colors.textSecondary, textAlign: 'center' },
   emptyCta: { marginTop: spacing.lg, backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   emptyCtaText: { ...typography.sm, color: colors.textInverse, fontWeight: '700' },
-  fab: { position: 'absolute', right: spacing.lg, bottom: spacing.xl, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', ...shadow.lg },
-  fabText: { color: colors.textInverse, fontSize: 28, lineHeight: 30, fontWeight: '300' },
   modalOverlay: { flex: 1, justifyContent: Platform.OS === 'web' ? 'flex-start' : 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxl, maxHeight: Platform.OS === 'web' ? '100%' : '92%' },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
@@ -813,6 +831,11 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   typeBtnExpense: { backgroundColor: colors.error, borderColor: colors.error },
   typeBtnIncome: { backgroundColor: colors.success, borderColor: colors.success },
   typeBtnText: { ...typography.body, color: colors.textSecondary, fontWeight: '700' },
+  menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 88, paddingRight: spacing.lg },
+  menuSheet: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, paddingVertical: spacing.xs, minWidth: 220, ...shadow.md },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md, paddingHorizontal: spacing.lg },
+  menuEmoji: { fontSize: 18 },
+  menuLabel: { ...typography.body, color: colors.text },
   scanReceiptBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
     backgroundColor: colors.brandPale, borderWidth: 1, borderColor: colors.brand,
