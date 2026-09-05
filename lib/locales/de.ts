@@ -96,6 +96,10 @@ export const de: AppTranslations = {
     incomeType: '+ Einnahme',
     quickSelect: 'SCHNELLAUSWAHL',
     scanReceiptButton: 'Kassenbon scannen',
+    moreActions: 'Weitere Aktionen',
+    menuSplit: 'Ausgleich berechnen',
+    menuExport: 'Als CSV exportieren',
+    menuImport: 'CSV importieren',
     categories: {
       Lebensmittel: 'Lebensmittel',
       Miete: 'Miete',

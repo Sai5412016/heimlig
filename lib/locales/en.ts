@@ -97,6 +97,10 @@ export const en: AppTranslations = {
     incomeType: '+ Income',
     quickSelect: 'QUICK SELECT',
     scanReceiptButton: 'Scan receipt',
+    moreActions: 'More actions',
+    menuSplit: 'Settle up',
+    menuExport: 'Export as CSV',
+    menuImport: 'Import CSV',
     categories: {
       Lebensmittel: 'Groceries',
       Miete: 'Rent',

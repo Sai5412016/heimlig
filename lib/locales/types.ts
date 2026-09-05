@@ -97,6 +97,10 @@ export interface AppTranslations {
     incomeType: string;
     quickSelect: string;
     scanReceiptButton: string;
+    moreActions: string;
+    menuSplit: string;
+    menuExport: string;
+    menuImport: string;
     categories: {
       Lebensmittel: string;
       Miete: string;
