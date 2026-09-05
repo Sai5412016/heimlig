@@ -18,6 +18,7 @@ import { TIMEZONES } from '../lib/timezones';
 import { SUPPORTED_COUNTRIES } from '../lib/holidays';
 import { isMemberLimitError, HOUSEHOLD_MEMBER_CAP } from '../lib/premium';
 import { logInviteFunnelStep, logJoinOpenedOnce, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember, isAlreadyMemberError, resolveInviteCode } from '../lib/inviteFunnel';
+import { savePendingHouseholdChoice, getPendingHouseholdChoice, clearPendingHouseholdChoice } from '../lib/householdChoice';
 
 // 'household' (Haushaltswahl) sits BEFORE 'auth' on purpose: the old order asked for an
 // account first and only then what the account was for. See the report for build 91.
@@ -45,6 +46,32 @@ export default function OnboardingScreen() {
   // once on mount; carries through signup/email-verify/login without the user retyping anything.
   const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
   useEffect(() => { getPendingInviteCode().then(setPendingInviteCode); }, []);
+
+  // Restore the pre-signup household choice and, if a session already exists without any
+  // membership, skip straight to the step that finishes the job. That combination is what a cold
+  // boot after confirming the email in a mail client looks like: app/_layout.tsx sends such a
+  // user here, and without this they would land back on the welcome screen and be asked to
+  // "get started" while already signed in.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [choice, { data: { user } }] = await Promise.all([
+        getPendingHouseholdChoice(),
+        supabase.auth.getUser(),
+      ]);
+      if (cancelled) return;
+      // A waiting deep-link code outranks the stored choice — see lib/householdChoice.ts. It is
+      // applied by the effect below, so only fill in from the choice when there is no code.
+      const code = await getPendingInviteCode();
+      if (cancelled) return;
+      if (choice && !code) {
+        if (choice.mode === 'create') { setJoinMode(false); setHouseholdName(choice.name); }
+        else { setJoinMode(true); setInviteCode(choice.code); }
+      }
+      if (user) { setUserId(user.id); setStep('name'); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Once we know about a pending code, pre-fill + preselect join mode as soon as the name step
   // is reached — from any entry path (fresh signup, post-verify login, existing-account login).
@@ -233,6 +260,7 @@ export default function OnboardingScreen() {
       if (user) setUserId(user.id);
       await switchHousehold(household_id);
       await clearPendingInviteCode();
+      await clearPendingHouseholdChoice();
       router.replace('/(tabs)');
     } catch (e: any) {
       setErrorMsg(e.message || JSON.stringify(e));
@@ -315,6 +343,7 @@ export default function OnboardingScreen() {
       // Chose to create their own household instead of using a pending invite (if any) — that's
       // a deliberate opt-out, don't resurrect the old code on a later launch.
       await clearPendingInviteCode();
+      await clearPendingHouseholdChoice();
 
       // Freshly created household -> mandatory (but skippable) invite step, never shown when
       // joining an existing one. household is now set in the store, so the 'invite' render below
@@ -434,7 +463,12 @@ export default function OnboardingScreen() {
           )}
           <TouchableOpacity
             style={[styles.primaryBtn, (joinMode ? !inviteCode.trim() : !householdName.trim()) && styles.disabled]}
-            onPress={() => setStep('auth')}
+            onPress={() => {
+              savePendingHouseholdChoice(joinMode
+                ? { mode: 'join', code: inviteCode.trim().toUpperCase() }
+                : { mode: 'create', name: householdName.trim() });
+              setStep('auth');
+            }}
             disabled={joinMode ? !inviteCode.trim() : !householdName.trim()}
           >
             <Text style={styles.primaryBtnText}>{t('onboarding.continueButton')}</Text>
