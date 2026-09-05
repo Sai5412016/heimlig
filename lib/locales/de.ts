@@ -41,6 +41,7 @@ export const de: AppTranslations = {
     listsButton: 'Listen ▾',
     soloBannerText: 'Noch allein hier 👋 Lade jemanden ein, dann macht\'s Spaß.',
     soloBannerCta: 'Einladen',
+    soloBannerDismiss: 'Hinweis ausblenden',
     categories: {
       Lebensmittel: 'Lebensmittel',
       'Obst & Gemüse': 'Obst & Gemüse',

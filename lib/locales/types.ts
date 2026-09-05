@@ -42,6 +42,7 @@ export interface AppTranslations {
     listsButton: string;
     soloBannerText: string;
     soloBannerCta: string;
+    soloBannerDismiss: string;
     categories: {
       Lebensmittel: string;
       'Obst & Gemüse': string;

@@ -42,6 +42,7 @@ export const en: AppTranslations = {
     listsButton: 'Lists ▾',
     soloBannerText: 'Still just you here 👋 Invite someone, it\'s more fun together.',
     soloBannerCta: 'Invite',
+    soloBannerDismiss: 'Dismiss this hint',
     categories: {
       Lebensmittel: 'Groceries',
       'Obst & Gemüse': 'Fruit & Vegetables',
