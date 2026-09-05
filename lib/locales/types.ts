@@ -673,6 +673,11 @@ export interface AppTranslations {
     namePlaceholder: string;
     colorLabel: string;
     createNewTab: string;
+    householdStepTitle: string;
+    householdStepSub: string;
+    inviteCodeCheckedLater: string;
+    switchToJoin: string;
+    switchToCreate: string;
     enterCodeTab: string;
     householdNameLabel: string;
     householdNamePlaceholder: string;

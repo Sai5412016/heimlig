@@ -19,21 +19,15 @@ import { SUPPORTED_COUNTRIES } from '../lib/holidays';
 import { isMemberLimitError, HOUSEHOLD_MEMBER_CAP } from '../lib/premium';
 import { logInviteFunnelStep, logJoinOpenedOnce, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember, isAlreadyMemberError, resolveInviteCode } from '../lib/inviteFunnel';
 
-type Step = 'welcome' | 'type' | 'auth' | 'verify' | 'name' | 'invite';
-type HouseholdType = 'couple' | 'wg' | 'family' | 'solo';
+// 'household' (Haushaltswahl) sits BEFORE 'auth' on purpose: the old order asked for an
+// account first and only then what the account was for. See the report for build 91.
+type Step = 'welcome' | 'household' | 'auth' | 'verify' | 'name' | 'invite';
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { household, setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems, switchHousehold, setUserId, language } = useStore();
-  const HOUSEHOLD_TYPES: { key: HouseholdType; emoji: string; label: string; sub: string }[] = [
-    { key: 'couple', emoji: '💑', label: t('onboarding.typeCouple'), sub: t('onboarding.typeCoupleSub') },
-    { key: 'wg',     emoji: '🏠', label: t('onboarding.typeWg'),     sub: t('onboarding.typeWgSub') },
-    { key: 'family', emoji: '👨‍👩‍👧‍👦', label: t('onboarding.typeFamily'), sub: t('onboarding.typeFamilySub') },
-    { key: 'solo',   emoji: '🧘', label: t('onboarding.typeSolo'),   sub: t('onboarding.typeSoloSub') },
-  ];
   const [step, setStep] = useState<Step>('welcome');
-  const [householdType, setHouseholdType] = useState<HouseholdType | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -267,7 +261,11 @@ export default function OnboardingScreen() {
         p_display_name: displayName,
         p_avatar_color: avatarColor,
         p_language: language,
-        p_household_type: householdType,
+        // The onboarding step that asked couple/wg/family/solo is gone (it cost every new
+        // user a screen and was left unanswered in 93% of households). The parameter stays
+        // so the RPC signature is untouched; the column is filled by the dashboard card in
+        // task #2 instead, which asks the question where it actually matters.
+        p_household_type: null,
       });
       if (fnError?.code === 'PGRST202') {
         ({ data: result, error: fnError } = await supabase.rpc('create_household_for_user', {
@@ -373,7 +371,7 @@ export default function OnboardingScreen() {
         <Text style={styles.tagline}>{t('onboarding.tagline')}</Text>
         <Text style={styles.taglineSub}>{t('onboarding.taglineSub')}</Text>
         <View style={styles.btnGroup}>
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => { setIsLogin(false); setStep(pendingInviteCode ? 'auth' : 'type'); }}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => { setIsLogin(false); setStep(pendingInviteCode ? 'auth' : 'household'); }}>
             <Text style={styles.primaryBtnText}>{t('onboarding.getStarted')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => { setIsLogin(true); setStep('auth'); }}>
@@ -400,33 +398,49 @@ export default function OnboardingScreen() {
     </LinearGradient>
   );
 
-  // ─── HOUSEHOLD TYPE ───────────────────────────────────────
-  if (step === 'type') return (
+  // ─── HOUSEHOLD: create or join, BEFORE any account exists ─────────────────
+  // Collects a name or a code and nothing else — no network call, no session needed. The RPCs
+  // that actually create or join both require auth.uid(), so the work happens after the login;
+  // this step only records what the login is for.
+  if (step === 'household') return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.stepContent}>
-        <Text style={styles.stepTitle}>{t('onboarding.typeStepTitle')}</Text>
-        <Text style={styles.stepSub}>{t('onboarding.typeStepSub')}</Text>
-        <View style={styles.typeGrid}>
-          {HOUSEHOLD_TYPES.map(opt => (
-            <TouchableOpacity
-              key={opt.key}
-              style={[styles.typeCard, householdType === opt.key && styles.typeCardActive]}
-              onPress={() => setHouseholdType(opt.key)}
-            >
-              <Text style={styles.typeEmoji}>{opt.emoji}</Text>
-              <Text style={[styles.typeLabel, householdType === opt.key && styles.typeLabelActive]}>{opt.label}</Text>
-              <Text style={styles.typeSub}>{opt.sub}</Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+        <ScrollView contentContainerStyle={styles.stepContent} keyboardShouldPersistTaps="handled">
+          <Text style={styles.stepTitle}>{t('onboarding.householdStepTitle')}</Text>
+          <Text style={styles.stepSub}>{t('onboarding.householdStepSub')}</Text>
+          <View style={styles.joinTabRow}>
+            <TouchableOpacity style={[styles.joinTab, !joinMode && styles.joinTabActive]} onPress={() => { setJoinMode(false); setErrorMsg(null); }}>
+              <Text style={[styles.joinTabText, !joinMode && styles.joinTabTextActive]}>{t('onboarding.createNewTab')}</Text>
             </TouchableOpacity>
-          ))}
-        </View>
-        <TouchableOpacity
-          style={[styles.primaryBtn, !householdType && styles.disabled]}
-          onPress={() => householdType && setStep('auth')}
-          disabled={!householdType}
-        >
-          <Text style={styles.primaryBtnText}>{t('onboarding.continueButton')}</Text>
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity style={[styles.joinTab, joinMode && styles.joinTabActive]} onPress={() => { setJoinMode(true); setErrorMsg(null); }}>
+              <Text style={[styles.joinTabText, joinMode && styles.joinTabTextActive]}>{t('onboarding.enterCodeTab')}</Text>
+            </TouchableOpacity>
+          </View>
+          {!joinMode ? (
+            <>
+              <Text style={styles.inputLabel}>{t('onboarding.householdNameLabel')}</Text>
+              <TextInput style={styles.textInput} placeholder={t('onboarding.householdNamePlaceholder')} value={householdName} onChangeText={setHouseholdName} placeholderTextColor={colors.textMuted} />
+            </>
+          ) : (
+            <>
+              <Text style={styles.inputLabel}>{t('onboarding.inviteCodeLabel')}</Text>
+              <TextInput style={styles.textInput} placeholder={t('onboarding.inviteCodePlaceholder')} value={inviteCode} onChangeText={setInviteCode} autoCapitalize="characters" placeholderTextColor={colors.textMuted} />
+              {/* No validity check here on purpose: resolve_invite_code runs as an authenticated
+                  user, and opening it up to anonymous callers is a database change this rebuild
+                  deliberately avoids. A wrong code surfaces after the login, on the name step,
+                  where it can be corrected without losing the flow. */}
+              <Text style={styles.hintText}>{t('onboarding.inviteCodeCheckedLater')}</Text>
+            </>
+          )}
+          <TouchableOpacity
+            style={[styles.primaryBtn, (joinMode ? !inviteCode.trim() : !householdName.trim()) && styles.disabled]}
+            onPress={() => setStep('auth')}
+            disabled={joinMode ? !inviteCode.trim() : !householdName.trim()}
+          >
+            <Text style={styles.primaryBtnText}>{t('onboarding.continueButton')}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 
@@ -502,14 +516,10 @@ export default function OnboardingScreen() {
               />
             ))}
           </View>
-          <View style={styles.joinTabRow}>
-            <TouchableOpacity style={[styles.joinTab, !joinMode && styles.joinTabActive]} onPress={() => { setJoinMode(false); setErrorMsg(null); }}>
-              <Text style={[styles.joinTabText, !joinMode && styles.joinTabTextActive]}>{t('onboarding.createNewTab')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.joinTab, joinMode && styles.joinTabActive]} onPress={() => { setJoinMode(true); setErrorMsg(null); }}>
-              <Text style={[styles.joinTabText, joinMode && styles.joinTabTextActive]}>{t('onboarding.enterCodeTab')}</Text>
-            </TouchableOpacity>
-          </View>
+          {/* The choice itself was made before the account existed (step 'household'). What
+              stays here is the value, still editable — that is the escape hatch for a mistyped
+              invite code, which can only fail this late because it is never checked before the
+              login. Switching mode outright stays possible too, via the link below. */}
           {!joinMode ? (
             <>
               <Text style={styles.inputLabel}>{t('onboarding.householdNameLabel')}</Text>
@@ -521,6 +531,9 @@ export default function OnboardingScreen() {
                 disabled={!displayName || !householdName || loading}
               >
                 <Text style={styles.primaryBtnText}>{loading ? t('onboarding.creatingHousehold') : t('onboarding.createHouseholdButton')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.switchModeBtn} onPress={() => { setJoinMode(true); setErrorMsg(null); }}>
+                <Text style={styles.switchModeText}>{t('onboarding.switchToJoin')}</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -534,6 +547,9 @@ export default function OnboardingScreen() {
                 disabled={!displayName || !inviteCode || loading}
               >
                 <Text style={styles.primaryBtnText}>{loading ? t('onboarding.joining') : t('onboarding.joinHouseholdButton')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.switchModeBtn} onPress={() => { setJoinMode(false); setErrorMsg(null); }}>
+                <Text style={styles.switchModeText}>{t('onboarding.switchToCreate')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -609,6 +625,9 @@ const styles = StyleSheet.create({
   joinTabActive: { backgroundColor: colors.brandPale, borderColor: colors.brand },
   joinTabText: { ...typography.body, color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
   joinTabTextActive: { color: colors.brand },
+  hintText: { ...typography.xs, color: colors.textMuted, marginTop: -spacing.sm, marginBottom: spacing.md },
+  switchModeBtn: { alignItems: 'center', padding: spacing.md },
+  switchModeText: { ...typography.sm, color: colors.brand, fontWeight: '600' },
   inviteSkipBtn: { alignItems: 'center', padding: spacing.md, marginTop: spacing.sm },
   inviteSkipText: { ...typography.sm, color: colors.textMuted, textDecorationLine: 'underline' },
 });
