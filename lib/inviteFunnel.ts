@@ -138,6 +138,20 @@ export async function resolveInviteCode(code: string): Promise<{ household_id: s
   }
 }
 
+// An invite code is exactly eight uppercase hex characters. The column default is
+//   upper(substring(md5(random()::text), 1, 8))
+// on households.invite_code, so the alphabet is 0-9A-F and the length is fixed at 8. Verified
+// against production: all 54 codes match ^[0-9A-F]{8}$, none deviate.
+//
+// Used to catch a real mix-up: the onboarding step offers "create new" first with a household
+// NAME field directly underneath, and somebody handed an invite code pasted it in there. They
+// got an empty household called 9632A0EE instead of joining the household that code belongs to.
+// Input is trimmed and upper-cased first, so a code typed in lower case is caught too.
+export function looksLikeInviteCode(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return /^[0-9A-F]{8}$/.test(text.trim().toUpperCase());
+}
+
 // join_household_by_code's own static business-error text for "you're already a member of this
 // household" (see that RPC's definition — it's the only branch that returns this exact string,
 // no interpolation). Exact-string match, same pattern as isMemberLimitError in lib/premium.ts.
