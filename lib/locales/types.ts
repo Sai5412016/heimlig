@@ -96,6 +96,7 @@ export interface AppTranslations {
     expenseType: string;
     incomeType: string;
     quickSelect: string;
+    scanReceiptButton: string;
     categories: {
       Lebensmittel: string;
       Miete: string;

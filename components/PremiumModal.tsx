@@ -1,6 +1,6 @@
 // components/PremiumModal.tsx — Heimlig Premium upsell + purchase flow.
 // The actual purchase only works on Android (Play Billing) — see lib/billing.ts.
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, Platform, ActivityIndicator } from 'react-native';
 import { Alert } from '../lib/alert';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 import { purchasePremium, restorePurchases } from '../lib/billing';
 import { hasPremiumAccess } from '../lib/premium';
+import { logPaywallEvent, type PaywallSource } from '../lib/paywallEvents';
 
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
 
@@ -18,13 +19,27 @@ const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Pla
 // Household size is deliberately NOT in here any more: it is no longer a paid feature.
 const BENEFIT_KEYS = ['aiActions', 'csvExport'] as const;
 
-export default function PremiumModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+// `source` says which door was used to get here. Every entry point passes its own, so the
+// upgrade screen is measurable no matter where it was opened from — until this build only the
+// AI-quota wall wrote anything, and four of the five doors were invisible.
+export default function PremiumModal({ visible, onClose, source }: { visible: boolean; onClose: () => void; source: PaywallSource }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const s = React.useMemo(() => makeStyles(colors), [colors]);
   const { household, setHousehold } = useStore();
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
+
+  // One wall_shown per opening, not per render — a re-render (theme, household refresh, the
+  // purchase spinner) would otherwise turn one look at the screen into several. Same ref guard
+  // as AiQuotaWallModal.
+  const shownLogged = useRef(false);
+  useEffect(() => {
+    if (!visible) { shownLogged.current = false; return; }
+    if (shownLogged.current) return;
+    shownLogged.current = true;
+    logPaywallEvent('wall_shown', source, household?.id);
+  }, [visible, source, household?.id]);
 
   // The edge function updates households.plan_tier server-side — pull the fresh row instead
   // of guessing the new value locally, so we show exactly what actually got saved.
@@ -36,6 +51,9 @@ export default function PremiumModal({ visible, onClose }: { visible: boolean; o
 
   const handlePurchase = async () => {
     if (!household || purchasing) return;
+    // Logged on the tap, before the Play dialog opens — the intent to buy is what this measures,
+    // and it must not depend on an outcome the user can still cancel.
+    logPaywallEvent('upgrade_clicked', source, household.id);
     setPurchasing(true);
     try {
       const result = await purchasePremium(household.id);

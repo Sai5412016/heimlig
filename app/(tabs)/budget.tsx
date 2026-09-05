@@ -49,8 +49,11 @@ const QUICK_PRESETS: { emoji: string; presetKey: string; cat: string }[] = [
   { emoji: '✈️', presetKey: 'vacation', cat: 'Urlaub' },
 ];
 
-function AddTransactionModal({ visible, onClose, onSave, members, currentMemberId }: {
+function AddTransactionModal({ visible, onClose, onSave, onScanReceipt, members, currentMemberId }: {
   visible: boolean; onClose: () => void; onSave: (tx: Partial<Transaction>) => void;
+  // Closes this sheet and opens the receipt scanner. Passed in rather than owned here so both
+  // entries end up in the same handleReceiptConfirm as before.
+  onScanReceipt: () => void;
   members: any[]; currentMemberId: string;
 }) {
   const { colors } = useTheme();
@@ -118,6 +121,16 @@ function AddTransactionModal({ visible, onClose, onSave, members, currentMemberI
                   <Text style={[styles.typeBtnText, type === 'income' && { color: colors.textInverse }]}>{t('budget.incomeType')}</Text>
                 </TouchableOpacity>
               </View>
+              {/* Equal-weight first option next to typing it in. It used to be a bare 📷 in the
+                  header icon row, unlabelled and far from the moment somebody actually wants to
+                  record a purchase — six AI actions across 53 households suggests nobody found
+                  it. Expenses only: there is no such thing as scanning a receipt for income. */}
+              {type === 'expense' && (
+                <TouchableOpacity style={styles.scanReceiptBtn} onPress={onScanReceipt}>
+                  <Text style={styles.scanReceiptIcon}>📷</Text>
+                  <Text style={styles.scanReceiptText}>{t('budget.scanReceiptButton')}</Text>
+                </TouchableOpacity>
+              )}
               <Text style={styles.fieldLabel}>{t('budget.quickSelect')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
                 {QUICK_PRESETS.map(p => {
@@ -697,11 +710,12 @@ export default function BudgetScreen() {
       <AddTransactionModal
         visible={showModal} onClose={() => setShowModal(false)}
         onSave={handleAddTransaction} members={members}
+        onScanReceipt={() => { setShowModal(false); setShowReceiptScan(true); }}
         currentMemberId={currentMember?.id ?? ''}
       />
       <BudgetSplitModal visible={showSplit} onClose={() => setShowSplit(false)} />
       <ReceiptScanModal visible={showReceiptScan} onClose={() => setShowReceiptScan(false)} onConfirm={handleReceiptConfirm} />
-      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />
+      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} source="csv_export" />
     </SafeAreaView>
   );
 }
@@ -799,6 +813,16 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   typeBtnExpense: { backgroundColor: colors.error, borderColor: colors.error },
   typeBtnIncome: { backgroundColor: colors.success, borderColor: colors.success },
   typeBtnText: { ...typography.body, color: colors.textSecondary, fontWeight: '700' },
+  scanReceiptBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+    backgroundColor: colors.brandPale, borderWidth: 1, borderColor: colors.brand,
+    borderRadius: radius.md, paddingVertical: spacing.md, marginBottom: spacing.md,
+  },
+  scanReceiptIcon: { fontSize: 18 },
+  // colors.text, not colors.brand: in the dark palette brandPale (#1B3D28) and brand
+  // (#2D6A4F) are both dark green, so brand-on-brandPale is dark-on-dark. Same fix as in
+  // components/AiQuotaWallModal.tsx.
+  scanReceiptText: { ...typography.body, color: colors.text, fontWeight: '700' },
   presetChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.full, backgroundColor: colors.brandPale, borderWidth: 1.5, borderColor: colors.brand, marginRight: spacing.sm },
   presetChipText: { ...typography.sm, color: colors.brand, fontWeight: '600' },
   amountRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },

@@ -181,7 +181,7 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
         // unreliable on Android.
         onUpgrade={() => { setQuotaWall(null); setShowPremium(true); }}
       />
-      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />
+      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} source="quota_wall_button" />
     </Modal>
   );
 }
