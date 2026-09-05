@@ -16,6 +16,7 @@ import WhatsNewModal from '../components/WhatsNewModal';
 import ErrorFallback from '../components/ErrorFallback';
 import { initSentry, Sentry } from '../lib/sentry';
 import { getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember } from '../lib/inviteFunnel';
+import { clearPendingHouseholdChoice } from '../lib/householdChoice';
 import '../lib/i18n';
 import type { SupportedLanguage } from '../lib/i18n';
 
@@ -97,6 +98,10 @@ function RootLayout() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         resetSession();
+        // Also drop a household choice that was made before signing up but never carried out —
+        // otherwise it would pre-fill the onboarding screen for whoever logs in next on this
+        // device, with a household name or invite code they never entered.
+        clearPendingHouseholdChoice();
         setReady(true);
         router.replace('/onboarding');
       }
@@ -141,6 +146,12 @@ function RootLayout() {
 
       if (!memberships || memberships.length === 0) {
         setReady(true);
+        // Signed in, but in no household yet — the second place where a pre-signup choice gets
+        // carried out. A waiting deep-link code wins (see lib/householdChoice.ts); otherwise
+        // app/onboarding.tsx reads @heimlig/pendingHouseholdChoice on mount, pre-fills it and
+        // jumps to the step that runs the RPC. The call is not repeated here on purpose: it
+        // needs a display name, which only that step collects, and a second execution path
+        // would risk creating the household twice.
         if (pendingJoinCode) router.replace(`/join/${pendingJoinCode}`);
         else router.replace('/onboarding');
         return;

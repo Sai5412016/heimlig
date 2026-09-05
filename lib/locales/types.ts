@@ -42,6 +42,7 @@ export interface AppTranslations {
     listsButton: string;
     soloBannerText: string;
     soloBannerCta: string;
+    soloBannerDismiss: string;
     categories: {
       Lebensmittel: string;
       'Obst & Gemüse': string;
@@ -672,6 +673,20 @@ export interface AppTranslations {
     namePlaceholder: string;
     colorLabel: string;
     createNewTab: string;
+    slideSkip: string;
+    slideNext: string;
+    slideStart: string;
+    slide1Title: string;
+    slide1Body: string;
+    slide2Title: string;
+    slide2Body: string;
+    slide3Title: string;
+    slide3Body: string;
+    householdStepTitle: string;
+    householdStepSub: string;
+    inviteCodeCheckedLater: string;
+    switchToJoin: string;
+    switchToCreate: string;
     enterCodeTab: string;
     householdNameLabel: string;
     householdNamePlaceholder: string;
@@ -696,6 +711,10 @@ export interface AppTranslations {
     emptyTitleAll: string;
     emptyBodyDay: string;
     emptyBodyAll: string;
+    // Shown instead of emptyTitleAll/emptyBodyAll while the household has never had a task —
+    // congratulating somebody on clearing a list they never wrote is the wrong first impression.
+    emptyTitleFirst: string;
+    emptyBodyFirst: string;
     sectionWithDate: string;
     sectionNoDate: string;
     completedHeader: string;
@@ -904,6 +923,19 @@ export interface AppTranslations {
     containsAdditives_other: string;
     organicCertified: string;
     unknownProduct: string;
+  };
+  suggestions: {
+    heading: string;
+    add: string;
+    dismiss: string;
+    shopping: {
+      milk: string; bread: string; toiletPaper: string; washingUpLiquid: string;
+      coffee: string; binBags: string; toothpaste: string; butter: string;
+    };
+    tasks: {
+      cleanBathroom: string; cleanKitchen: string; takeOutBins: string;
+      emptyDishwasher: string; vacuum: string; doLaundry: string;
+    };
   };
   accountDelete: {
     title: string;

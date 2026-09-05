@@ -24,6 +24,9 @@ import { formatCurrency } from '../../lib/currency';
 import { searchBrands, bumpBrand, supermarketKey, supermarketsForCountry, ALL_SUPERMARKETS, GENERIC_STORE_TYPES, type BrandEntry, type SupermarketOption } from '../../lib/brands';
 import ThemeMotif from '../../components/ThemeMotif';
 import { logInviteFunnelStep } from '../../lib/inviteFunnel';
+import { isSoloBannerDismissed, dismissSoloBanner } from '../../lib/soloBanner';
+import SuggestionCarousel from '../../components/SuggestionCarousel';
+import { SHOPPING_SUGGESTIONS, loadDismissedSuggestions, dismissSuggestion } from '../../lib/suggestions';
 
 // ─── ADD ITEM MODAL ───────────────────────────────────────────
 const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: {
@@ -794,6 +797,55 @@ export default function ShoppingScreen() {
     Alert.alert(t('shopping.recipeAddedTitle'), `"${recipeName}" – ${parts.join(' & ') || t('shopping.recipeAddedSaved')}.`);
   };
 
+  // Dismissal is read per household, so switching households re-evaluates it. Starts hidden
+  // (null) rather than visible, so the banner never flashes up for a household where it was
+  // already dismissed while the stored value is still being read.
+  const [soloBannerDismissed, setSoloBannerDismissed] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!household?.id) { setSoloBannerDismissed(null); return; }
+    let cancelled = false;
+    isSoloBannerDismissed(household.id).then(v => { if (!cancelled) setSoloBannerDismissed(v); });
+    return () => { cancelled = true; };
+  }, [household?.id]);
+
+  // ─── Starter suggestions for an empty list ───────────────────────────────
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
+  const [suggestionBusy, setSuggestionBusy] = useState<string | null>(null);
+  useEffect(() => {
+    if (!household?.id) { setDismissedSuggestions([]); return; }
+    let cancelled = false;
+    loadDismissedSuggestions('shopping', household.id).then(d => { if (!cancelled) setDismissedSuggestions(d); });
+    return () => { cancelled = true; };
+  }, [household?.id]);
+
+  const suggestionCards = SHOPPING_SUGGESTIONS
+    .filter(s => !dismissedSuggestions.includes(s.key))
+    .map(s => ({ key: s.key, emoji: s.emoji, label: t(`suggestions.shopping.${s.key}`) }));
+
+  const handleSuggestionAdd = async (key: string) => {
+    if (!activeListId || suggestionBusy) return;
+    const label = t(`suggestions.shopping.${key}`);
+    setSuggestionBusy(key);
+    try {
+      // Same route as typing the name by hand: categoryForItem() does the matching, so a
+      // suggested item lands in the same category a manually added one would.
+      await addItem(activeListId, label, undefined, categoryForItem(label));
+    } finally {
+      setSuggestionBusy(null);
+    }
+  };
+
+  const handleSuggestionDismiss = async (key: string) => {
+    setDismissedSuggestions(prev => prev.includes(key) ? prev : [...prev, key]);
+    if (household?.id) await dismissSuggestion('shopping', household.id, key);
+  };
+
+  const handleSoloBannerDismiss = async () => {
+    if (!household) return;
+    setSoloBannerDismissed(true);
+    await dismissSoloBanner(household.id);
+  };
+
   const handleSoloBannerPress = async () => {
     if (!household) return;
     logInviteFunnelStep('invite_opened', household.id);
@@ -847,15 +899,27 @@ export default function ShoppingScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Solo-household nudge — persistent (no dismiss), only while it's just this one member */}
-      {/* household_type is undefined until sql/household_type.sql is applied (see the report) —
-          the condition is still correct as-is, it just can't distinguish a deliberate solo
-          household from "unknown" until then, so it degrades to the old always-show behavior. */}
-      {members.length === 1 && household?.household_type !== 'solo' && (
-        <TouchableOpacity style={styles.soloBanner} onPress={handleSoloBannerPress} activeOpacity={0.85}>
-          <Text style={styles.soloBannerText}>{t('shopping.soloBannerText')}</Text>
-          <Text style={styles.soloBannerCta}>{t('shopping.soloBannerCta')}</Text>
-        </TouchableOpacity>
+      {/* Solo-household nudge, only while it's just this one member.
+          household_type === 'solo' still hides it for households that answered that question
+          back when onboarding asked it — nothing sets it any more (see lib/soloBanner.ts), so
+          for everyone else the dismiss button is the way out. Without it this banner was
+          permanent for the ~82% of households with a single member. */}
+      {members.length === 1 && household?.household_type !== 'solo' && soloBannerDismissed === false && (
+        <View style={styles.soloBanner}>
+          <TouchableOpacity style={styles.soloBannerMain} onPress={handleSoloBannerPress} activeOpacity={0.85}>
+            <Text style={styles.soloBannerText}>{t('shopping.soloBannerText')}</Text>
+            <Text style={styles.soloBannerCta}>{t('shopping.soloBannerCta')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleSoloBannerDismiss}
+            style={styles.soloBannerClose}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={t('shopping.soloBannerDismiss')}
+          >
+            <Text style={styles.soloBannerCloseIcon}>✕</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Tile Grid */}
@@ -917,6 +981,15 @@ export default function ShoppingScreen() {
             )}
             <Text style={styles.emptyTitle}>{t('shopping.emptyTitle')}</Text>
             <Text style={styles.emptyBody}>{t('shopping.emptyBody')}</Text>
+            <SuggestionCarousel
+              cards={suggestionCards}
+              heading={t('suggestions.heading')}
+              addLabel={t('suggestions.add')}
+              dismissLabel={t('suggestions.dismiss')}
+              onAdd={handleSuggestionAdd}
+              onDismiss={handleSuggestionDismiss}
+              busyKey={suggestionBusy}
+            />
           </View>
         )}
 
@@ -986,8 +1059,11 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
     backgroundColor: colors.brandPale, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
+  soloBannerMain: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   soloBannerText: { ...typography.sm, color: colors.text, flex: 1, marginRight: spacing.sm },
   soloBannerCta: { ...typography.sm, color: colors.brand, fontWeight: '700' },
+  soloBannerClose: { paddingLeft: spacing.md, paddingVertical: 2 },
+  soloBannerCloseIcon: { ...typography.sm, color: colors.textMuted, fontWeight: '700' },
 
   progressContainer: {
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md,

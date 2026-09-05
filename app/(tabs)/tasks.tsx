@@ -36,6 +36,8 @@ import { parseICS, type IcsEvent } from '../../lib/ics';
 import { uploadTaskAttachment, deleteTaskAttachment, getTaskAttachmentUrl, type PickedFile } from '../../lib/taskAttachments';
 import { mapTimeTreeEvents, type RawTimeTreeEvent } from '../../lib/timetreeEvents';
 import { holidayName } from '../../lib/holidays';
+import SuggestionCarousel from '../../components/SuggestionCarousel';
+import { TASK_SUGGESTIONS, loadDismissedSuggestions, dismissSuggestion } from '../../lib/suggestions';
 import ThemeMotif from '../../components/ThemeMotif';
 import TimeTreeWebViewModal from '../../components/TimeTreeWebViewModal';
 import PremiumModal from '../../components/PremiumModal';
@@ -1254,6 +1256,48 @@ export default function TasksScreen() {
     }
   };
 
+  // ─── Starter suggestions for a household that has never had a task ───────
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
+  const [suggestionBusy, setSuggestionBusy] = useState<string | null>(null);
+  useEffect(() => {
+    if (!household?.id) { setDismissedSuggestions([]); return; }
+    let cancelled = false;
+    loadDismissedSuggestions('tasks', household.id).then(d => { if (!cancelled) setDismissedSuggestions(d); });
+    return () => { cancelled = true; };
+  }, [household?.id]);
+
+  const suggestionCards = TASK_SUGGESTIONS
+    .filter(s => !dismissedSuggestions.includes(s.key))
+    .map(s => ({ key: s.key, emoji: s.emoji, label: t(`suggestions.tasks.${s.key}`) }));
+
+  // `tasks` holds every task of the household, completed ones included (see loadTasks), so this
+  // is "never had one" rather than "none open right now" — the difference between a first-time
+  // household and one that has simply cleared its list today.
+  const neverHadATask = tasks.length === 0;
+
+  const handleSuggestionAdd = async (key: string) => {
+    const suggestion = TASK_SUGGESTIONS.find(s => s.key === key);
+    if (!suggestion || suggestionBusy) return;
+    setSuggestionBusy(key);
+    try {
+      // Title and category only — no due date, no recurrence, no reminder. The card shows one
+      // line, so it must not create more than that line.
+      await handleAddTask({
+        title: t(`suggestions.tasks.${key}`),
+        category: suggestion.category,
+        priority: 'normal',
+        points: 10,
+      });
+    } finally {
+      setSuggestionBusy(null);
+    }
+  };
+
+  const handleSuggestionDismiss = async (key: string) => {
+    setDismissedSuggestions(prev => prev.includes(key) ? prev : [...prev, key]);
+    if (household?.id) await dismissSuggestion('tasks', household.id, key);
+  };
+
   const handleComplete = async (id: string) => {
     await cancelTaskNotification(id);
     const result = await completeTask(id);
@@ -1703,8 +1747,26 @@ export default function TasksScreen() {
               ) : (
                 <Text style={styles.emptyEmoji}>{selectedDate ? '✨' : '🎉'}</Text>
               )}
-              <Text style={styles.emptyTitle}>{selectedDate ? t('tasksTab.emptyTitleDay') : t('tasksTab.emptyTitleAll')}</Text>
-              <Text style={styles.emptyBody}>{selectedDate ? t('tasksTab.emptyBodyDay') : t('tasksTab.emptyBodyAll')}</Text>
+              <Text style={styles.emptyTitle}>
+                {selectedDate ? t('tasksTab.emptyTitleDay') : neverHadATask ? t('tasksTab.emptyTitleFirst') : t('tasksTab.emptyTitleAll')}
+              </Text>
+              <Text style={styles.emptyBody}>
+                {selectedDate ? t('tasksTab.emptyBodyDay') : neverHadATask ? t('tasksTab.emptyBodyFirst') : t('tasksTab.emptyBodyAll')}
+              </Text>
+              {/* Only for a household that has never had a task, and only in the undated view:
+                  on a picked day of a full calendar these cards would be an invitation to file
+                  chores under an arbitrary date. */}
+              {!selectedDate && neverHadATask && (
+                <SuggestionCarousel
+                  cards={suggestionCards}
+                  heading={t('suggestions.heading')}
+                  addLabel={t('suggestions.add')}
+                  dismissLabel={t('suggestions.dismiss')}
+                  onAdd={handleSuggestionAdd}
+                  onDismiss={handleSuggestionDismiss}
+                  busyKey={suggestionBusy}
+                />
+              )}
             </View>
           )}
           {selectedDate || openTasksNoDate.length === 0 || openTasksWithDate.length === 0 ? (
