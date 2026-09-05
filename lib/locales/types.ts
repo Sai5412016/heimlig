@@ -690,6 +690,9 @@ export interface AppTranslations {
     householdStepTitle: string;
     householdStepSub: string;
     inviteCodeCheckedLater: string;
+    looksLikeCodeHint: string;
+    looksLikeCodeSwitch: string;
+    createAnyway: string;
     switchToJoin: string;
     switchToCreate: string;
     enterCodeTab: string;

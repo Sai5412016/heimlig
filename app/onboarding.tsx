@@ -17,7 +17,7 @@ import { CURRENCIES } from '../lib/currency';
 import { TIMEZONES } from '../lib/timezones';
 import { SUPPORTED_COUNTRIES } from '../lib/holidays';
 import { isMemberLimitError, HOUSEHOLD_MEMBER_CAP } from '../lib/premium';
-import { logInviteFunnelStep, logJoinOpenedOnce, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember, isAlreadyMemberError, resolveInviteCode } from '../lib/inviteFunnel';
+import { logInviteFunnelStep, logJoinOpenedOnce, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember, isAlreadyMemberError, resolveInviteCode, looksLikeInviteCode } from '../lib/inviteFunnel';
 import { savePendingHouseholdChoice, getPendingHouseholdChoice, clearPendingHouseholdChoice } from '../lib/householdChoice';
 
 // 'household' (Haushaltswahl) sits BEFORE 'auth' on purpose: the old order asked for an
@@ -469,6 +469,8 @@ export default function OnboardingScreen() {
     );
   }
 
+  const nameLooksLikeCode = !joinMode && looksLikeInviteCode(householdName);
+
   // ─── HOUSEHOLD: create or join, BEFORE any account exists ─────────────────
   // Collects a name or a code and nothing else — no network call, no session needed. The RPCs
   // that actually create or join both require auth.uid(), so the work happens after the login;
@@ -491,6 +493,27 @@ export default function OnboardingScreen() {
             <>
               <Text style={styles.inputLabel}>{t('onboarding.householdNameLabel')}</Text>
               <TextInput style={styles.textInput} placeholder={t('onboarding.householdNamePlaceholder')} value={householdName} onChangeText={setHouseholdName} placeholderTextColor={colors.textMuted} />
+              {/* "Create new" is preselected and this field sits right under it, so a code handed
+                  to somebody lands here rather than in the join field one tab over. That happened:
+                  an empty household named 9632A0EE exists next to the household whose invite code
+                  that is. Eight hex characters is not a household name anyone means, so we ask —
+                  we do not block. Continue still works, it just stops being silent about it. */}
+              {nameLooksLikeCode && (
+                <View style={styles.codeHintBox}>
+                  <Text style={styles.codeHintText}>{t('onboarding.looksLikeCodeHint')}</Text>
+                  <TouchableOpacity
+                    style={styles.codeHintBtn}
+                    onPress={() => {
+                      setInviteCode(householdName.trim().toUpperCase());
+                      setHouseholdName('');
+                      setJoinMode(true);
+                      setErrorMsg(null);
+                    }}
+                  >
+                    <Text style={styles.codeHintBtnText}>{t('onboarding.looksLikeCodeSwitch')}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </>
           ) : (
             <>
@@ -513,7 +536,9 @@ export default function OnboardingScreen() {
             }}
             disabled={joinMode ? !inviteCode.trim() : !householdName.trim()}
           >
-            <Text style={styles.primaryBtnText}>{t('onboarding.continueButton')}</Text>
+            <Text style={styles.primaryBtnText}>
+              {nameLooksLikeCode ? t('onboarding.createAnyway') : t('onboarding.continueButton')}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -711,6 +736,10 @@ const styles = StyleSheet.create({
   slideDots: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm },
   slideDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
   slideDotActive: { backgroundColor: colors.brand, width: 20 },
+  codeHintBox: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.accent, borderRadius: radius.md, padding: spacing.md, marginTop: -spacing.sm, marginBottom: spacing.md, gap: spacing.sm },
+  codeHintText: { ...typography.sm, color: colors.text },
+  codeHintBtn: { alignSelf: 'flex-start', backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+  codeHintBtnText: { ...typography.sm, color: colors.textInverse, fontWeight: '700' },
   hintText: { ...typography.xs, color: colors.textMuted, marginTop: -spacing.sm, marginBottom: spacing.md },
   switchModeBtn: { alignItems: 'center', padding: spacing.md },
   switchModeText: { ...typography.sm, color: colors.brand, fontWeight: '600' },
