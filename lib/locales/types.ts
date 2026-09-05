@@ -673,6 +673,15 @@ export interface AppTranslations {
     namePlaceholder: string;
     colorLabel: string;
     createNewTab: string;
+    slideSkip: string;
+    slideNext: string;
+    slideStart: string;
+    slide1Title: string;
+    slide1Body: string;
+    slide2Title: string;
+    slide2Body: string;
+    slide3Title: string;
+    slide3Body: string;
     householdStepTitle: string;
     householdStepSub: string;
     inviteCodeCheckedLater: string;

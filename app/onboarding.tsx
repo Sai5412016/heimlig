@@ -22,13 +22,14 @@ import { savePendingHouseholdChoice, getPendingHouseholdChoice, clearPendingHous
 
 // 'household' (Haushaltswahl) sits BEFORE 'auth' on purpose: the old order asked for an
 // account first and only then what the account was for. See the report for build 91.
-type Step = 'welcome' | 'household' | 'auth' | 'verify' | 'name' | 'invite';
+type Step = 'welcome' | 'slides' | 'household' | 'auth' | 'verify' | 'name' | 'invite';
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { household, setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems, switchHousehold, setUserId, language } = useStore();
   const [step, setStep] = useState<Step>('welcome');
+  const [slideIndex, setSlideIndex] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -400,7 +401,7 @@ export default function OnboardingScreen() {
         <Text style={styles.tagline}>{t('onboarding.tagline')}</Text>
         <Text style={styles.taglineSub}>{t('onboarding.taglineSub')}</Text>
         <View style={styles.btnGroup}>
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => { setIsLogin(false); setStep(pendingInviteCode ? 'auth' : 'household'); }}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => { setIsLogin(false); setStep(pendingInviteCode ? 'auth' : 'slides'); }}>
             <Text style={styles.primaryBtnText}>{t('onboarding.getStarted')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => { setIsLogin(true); setStep('auth'); }}>
@@ -426,6 +427,47 @@ export default function OnboardingScreen() {
       </SafeAreaView>
     </LinearGradient>
   );
+
+  // ─── SLIDES ───────────────────────────────────────────────────────────────
+  // Three, because there are three things the app does that nobody can guess from the icon.
+  // Skippable from the first one — somebody who already knows what they came for should not
+  // have to page through an explanation to reach the household screen.
+  const SLIDES = [
+    { emoji: '🛒', title: t('onboarding.slide1Title'), body: t('onboarding.slide1Body') },
+    { emoji: '🧹', title: t('onboarding.slide2Title'), body: t('onboarding.slide2Body') },
+    { emoji: '💶', title: t('onboarding.slide3Title'), body: t('onboarding.slide3Body') },
+  ];
+  if (step === 'slides') {
+    const slide = SLIDES[slideIndex];
+    const isLast = slideIndex === SLIDES.length - 1;
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.slideSkipRow}>
+          <TouchableOpacity onPress={() => setStep('household')}>
+            <Text style={styles.slideSkipText}>{t('onboarding.slideSkip')}</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.slideBody}>
+          <Text style={styles.slideEmoji}>{slide.emoji}</Text>
+          <Text style={styles.slideTitle}>{slide.title}</Text>
+          <Text style={styles.slideText}>{slide.body}</Text>
+        </View>
+        <View style={styles.slideFooter}>
+          <View style={styles.slideDots}>
+            {SLIDES.map((_, i) => (
+              <View key={i} style={[styles.slideDot, i === slideIndex && styles.slideDotActive]} />
+            ))}
+          </View>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() => isLast ? setStep('household') : setSlideIndex(i => i + 1)}
+          >
+            <Text style={styles.primaryBtnText}>{isLast ? t('onboarding.slideStart') : t('onboarding.slideNext')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // ─── HOUSEHOLD: create or join, BEFORE any account exists ─────────────────
   // Collects a name or a code and nothing else — no network call, no session needed. The RPCs
@@ -659,6 +701,16 @@ const styles = StyleSheet.create({
   joinTabActive: { backgroundColor: colors.brandPale, borderColor: colors.brand },
   joinTabText: { ...typography.body, color: colors.textSecondary, fontWeight: '600', fontSize: 14 },
   joinTabTextActive: { color: colors.brand },
+  slideSkipRow: { alignItems: 'flex-end', paddingHorizontal: spacing.lg, paddingTop: spacing.md },
+  slideSkipText: { ...typography.sm, color: colors.textMuted, textDecorationLine: 'underline' },
+  slideBody: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
+  slideEmoji: { fontSize: 72, marginBottom: spacing.xl },
+  slideTitle: { ...typography.h1, color: colors.text, textAlign: 'center', marginBottom: spacing.md },
+  slideText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  slideFooter: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.lg },
+  slideDots: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm },
+  slideDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
+  slideDotActive: { backgroundColor: colors.brand, width: 20 },
   hintText: { ...typography.xs, color: colors.textMuted, marginTop: -spacing.sm, marginBottom: spacing.md },
   switchModeBtn: { alignItems: 'center', padding: spacing.md },
   switchModeText: { ...typography.sm, color: colors.brand, fontWeight: '600' },
