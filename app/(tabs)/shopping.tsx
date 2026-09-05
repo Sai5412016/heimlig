@@ -25,6 +25,8 @@ import { searchBrands, bumpBrand, supermarketKey, supermarketsForCountry, ALL_SU
 import ThemeMotif from '../../components/ThemeMotif';
 import { logInviteFunnelStep } from '../../lib/inviteFunnel';
 import { isSoloBannerDismissed, dismissSoloBanner } from '../../lib/soloBanner';
+import SuggestionCarousel from '../../components/SuggestionCarousel';
+import { SHOPPING_SUGGESTIONS, loadDismissedSuggestions, dismissSuggestion } from '../../lib/suggestions';
 
 // ─── ADD ITEM MODAL ───────────────────────────────────────────
 const AddItemModal = ({ visible, onClose, onAdd, onAddElsewhere, supermarket }: {
@@ -806,6 +808,38 @@ export default function ShoppingScreen() {
     return () => { cancelled = true; };
   }, [household?.id]);
 
+  // ─── Starter suggestions for an empty list ───────────────────────────────
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
+  const [suggestionBusy, setSuggestionBusy] = useState<string | null>(null);
+  useEffect(() => {
+    if (!household?.id) { setDismissedSuggestions([]); return; }
+    let cancelled = false;
+    loadDismissedSuggestions('shopping', household.id).then(d => { if (!cancelled) setDismissedSuggestions(d); });
+    return () => { cancelled = true; };
+  }, [household?.id]);
+
+  const suggestionCards = SHOPPING_SUGGESTIONS
+    .filter(s => !dismissedSuggestions.includes(s.key))
+    .map(s => ({ key: s.key, emoji: s.emoji, label: t(`suggestions.shopping.${s.key}`) }));
+
+  const handleSuggestionAdd = async (key: string) => {
+    if (!activeListId || suggestionBusy) return;
+    const label = t(`suggestions.shopping.${key}`);
+    setSuggestionBusy(key);
+    try {
+      // Same route as typing the name by hand: categoryForItem() does the matching, so a
+      // suggested item lands in the same category a manually added one would.
+      await addItem(activeListId, label, undefined, categoryForItem(label));
+    } finally {
+      setSuggestionBusy(null);
+    }
+  };
+
+  const handleSuggestionDismiss = async (key: string) => {
+    setDismissedSuggestions(prev => prev.includes(key) ? prev : [...prev, key]);
+    if (household?.id) await dismissSuggestion('shopping', household.id, key);
+  };
+
   const handleSoloBannerDismiss = async () => {
     if (!household) return;
     setSoloBannerDismissed(true);
@@ -947,6 +981,15 @@ export default function ShoppingScreen() {
             )}
             <Text style={styles.emptyTitle}>{t('shopping.emptyTitle')}</Text>
             <Text style={styles.emptyBody}>{t('shopping.emptyBody')}</Text>
+            <SuggestionCarousel
+              cards={suggestionCards}
+              heading={t('suggestions.heading')}
+              addLabel={t('suggestions.add')}
+              dismissLabel={t('suggestions.dismiss')}
+              onAdd={handleSuggestionAdd}
+              onDismiss={handleSuggestionDismiss}
+              busyKey={suggestionBusy}
+            />
           </View>
         )}
 

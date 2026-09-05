@@ -693,6 +693,8 @@ export const de: AppTranslations = {
     emptyTitleAll: 'Alles erledigt!',
     emptyBodyDay: 'Tippe auf + Aufgabe.',
     emptyBodyAll: 'Genieß den freien Tag. 🌿',
+    emptyTitleFirst: 'Was steht bei euch an?',
+    emptyBodyFirst: 'Trag eure erste Aufgabe ein — oder nimm einen Vorschlag.',
     sectionWithDate: 'Termine ({{count}})',
     sectionNoDate: 'Ohne Datum ({{count}})',
     completedHeader: '✓ Erledigt ({{count}})',
@@ -901,6 +903,19 @@ export const de: AppTranslations = {
     containsAdditives_other: 'Enthält {{count}} bedenkliche Zusatzstoffe',
     organicCertified: 'Bio-zertifiziert',
     unknownProduct: 'Unbekanntes Produkt',
+  },
+  suggestions: {
+    heading: 'Schnell starten',
+    add: 'Hinzufügen',
+    dismiss: 'Vorschlag ausblenden',
+    shopping: {
+      milk: 'Milch', bread: 'Brot', toiletPaper: 'Klopapier', washingUpLiquid: 'Spülmittel',
+      coffee: 'Kaffee', binBags: 'Müllbeutel', toothpaste: 'Zahnpasta', butter: 'Butter',
+    },
+    tasks: {
+      cleanBathroom: 'Bad putzen', cleanKitchen: 'Küche putzen', takeOutBins: 'Müll rausbringen',
+      emptyDishwasher: 'Spülmaschine ausräumen', vacuum: 'Staubsaugen', doLaundry: 'Wäsche waschen',
+    },
   },
   accountDelete: {
     title: 'Konto löschen',

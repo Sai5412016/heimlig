@@ -696,6 +696,8 @@ export const en: AppTranslations = {
     emptyTitleAll: 'All done!',
     emptyBodyDay: 'Tap + Task.',
     emptyBodyAll: 'Enjoy the day off. 🌿',
+    emptyTitleFirst: "What needs doing?",
+    emptyBodyFirst: 'Add your first task — or pick one of the suggestions.',
     sectionWithDate: 'Scheduled ({{count}})',
     sectionNoDate: 'No date ({{count}})',
     completedHeader: '✓ Done ({{count}})',
@@ -904,6 +906,19 @@ export const en: AppTranslations = {
     containsAdditives_other: 'Contains {{count}} concerning additives',
     organicCertified: 'Organic certified',
     unknownProduct: 'Unknown product',
+  },
+  suggestions: {
+    heading: 'Quick start',
+    add: 'Add',
+    dismiss: 'Dismiss suggestion',
+    shopping: {
+      milk: 'Milk', bread: 'Bread', toiletPaper: 'Toilet paper', washingUpLiquid: 'Washing-up liquid',
+      coffee: 'Coffee', binBags: 'Bin bags', toothpaste: 'Toothpaste', butter: 'Butter',
+    },
+    tasks: {
+      cleanBathroom: 'Clean the bathroom', cleanKitchen: 'Clean the kitchen', takeOutBins: 'Take out the bins',
+      emptyDishwasher: 'Empty the dishwasher', vacuum: 'Vacuum', doLaundry: 'Do the laundry',
+    },
   },
   accountDelete: {
     title: 'Delete account',

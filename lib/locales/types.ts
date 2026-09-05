@@ -697,6 +697,10 @@ export interface AppTranslations {
     emptyTitleAll: string;
     emptyBodyDay: string;
     emptyBodyAll: string;
+    // Shown instead of emptyTitleAll/emptyBodyAll while the household has never had a task —
+    // congratulating somebody on clearing a list they never wrote is the wrong first impression.
+    emptyTitleFirst: string;
+    emptyBodyFirst: string;
     sectionWithDate: string;
     sectionNoDate: string;
     completedHeader: string;
@@ -905,6 +909,19 @@ export interface AppTranslations {
     containsAdditives_other: string;
     organicCertified: string;
     unknownProduct: string;
+  };
+  suggestions: {
+    heading: string;
+    add: string;
+    dismiss: string;
+    shopping: {
+      milk: string; bread: string; toiletPaper: string; washingUpLiquid: string;
+      coffee: string; binBags: string; toothpaste: string; butter: string;
+    };
+    tasks: {
+      cleanBathroom: string; cleanKitchen: string; takeOutBins: string;
+      emptyDishwasher: string; vacuum: string; doLaundry: string;
+    };
   };
   accountDelete: {
     title: string;
