@@ -418,9 +418,9 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
         </View>
         {Platform.OS !== 'web' && (
-          <TouchableOpacity onPress={() => Linking.openURL('https://heimlig.vercel.app')} style={styles.webHintRow}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://heimlig.app')} style={styles.webHintRow}>
             <Text style={styles.webHintText}>
-              {t('onboarding.webHintPrefix')} <Text style={styles.webHintLink}>heimlig.vercel.app</Text> {t('onboarding.webHintSuffix')}
+              {t('onboarding.webHintPrefix')} <Text style={styles.webHintLink}>heimlig.app</Text> {t('onboarding.webHintSuffix')}
             </Text>
           </TouchableOpacity>
         )}

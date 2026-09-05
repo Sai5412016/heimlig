@@ -391,7 +391,7 @@ export const en: AppTranslations = {
     noNewTasks: 'No new tasks to export.',
     exportFailedBody: 'Export failed. Try reconnecting (access may have expired).',
     title: '📅 Google Calendar',
-    webOnlyBody: "Google Calendar syncing currently only works in Heimlig's web version (heimlig.vercel.app) — Google doesn't currently allow sign-in on Android in the app. A native solution is in progress.",
+    webOnlyBody: "Google Calendar syncing currently only works in Heimlig's web version (heimlig.app) — Google doesn't currently allow sign-in on Android in the app. A native solution is in progress.",
     connectBody: 'Connect your Google account to sync events between Heimlig and Google Calendar.',
     connectButton: 'Connect with Google',
     connectedLabel: '✓ Connected',

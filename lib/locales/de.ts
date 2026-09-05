@@ -390,7 +390,7 @@ export const de: AppTranslations = {
     noNewTasks: 'Keine neuen Aufgaben zum Exportieren.',
     exportFailedBody: 'Export fehlgeschlagen. Verbinde dich ggf. neu (Zugriff abgelaufen).',
     title: '📅 Google Kalender',
-    webOnlyBody: 'Die Google-Kalender-Verbindung funktioniert aktuell nur in der Web-Version von Heimlig (heimlig.vercel.app) — Google lässt die Anmeldung auf Android in der App momentan nicht zu. Eine native Lösung ist in Arbeit.',
+    webOnlyBody: 'Die Google-Kalender-Verbindung funktioniert aktuell nur in der Web-Version von Heimlig (heimlig.app) — Google lässt die Anmeldung auf Android in der App momentan nicht zu. Eine native Lösung ist in Arbeit.',
     connectBody: 'Verbinde dein Google-Konto, um Termine zwischen Heimlig und Google Kalender abzugleichen.',
     connectButton: 'Mit Google verbinden',
     connectedLabel: '✓ Verbunden',
