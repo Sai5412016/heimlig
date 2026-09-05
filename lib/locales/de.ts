@@ -95,6 +95,7 @@ export const de: AppTranslations = {
     expenseType: '- Ausgabe',
     incomeType: '+ Einnahme',
     quickSelect: 'SCHNELLAUSWAHL',
+    scanReceiptButton: 'Kassenbon scannen',
     categories: {
       Lebensmittel: 'Lebensmittel',
       Miete: 'Miete',

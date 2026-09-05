@@ -96,6 +96,7 @@ export const en: AppTranslations = {
     expenseType: '- Expense',
     incomeType: '+ Income',
     quickSelect: 'QUICK SELECT',
+    scanReceiptButton: 'Scan receipt',
     categories: {
       Lebensmittel: 'Groceries',
       Miete: 'Rent',

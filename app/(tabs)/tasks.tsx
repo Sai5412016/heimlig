@@ -1830,7 +1830,7 @@ export default function TasksScreen() {
         onClose={() => setQuotaWall(null)}
         onUpgrade={() => { setQuotaWall(null); setShowPremium(true); }}
       />
-      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />
+      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} source="quota_wall_button" />
 
       <AddTaskModal
         visible={showModal || !!editingTask}

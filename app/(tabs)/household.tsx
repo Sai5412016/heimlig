@@ -955,7 +955,7 @@ export default function HouseholdScreen() {
         householdId={household?.id}
       />
       <ShareModal visible={showShare} onClose={() => setShowShare(false)} />
-      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} />
+      <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} source="plan_row" />
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
       <JoinModal
         visible={showJoin}
