@@ -1,7 +1,7 @@
 # Heimlig
 
 Haushalts-App für Paare, WGs & Familien — Einkaufslisten, Aufgaben/Kalender, Budget, Rezepte, Gamification.
-Live im Google Play Store (`com.fledderman.heimlig`) und als Web-PWA unter [heimlig.vercel.app](https://heimlig.vercel.app).
+Live im Google Play Store (`com.fledderman.heimlig`) und als Web-PWA unter [heimlig.app](https://heimlig.app).
 
 > Für Business-/Release-Kontext (Play-Store-Flow, Supabase-Projekt-Refs, offene Roadmap) siehe [`CONTEXT.md`](./CONTEXT.md). Dieses README ist die technische Orientierung für Entwickler.
 
