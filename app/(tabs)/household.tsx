@@ -26,6 +26,7 @@ import ThemeMotif from '../../components/ThemeMotif';
 import ShareModal from '../../components/ShareModal';
 import PremiumModal from '../../components/PremiumModal';
 import FeedbackModal from '../../components/FeedbackModal';
+import InviteQRCode from '../../components/InviteQRCode';
 import { hasPremiumAccess, isMemberLimitError, HOUSEHOLD_MEMBER_CAP, FREE_MONTHLY_AI_ACTIONS } from '../../lib/premium';
 import { fetchAiActionsUsed } from '../../lib/aiUsage';
 import { captureScreenshot } from '../../lib/screenshotTool';
@@ -130,27 +131,39 @@ function InviteModal({ visible, onClose, inviteCode, householdName, householdId 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={styles.modalSheet}>
+        <Pressable style={[styles.modalSheet, styles.inviteSheet]}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>{t('household.inviteModalTitle')}</Text>
-          <Text style={styles.modalSub}>{t('household.inviteModalSub')}</Text>
+          {/* Scrollable since the QR added ~250dp: title + QR + code box + button + hints + close
+              is taller than a small phone's sheet, and without this the top of the sheet (and on
+              the shortest devices the close button) would sit off-screen. */}
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.inviteSheetContent}>
+            <Text style={styles.modalTitle}>{t('household.inviteModalTitle')}</Text>
+            <Text style={styles.modalSub}>{t('household.inviteModalSub')}</Text>
 
-          {/* Invite Code Display */}
-          <TouchableOpacity style={styles.codeBox} onPress={handleCopy} activeOpacity={0.8}>
-            <Text style={styles.codeText}>{inviteCode}</Text>
-            <Text style={styles.codeCopyHint}>{t('household.tapToCopy')}</Text>
-          </TouchableOpacity>
+            {/* The route for two people in the same room, which is how a household invite actually
+                happens — the share sheet and the clipboard both assume the other person is
+                somewhere else. Deliberately logs NOTHING: merely showing a QR is not a hand-off,
+                and counting it as one would inflate invite_shared exactly the way the double-
+                counted invite_opened once did. invite_code_copied and invite_shared are untouched. */}
+            <InviteQRCode code={inviteCode} />
 
-          {/* Share Button */}
-          <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-            <Text style={styles.shareBtnText}>{t('household.shareInvite')}</Text>
-          </TouchableOpacity>
+            {/* Invite Code Display */}
+            <TouchableOpacity style={styles.codeBox} onPress={handleCopy} activeOpacity={0.8}>
+              <Text style={styles.codeText}>{inviteCode}</Text>
+              <Text style={styles.codeCopyHint}>{t('household.tapToCopy')}</Text>
+            </TouchableOpacity>
 
-          <Text style={styles.webHint}>{t('household.webHint')}</Text>
+            {/* Share Button */}
+            <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
+              <Text style={styles.shareBtnText}>{t('household.shareInvite')}</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>{t('common.close')}</Text>
-          </TouchableOpacity>
+            <Text style={styles.webHint}>{t('household.webHint')}</Text>
+
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+              <Text style={styles.closeBtnText}>{t('common.close')}</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -1106,6 +1119,10 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
     padding: spacing.lg, paddingBottom: spacing.xxl,
     maxHeight: Platform.OS === 'web' ? '100%' : undefined,
   },
+  // Only the invite sheet: it is the tallest of the sheets sharing modalSheet, so the cap and the
+  // inner ScrollView live here rather than on the shared style.
+  inviteSheet: { maxHeight: '90%' },
+  inviteSheetContent: { paddingBottom: spacing.md },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   modalTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
   modalSub: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },

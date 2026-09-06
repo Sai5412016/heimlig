@@ -262,6 +262,7 @@ export interface AppTranslations {
     inviteModalTitle: string;
     inviteModalSub: string;
     tapToCopy: string;
+    qrHint: string;
     shareInvite: string;
     webHint: string;
     joinModalTitle: string;
@@ -656,6 +657,7 @@ export interface AppTranslations {
     inviteStepTitle: string;
     inviteStepBody: string;
     inviteStepShareButton: string;
+    inviteStepCodeLabel: string;
     inviteStepSkip: string;
     continueButton: string;
     welcomeBack: string;
