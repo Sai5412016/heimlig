@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+    # Ein Production-Build ist nur sinnvoll, wenn sich der versionCode aendert,
+    # und der steht in app.json. Ohne diesen Filter startete jeder Merge einen
+    # Build - auch reine Web- oder CI-Aenderungen - der dann ein AAB mit einem
+    # bereits gebauten versionCode erzeugt, das die Play Console ablehnt.
+    # Manuelle Builds ueber "Run workflow" sind von diesem Filter nicht betroffen.
+    paths:
+      - 'app.json'
   workflow_dispatch:
 
 jobs:
