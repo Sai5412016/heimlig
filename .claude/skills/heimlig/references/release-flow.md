@@ -37,9 +37,15 @@ Rollout. Stand 01.09.2026: **80**.
 
 Zwei Wege, einer genügt:
 
-**Automatisch (Regelfall):** Der Workflow `.github/workflows/eas-build.yml` startet bei **jedem**
-Push auf `main` (kein `paths`-Filter mehr). Zusätzlich manuell startbar über GitHub → Actions →
-"EAS Build (Android Production)" → "Run workflow" (`workflow_dispatch`).
+**Automatisch (Regelfall):** Der Workflow `.github/workflows/eas-build.yml` startet bei einem Push
+auf `main`, **aber nur wenn `app.json` Teil des Pushes ist** (`paths`-Filter). Ein Merge, der nur
+Web-Dateien, Doku oder CI anfasst, löst also keinen Build mehr aus — das ist Absicht, weil ein
+Build ohne `versionCode`-Erhöhung ein AAB erzeugt, das die Play Console als Duplikat ablehnt.
+
+Zusätzlich jederzeit manuell startbar über GitHub → Actions → "EAS Build (Android Production)" →
+"Run workflow" (`workflow_dispatch`). Der `paths`-Filter gilt für den manuellen Start **nicht**;
+dort lässt sich auch ein beliebiger Branch auswählen, was der Weg für Testbuilds aus einem
+offenen PR ist.
 
 **Manuell per CLI:**
 
