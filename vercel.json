@@ -4,6 +4,21 @@
       "source": "/",
       "destination": "/landing.html",
       "permanent": false
+    },
+    {
+      "source": "/tiktok",
+      "destination": "https://play.google.com/store/apps/details?id=com.fledderman.heimlig&referrer=utm_source%3Dtiktok%26utm_medium%3Dbio%26utm_campaign%3Dorganic",
+      "statusCode": 302
+    },
+    {
+      "source": "/instagram",
+      "destination": "https://play.google.com/store/apps/details?id=com.fledderman.heimlig&referrer=utm_source%3Dinstagram%26utm_medium%3Dbio%26utm_campaign%3Dorganic",
+      "statusCode": 302
+    },
+    {
+      "source": "/reddit",
+      "destination": "https://play.google.com/store/apps/details?id=com.fledderman.heimlig&referrer=utm_source%3Dreddit%26utm_medium%3Dbio%26utm_campaign%3Dorganic",
+      "statusCode": 302
     }
   ],
   "rewrites": [
