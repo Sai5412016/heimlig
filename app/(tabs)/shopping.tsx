@@ -864,7 +864,15 @@ export default function ShoppingScreen() {
         }
       }
     } catch {
-      // user dismissed the share sheet — no error needed, they can just tap the banner again
+      // NOT a dismissed share sheet: Share.share does not throw when the user backs out (Android
+      // resolves normally, iOS resolves with dismissedAction, which is why the check above reads
+      // result.action instead of relying on this catch). So anything landing here is a real
+      // failure — a share sheet that refused to open, or navigator.clipboard.writeText rejecting
+      // on web outside a secure context. The old comment claimed the opposite and the block
+      // showed nothing at all, which left the one nudge aimed at single-member households failing
+      // in complete silence. Same fallback as app/(tabs)/household.tsx: hand the user the invite
+      // text so there is still something to copy.
+      Alert.alert(t('household.inviteCodeFallbackTitle'), message);
     }
   };
 
