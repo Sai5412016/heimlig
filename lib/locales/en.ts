@@ -260,7 +260,7 @@ export const en: AppTranslations = {
     shareFailedBody: 'Sharing failed.',
     copiedCodeBody: 'Code "{{code}}" was copied.',
     inviteModalTitle: 'Invite a member',
-    inviteModalSub: 'Share this code with your partner or family.',
+    inviteModalSub: 'Share this code with everyone in your household.',
     tapToCopy: 'Tap to copy',
     qrHint: '📷 Scan with your phone camera',
     shareInvite: '📤 Share invite',

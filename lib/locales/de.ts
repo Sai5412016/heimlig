@@ -259,7 +259,7 @@ export const de: AppTranslations = {
     shareFailedBody: 'Teilen fehlgeschlagen.',
     copiedCodeBody: 'Code "{{code}}" wurde kopiert.',
     inviteModalTitle: 'Mitglied einladen',
-    inviteModalSub: 'Teile diesen Code mit deiner Freundin oder Familie.',
+    inviteModalSub: 'Teile den Code mit allen, die zu eurem Haushalt gehören.',
     tapToCopy: 'Tippen zum Kopieren',
     qrHint: '📷 Mit der Handy-Kamera scannen',
     shareInvite: '📤 Einladung teilen',
