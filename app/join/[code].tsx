@@ -23,12 +23,25 @@ export default function JoinByCode() {
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
 
-  // On web, the page only acts as a bridge: open the installed app via the custom scheme. There
-  // is no Android App Link configured (no assetlinks.json / intentFilters in app.json), so this
-  // page always loads in a browser first, even with the app installed — the custom-scheme
-  // handoff below is what actually opens the app. If that handoff fails (app not installed), the
-  // browser tab just sits there with no scheme to open — the fallback timer below sends it to
-  // the Play Store instead of dead-ending.
+  // On web, the page acts as a bridge: open the installed app via the custom scheme.
+  //
+  // This comment used to claim there was no Android App Link configured. That was wrong on both
+  // counts and is corrected here, because it invited the next reader to rebuild something that
+  // already exists: app.json DOES declare an intent filter for https://heimlig.app/join and
+  // https://heimlig.vercel.app with autoVerify, and public/.well-known/assetlinks.json exists and
+  // is excluded from the SPA rewrite in vercel.json, so it is served as a real file.
+  //
+  // What that means for this branch: when verification succeeds, Android opens the app directly
+  // and this page is never reached. It is still reached, and still needed, in three cases — the
+  // recipient has no app installed, verification has not (yet) succeeded for this device or
+  // build, or the link is opened on a desktop or iPhone. So the browser fallback below STAYS.
+  // If the app isn't there, the custom-scheme handoff does nothing visible and the tab would just
+  // sit on this page; the fallback timer below sends it to the Play Store instead of dead-ending.
+  //
+  // Worth knowing when debugging: App Links verification hinges on the SHA-256 in assetlinks.json
+  // matching the key Play actually signs with. Under Play App Signing that is the app signing
+  // key, not the upload key — a mismatch fails silently and every link quietly takes this
+  // browser detour instead.
   useEffect(() => {
     if (Platform.OS === 'web') {
       setStatus('web');

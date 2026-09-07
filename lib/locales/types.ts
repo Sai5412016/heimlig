@@ -91,6 +91,15 @@ export interface AppTranslations {
       deleteConfirmTitle: string;
       deleteConfirmBody: string;
     };
+    itemActions: {
+      changeQuantity: string;
+      moveToList: string;
+      quantityTitle: string;
+      moveTitle: string;
+      moveFailedBody: string;
+      deleteConfirmTitle: string;
+      deleteConfirmBody: string;
+    };
   };
   budget: {
     expenseType: string;
@@ -262,6 +271,10 @@ export interface AppTranslations {
     inviteModalTitle: string;
     inviteModalSub: string;
     tapToCopy: string;
+    qrHint: string;
+    notificationsLabel: string;
+    notificationsOn: string;
+    notificationsOff: string;
     shareInvite: string;
     webHint: string;
     joinModalTitle: string;
@@ -656,6 +669,7 @@ export interface AppTranslations {
     inviteStepTitle: string;
     inviteStepBody: string;
     inviteStepShareButton: string;
+    inviteStepCodeLabel: string;
     inviteStepSkip: string;
     continueButton: string;
     welcomeBack: string;
@@ -882,6 +896,16 @@ export interface AppTranslations {
     addButton: string;
     newButton: string;
     historyLabel: string;
+  };
+  notifPermission: {
+    title: string;
+    body: string;
+    reasonPinboard: string;
+    reasonReminders: string;
+    enableButton: string;
+    laterButton: string;
+    deniedHint: string;
+    openSettingsButton: string;
   };
   joinPage: {
     title: string;

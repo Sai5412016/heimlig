@@ -19,8 +19,17 @@ Rollout. Stand 01.09.2026: **80**.
 
 ## Die Schritte
 
+> **Erst wenn Andi „Build" sagt.** Dieser Ablauf startet nicht von selbst am Ende eines Features.
+> Zwischen zwei Builds wird `app.json` gar nicht angefasst, damit sich mehrere gemergte Änderungen
+> in einem Build sammeln — Regel und Begründung in `CLAUDE.md`, Abschnitt „Builds sammeln, nicht
+> einzeln auslösen".
+
 ### 1. `versionCode` **und** `expo.version` in `app.json` erhöhen
 
+- **Als eigener kleiner PR, der NUR `app.json` ändert.** Nicht als Teil eines Feature-PRs, und
+  nicht direkt auf `main`
+- Vorher zusammentragen, was seit dem letzten Bump nach `main` gegangen ist — das ist der Inhalt
+  dieses Builds und damit auch der Versionshinweise in Schritt 5
 - Datei `app.json`, Pfad `expo.android.versionCode`
 - **Aktuellen Wert vorher lesen, nicht annehmen.** Immer um genau 1 erhöhen
 - **`expo.version` (versionName) wird jedes Mal mitgezählt** — den `versionCode` nie allein erhöhen:
@@ -31,15 +40,22 @@ Rollout. Stand 01.09.2026: **80**.
   stimmte weder die in der App sichtbare Version mit dem Store überein, noch ließ sich aus einem
   Play-Release der `versionCode` ablesen. Hat schon einmal eine Fehlersuche gekostet.
 - Commit-Message-Muster: `chore: bump version for <thema> build`
-- Dieser Bump darf direkt auf `main` (Ausnahme von der Branch-Regel), weil er den Build auslöst
+- Der Merge dieses PRs ist es, der den Build auslöst — deshalb enthält er nichts anderes. Steckt
+  noch Code mit drin, lässt sich hinterher nicht mehr sagen, ob ein Build absichtlich lief
 
 ### 2. EAS-Build starten
 
 Zwei Wege, einer genügt:
 
-**Automatisch (Regelfall):** Der Workflow `.github/workflows/eas-build.yml` startet bei **jedem**
-Push auf `main` (kein `paths`-Filter mehr). Zusätzlich manuell startbar über GitHub → Actions →
-"EAS Build (Android Production)" → "Run workflow" (`workflow_dispatch`).
+**Automatisch (Regelfall):** Der Workflow `.github/workflows/eas-build.yml` startet bei einem Push
+auf `main`, **aber nur wenn `app.json` Teil des Pushes ist** (`paths`-Filter). Ein Merge, der nur
+Web-Dateien, Doku oder CI anfasst, löst also keinen Build mehr aus — das ist Absicht, weil ein
+Build ohne `versionCode`-Erhöhung ein AAB erzeugt, das die Play Console als Duplikat ablehnt.
+
+Zusätzlich jederzeit manuell startbar über GitHub → Actions → "EAS Build (Android Production)" →
+"Run workflow" (`workflow_dispatch`). Der `paths`-Filter gilt für den manuellen Start **nicht**;
+dort lässt sich auch ein beliebiger Branch auswählen, was der Weg für Testbuilds aus einem
+offenen PR ist.
 
 **Manuell per CLI:**
 
@@ -102,6 +118,11 @@ nicht wieder einführen.
 Stattdessen gehen die „Was ist neu"-Texte direkt ins **`<de-DE>`-Feld bei „Versionshinweise"** beim
 Erstellen des Releases, also in Schritt 3. Format: kurz, locker, Du-Form, 1–2 Sätze mit Emoji.
 Kein Betreff, keine Anrede, keine Signatur — das war nur für die alte Tester-Mail.
+
+**Inhalt: alles seit dem letzten Build, nicht nur der letzte PR.** Weil Builds gesammelt werden,
+liegen zwischen zwei `versionCode`-Bumps in der Regel mehrere gemergte PRs. Die Merges seit dem
+vorigen Bump durchgehen (`git log <letzter-bump-commit>..main --merges`) und daraus auswählen, was
+für Nutzer sichtbar ist — nicht aus dem Gedächtnis schreiben.
 
 Optional zusätzlich für die Kommunikation in der App selbst: `update_message` in `app_config`
 (Schritt 4) und ein Eintrag in `app_changelog`, den `components/WhatsNewModal.tsx` anzeigt.

@@ -5,7 +5,7 @@ import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
 import { format, startOfWeek, parseISO, addDays, addWeeks } from 'date-fns';
 import { advanceMonthlyPreservingDay, advanceYearlyPreservingDay } from '../lib/dateMath';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { registerPushToken } from '../lib/pushTokens';
+import { registerPushToken, logNotifyInvokeError } from '../lib/pushTokens';
 import * as shoppingRepo from '../repositories/shoppingRepository';
 import { supermarketKey } from '../lib/brands';
 import i18n, { type SupportedLanguage } from '../lib/i18n';
@@ -21,8 +21,10 @@ export interface PlanRecipeOpts { date: string; mealType: MealType; addToCart: b
 
 const HOUSEHOLD_CATEGORIES = ['Haushalt', 'Einkauf', 'Wartung', 'Garten'];
 
-// Parse a quantity like "200 g" or "1,5 Stück" into a number + unit (original casing kept)
-function parseQuantity(q: string): { num: number; unit: string } | null {
+// Parse a quantity like "200 g" or "1,5 Stück" into a number + unit (original casing kept).
+// Exported so the quantity stepper in app/(tabs)/shopping.tsx's item-actions menu can reuse the
+// exact same parsing mergeQuantities relies on, instead of a second ad-hoc regex drifting apart.
+export function parseQuantity(q: string): { num: number; unit: string } | null {
   const m = q.trim().match(/^([\d.,]+)\s*(.*)$/);
   if (!m) return null;
   const num = parseFloat(m[1].replace(',', '.'));
@@ -38,7 +40,7 @@ const UNIT_CONVERSIONS: Record<string, { base: 'g' | 'ml'; factor: number }> = {
   l: { base: 'ml', factor: 1000 }, liter: { base: 'ml', factor: 1000 },
 };
 
-function formatNumber(n: number): string {
+export function formatNumber(n: number): string {
   const r = Math.round(n * 100) / 100;
   return Number.isInteger(r) ? String(r) : String(r).replace('.', ',');
 }
@@ -104,6 +106,10 @@ interface AppState {
   toggleItem: (itemId: string) => Promise<void>;
   addItem: (listId: string, name: string, quantity?: string, category?: string, mealPlanId?: string, brand?: string, recipeId?: string) => Promise<void>;
   deleteItem: (itemId: string) => Promise<void>;
+  updateItemQuantity: (itemId: string, quantity: string | null) => Promise<void>;
+  // Returns whether the move succeeded, so the item-actions menu can leave the sheet open and
+  // let the user retry instead of silently closing on a failed move.
+  moveItem: (itemId: string, targetListId: string) => Promise<boolean>;
   removeRecipeIngredientsFromCart: (recipeId: string) => Promise<number>;
 
   // 🛒 Learned item catalog (personalized autocomplete / frequent items)
@@ -458,6 +464,26 @@ export const useStore = create<AppState>((set, get) => ({
     await shoppingRepo.deleteShoppingItem(itemId);
   },
 
+  updateItemQuantity: async (itemId, quantity) => {
+    set(s => ({ items: s.items.map(i => i.id === itemId ? { ...i, quantity: quantity ?? undefined } : i) }));
+    await shoppingRepo.updateShoppingItemQuantity(itemId, quantity);
+  },
+
+  moveItem: async (itemId, targetListId) => {
+    const item = get().items.find(i => i.id === itemId);
+    if (!item || item.list_id === targetListId) return false;
+    // Optimistic: `items` only ever holds the ACTIVE list's rows (see loadItems in
+    // shopping.tsx), so a moved-away item simply drops out of it on this device immediately.
+    set(s => ({ items: s.items.filter(i => i.id !== itemId) }));
+    const moved = await shoppingRepo.moveShoppingItem(item, targetListId);
+    if (!moved) {
+      // Roll back so a failed move doesn't silently disappear an item from the user's list.
+      set(s => (s.items.some(i => i.id === item.id) ? {} as any : { items: [...s.items, item] }));
+      return false;
+    }
+    return true;
+  },
+
   // Used when the user decides not to cook a recipe after all: pulls its not-yet-bought
   // ingredients back out of the cart. Already-checked (bought) items are left alone.
   removeRecipeIngredientsFromCart: async (recipeId) => {
@@ -666,9 +692,22 @@ export const useStore = create<AppState>((set, get) => ({
     // The function derives the sender's own identity server-side from the auth token — it
     // doesn't trust a client-supplied sender id/name (that would let a member spoof another
     // member's display name in the push notification).
-    supabase.functions.invoke('notify-message', {
-      body: { household_id: household.id, text: trimmed },
-    }).catch(() => {});
+    // Deliberately not awaited and deliberately never shown to the user: the message itself is
+    // already stored above, so a failed notification must not block or interrupt sending. But it
+    // must not be INVISIBLE either — this used to be `.catch(() => {})` on an un-inspected
+    // result, which hid two different failures at once. functions.invoke does NOT throw on a
+    // non-2xx: a 401/403/500 comes back in `error`, and only a network-level failure rejects.
+    // Both are handled here now.
+    void (async () => {
+      try {
+        const { error } = await supabase.functions.invoke('notify-message', {
+          body: { household_id: household.id, text: trimmed },
+        });
+        if (error) await logNotifyInvokeError(household.id, currentMember?.id, error.message);
+      } catch (e: any) {
+        await logNotifyInvokeError(household.id, currentMember?.id, e?.message ?? String(e));
+      }
+    })();
   },
   deleteMessage: async (id) => {
     set(s => ({ messages: s.messages.filter(m => m.id !== id) }));

@@ -8,7 +8,19 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!favicon\\.ico|icon-\\d+\\.png|\\.well-known/|landing\\.html|datenschutz\\.html|impressum\\.html|konto-loeschen\\.html).*)",
+      "source": "/tiktok",
+      "destination": "/tiktok.html"
+    },
+    {
+      "source": "/instagram",
+      "destination": "/instagram.html"
+    },
+    {
+      "source": "/reddit",
+      "destination": "/reddit.html"
+    },
+    {
+      "source": "/((?!favicon\\.ico|icon-\\d+\\.png|\\.well-known/|landing\\.html|datenschutz\\.html|impressum\\.html|konto-loeschen\\.html|tiktok\\.html|instagram\\.html|reddit\\.html).*)",
       "destination": "/index.html"
     }
   ]

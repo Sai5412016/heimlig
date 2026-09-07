@@ -14,7 +14,7 @@ const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Pla
 import { colors, spacing, radius, typography, shadow, SHOPPING_CATEGORIES, CATEGORY_COLORS, APP_THEMES, type ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 import { ShoppingItem, RecipeIngredient } from '../../lib/supabase';
-import { useStore } from '../../store/useStore';
+import { useStore, parseQuantity, formatNumber } from '../../store/useStore';
 import { fetchShoppingItems, subscribeToShoppingItems } from '../../repositories/shoppingRepository';
 import RecipeImportModal, { RecipeAddOpts } from '../../components/RecipeImportModal';
 import ProductScanner from '../../components/ProductScanner';
@@ -516,8 +516,8 @@ function useTileWidth(): number {
 }
 
 // ─── TILE ITEM ────────────────────────────────────────────────
-const TileItem = React.memo(({ item, onToggle, onDelete }: {
-  item: ShoppingItem; onToggle: (id: string) => void; onDelete: (id: string) => void;
+const TileItem = React.memo(({ item, onToggle, onOpenActions }: {
+  item: ShoppingItem; onToggle: (id: string) => void; onOpenActions: (item: ShoppingItem) => void;
 }) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -528,7 +528,11 @@ const TileItem = React.memo(({ item, onToggle, onDelete }: {
     <TouchableOpacity
       style={[styles.tile, { width: tileWidth, backgroundColor: item.checked ? itemColor + '40' : itemColor + '18', borderColor: itemColor + '60' }]}
       onPress={() => onToggle(item.id)}
-      onLongPress={() => onDelete(item.id)}
+      // Used to call onDelete(item.id) directly — a long press deleted the item instantly, no
+      // confirmation, no undo. A real user reported losing an item to an accidental long press.
+      // Now opens a menu instead; only the "Löschen" row inside it actually deletes, and that one
+      // does ask first.
+      onLongPress={() => onOpenActions(item)}
       activeOpacity={0.7}
     >
       {item.checked && (
@@ -543,6 +547,156 @@ const TileItem = React.memo(({ item, onToggle, onDelete }: {
     </TouchableOpacity>
   );
 });
+
+// ─── ITEM ACTIONS MODAL (long-press menu) ──────────────────────
+// Opens on a long press instead of the old instant, no-confirmation delete. Three rows:
+// change quantity, move to another list, delete — only the last of those still asks first,
+// the other two are cheap to undo by hand and don't need a confirmation of their own.
+const ItemActionsModal = ({ item, onClose }: { item: ShoppingItem | null; onClose: () => void }) => {
+  const { colors } = useTheme();
+  const { t } = useTranslation();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { shoppingLists, updateItemQuantity, moveItem, deleteItem } = useStore();
+  const [mode, setMode] = useState<'menu' | 'quantity' | 'move'>('menu');
+  const [quantityInput, setQuantityInput] = useState('');
+  const [moving, setMoving] = useState(false);
+
+  // Reset to the top-level menu (and pre-fill the quantity field) every time a NEW item is
+  // opened — without the item?.id guard this would also fire on close (item -> null) and again
+  // wipe quantityInput a frame before the closing animation finishes.
+  useEffect(() => {
+    if (item) { setMode('menu'); setQuantityInput(item.quantity ?? ''); setMoving(false); }
+  }, [item?.id]);
+
+  const otherLists = useMemo(
+    () => (item ? shoppingLists.filter(l => l.id !== item.list_id) : []),
+    [shoppingLists, item?.list_id]
+  );
+
+  const stepQuantity = (delta: number) => {
+    const parsed = parseQuantity(quantityInput);
+    if (parsed) {
+      const next = Math.max(0, parsed.num + delta);
+      if (next === 0) { setQuantityInput(''); return; }
+      setQuantityInput(parsed.unit ? `${formatNumber(next)} ${parsed.unit}` : formatNumber(next));
+    } else if (delta > 0) {
+      // No number in the field yet (empty, or free text like "eine Packung") — "+" gives it a
+      // starting point instead of doing nothing; "-" on an unparseable value has nothing to
+      // count down from, so it's a no-op.
+      setQuantityInput('1');
+    }
+  };
+
+  const handleSaveQuantity = async () => {
+    if (!item) return;
+    await updateItemQuantity(item.id, quantityInput.trim() || null);
+    onClose();
+  };
+
+  const handleMove = async (targetListId: string) => {
+    if (!item || moving) return;
+    setMoving(true);
+    const ok = await moveItem(item.id, targetListId);
+    setMoving(false);
+    if (ok) {
+      hapticNotification(Haptics.NotificationFeedbackType.Success);
+      onClose();
+    } else {
+      Alert.alert(t('common.error'), t('shopping.itemActions.moveFailedBody'));
+    }
+  };
+
+  const handleDeletePress = () => {
+    if (!item) return;
+    Alert.alert(
+      t('shopping.itemActions.deleteConfirmTitle', { name: item.name }),
+      t('shopping.itemActions.deleteConfirmBody'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: () => { deleteItem(item.id); onClose(); } },
+      ]
+    );
+  };
+
+  return (
+    <Modal visible={!!item} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
+        <Pressable style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          {item && mode === 'menu' && (
+            <>
+              <Text style={styles.modalTitle} numberOfLines={1}>{item.name}</Text>
+              <TouchableOpacity style={styles.actionRow} onPress={() => setMode('quantity')}>
+                <Text style={styles.actionRowEmoji}>🔢</Text>
+                <Text style={styles.actionRowText}>{t('shopping.itemActions.changeQuantity')}</Text>
+              </TouchableOpacity>
+              {/* Punkt 8: with only one list in the household there is nowhere to move an item
+                  TO, so this row is hidden rather than opening onto an empty list. */}
+              {otherLists.length > 0 && (
+                <TouchableOpacity style={styles.actionRow} onPress={() => setMode('move')}>
+                  <Text style={styles.actionRowEmoji}>📦</Text>
+                  <Text style={styles.actionRowText}>{t('shopping.itemActions.moveToList')}</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.actionRow} onPress={handleDeletePress}>
+                <Text style={styles.actionRowEmoji}>🗑️</Text>
+                <Text style={[styles.actionRowText, { color: colors.error }]}>{t('common.delete')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+                <Text style={styles.closeBtnText}>{t('common.close')}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {item && mode === 'quantity' && (
+            <>
+              <TouchableOpacity onPress={() => setMode('menu')}><Text style={styles.backLink}>‹ {t('common.back')}</Text></TouchableOpacity>
+              <Text style={styles.modalTitle}>{t('shopping.itemActions.quantityTitle')}</Text>
+              <View style={styles.quantityRow}>
+                <TouchableOpacity style={styles.stepBtn} onPress={() => stepQuantity(-1)}>
+                  <Text style={styles.stepBtnText}>−</Text>
+                </TouchableOpacity>
+                <TextInput
+                  style={[styles.input, styles.quantityInput]}
+                  value={quantityInput}
+                  onChangeText={setQuantityInput}
+                  placeholder={t('shopping.addItem.quantityPlaceholder')}
+                  placeholderTextColor={colors.textMuted}
+                />
+                <TouchableOpacity style={styles.stepBtn} onPress={() => stepQuantity(1)}>
+                  <Text style={styles.stepBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity style={styles.addBtn} onPress={handleSaveQuantity}>
+                <Text style={styles.addBtnText}>{t('common.save')}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {item && mode === 'move' && (
+            <>
+              <TouchableOpacity onPress={() => setMode('menu')} disabled={moving}>
+                <Text style={styles.backLink}>‹ {t('common.back')}</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>{t('shopping.itemActions.moveTitle')}</Text>
+              {otherLists.map(list => (
+                <TouchableOpacity
+                  key={list.id}
+                  style={styles.listRow}
+                  onPress={() => handleMove(list.id)}
+                  disabled={moving}
+                >
+                  <Text style={styles.listRowEmoji}>{list.emoji}</Text>
+                  <Text style={styles.listRowName}>{list.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+};
 
 // ─── LIST PICKER MODAL ────────────────────────────────────────
 const ListPickerModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
@@ -718,6 +872,7 @@ export default function ShoppingScreen() {
   const [showScanner, setShowScanner] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showChecked, setShowChecked] = useState(true);
+  const [actionsItem, setActionsItem] = useState<ShoppingItem | null>(null);
 
   useEffect(() => { loadItemCatalog(); }, [household?.id]);
 
@@ -864,7 +1019,15 @@ export default function ShoppingScreen() {
         }
       }
     } catch {
-      // user dismissed the share sheet — no error needed, they can just tap the banner again
+      // NOT a dismissed share sheet: Share.share does not throw when the user backs out (Android
+      // resolves normally, iOS resolves with dismissedAction, which is why the check above reads
+      // result.action instead of relying on this catch). So anything landing here is a real
+      // failure — a share sheet that refused to open, or navigator.clipboard.writeText rejecting
+      // on web outside a secure context. The old comment claimed the opposite and the block
+      // showed nothing at all, which left the one nudge aimed at single-member households failing
+      // in complete silence. Same fallback as app/(tabs)/household.tsx: hand the user the invite
+      // text so there is still something to copy.
+      Alert.alert(t('household.inviteCodeFallbackTitle'), message);
     }
   };
 
@@ -965,7 +1128,7 @@ export default function ShoppingScreen() {
             </View>
             <View style={styles.tileGrid}>
               {catItems.map(item => (
-                <TileItem key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+                <TileItem key={item.id} item={item} onToggle={toggleItem} onOpenActions={setActionsItem} />
               ))}
             </View>
           </View>
@@ -1008,7 +1171,7 @@ export default function ShoppingScreen() {
             {showChecked && (
               <View style={styles.tileGrid}>
                 {checked.map(item => (
-                  <TileItem key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+                  <TileItem key={item.id} item={item} onToggle={toggleItem} onOpenActions={setActionsItem} />
                 ))}
               </View>
             )}
@@ -1033,6 +1196,7 @@ export default function ShoppingScreen() {
       <RecipeImportModal visible={showRecipeModal} onClose={() => setShowRecipeModal(false)} onAdd={handleRecipeAdd} />
       <ListPickerModal visible={showListPicker} onClose={() => setShowListPicker(false)} />
       <ProductScanner visible={showScanner} onClose={() => setShowScanner(false)} onAddToList={handleScanAdd} />
+      <ItemActionsModal item={actionsItem} onClose={() => setActionsItem(null)} />
     </SafeAreaView>
   );
 }
@@ -1182,6 +1346,25 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
     borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg,
   },
   modalTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
+
+  // Item actions menu (long-press on a tile)
+  actionRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+  },
+  actionRowEmoji: { fontSize: 20, width: 26, textAlign: 'center' },
+  actionRowText: { ...typography.body, color: colors.text, fontWeight: '500' },
+  backLink: { ...typography.sm, color: colors.brand, fontWeight: '600', marginBottom: spacing.md },
+  quantityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
+  quantityInput: { flex: 1, textAlign: 'center' },
+  stepBtn: {
+    width: 44, height: 44, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border,
+    backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center',
+  },
+  stepBtnText: { fontSize: 22, lineHeight: 24, color: colors.text, fontWeight: '600' },
+  closeBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },
+  closeBtnText: { ...typography.body, color: colors.textSecondary },
+
   inputRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   elsewhereHint: { backgroundColor: colors.brandPale, borderRadius: radius.md, borderWidth: 1, borderColor: colors.brand, paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md, marginBottom: spacing.md },
   elsewhereHintText: { ...typography.sm, color: colors.brand, fontWeight: '700' },

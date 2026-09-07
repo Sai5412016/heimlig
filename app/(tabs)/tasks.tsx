@@ -25,7 +25,10 @@ import { supabase, Task, MealPlan, MealType } from '../../lib/supabase';
 import { readAiLimitError } from '../../lib/aiUsage';
 import { memberName, memberNameById, memberInitial } from '../../lib/memberNames';
 import { useStore } from '../../store/useStore';
-import { scheduleTaskNotification, cancelTaskNotification, requestNotificationPermission } from '../../lib/notifications';
+import { scheduleTaskNotification, cancelTaskNotification, requestNotificationPermission, hasNotificationPermission, canAskForNotificationPermission } from '../../lib/notifications';
+import { isNotificationPrimerSeen, markNotificationPrimerSeen } from '../../lib/notificationPrimer';
+import { registerPushToken } from '../../lib/pushTokens';
+import NotificationPermissionModal from '../../components/NotificationPermissionModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Scoreboard, { monthlyScores } from '../../components/Scoreboard';
 import RewardsModal from '../../components/RewardsModal';
@@ -1172,6 +1175,13 @@ export default function TasksScreen() {
   const [toastPoints, setToastPoints] = useState(0);
   const [showToast, setShowToast] = useState(false);
   const [showScoreboard, setShowScoreboard] = useState(false);
+  // Notification explainer: shown once per device, at the first reminder (see
+  // scheduleReminderWithPrimer for why this moment and not another).
+  const [showNotifPrimer, setShowNotifPrimer] = useState(false);
+  const [notifPrimerDeniedForever, setNotifPrimerDeniedForever] = useState(false);
+  const [pendingReminder, setPendingReminder] = useState<
+    { taskId: string; title: string; dueDate: string; dueTime?: string; remindTime?: string } | null
+  >(null);
   const [showRewards, setShowRewards] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -1245,6 +1255,33 @@ export default function TasksScreen() {
     })();
   }, [gamificationOn, household?.id, members.length]);
 
+  // Schedules a reminder, but shows the explainer FIRST if this device has never been asked.
+  //
+  // Why the permission is asked here and nowhere else — the three candidate moments were: after
+  // the first pinboard message, when a second member joins, or on the first reminder.
+  //   - A pinboard message only makes sense as a trigger once somebody else is in the household,
+  //     and 16 of 22 households have exactly one member. For most people it would never fire.
+  //   - "A second member joined" happens on the OTHER person's device; the inviter would meet the
+  //     dialog at some random later launch, disconnected from anything they just did.
+  //   - Setting a reminder is the user literally asking to be notified. It is the highest
+  //     possible intent, it works in a single-member household, and — decisively — this code path
+  //     ALREADY opened the system dialog today via scheduleTaskNotification. So this does not add
+  //     an interruption, it explains one that was already there and previously came unannounced.
+  const scheduleReminderWithPrimer = async (
+    taskId: string, title: string, dueDate: string, dueTime?: string, remindTime?: string,
+  ) => {
+    const alreadyGranted = await hasNotificationPermission();
+    if (!alreadyGranted && !(await isNotificationPrimerSeen())) {
+      // Park the reminder and explain first; the modal's callback schedules it if permission
+      // is granted. The task itself is already saved either way.
+      setPendingReminder({ taskId, title, dueDate, dueTime, remindTime });
+      setNotifPrimerDeniedForever(!(await canAskForNotificationPermission()));
+      setShowNotifPrimer(true);
+      return;
+    }
+    await scheduleTaskNotification(taskId, title, dueDate, dueTime, remindTime);
+  };
+
   const handleAddTask = async (taskData: Partial<Task> & { due_time?: string; notify?: boolean }) => {
     if (!household || !currentMember) return;
     const { notify, due_time, ...rest } = taskData as any;
@@ -1252,7 +1289,7 @@ export default function TasksScreen() {
     if (data) {
       setTasks([...tasks, data]);
       hapticNotification(Haptics.NotificationFeedbackType.Success);
-      if (notify && data.due_date) await scheduleTaskNotification(data.id, data.title, data.due_date, due_time, data.remind_time);
+      if (notify && data.due_date) await scheduleReminderWithPrimer(data.id, data.title, data.due_date, due_time, data.remind_time);
     }
   };
 
@@ -1321,7 +1358,7 @@ export default function TasksScreen() {
     if (data) setTasks(tasks.map(task => (task.id === editingTask.id ? data : task)));
     setEditingTask(null);
     hapticNotification(Haptics.NotificationFeedbackType.Success);
-    if (notify && data?.due_date) await scheduleTaskNotification(data.id, data.title, data.due_date, due_time, data.remind_time);
+    if (notify && data?.due_date) await scheduleReminderWithPrimer(data.id, data.title, data.due_date, due_time, data.remind_time);
     else await cancelTaskNotification(editingTask.id);
   };
 
@@ -1799,6 +1836,29 @@ export default function TasksScreen() {
       </TouchableOpacity>
 
       <PointsToast points={toastPoints} visible={showToast} />
+
+      {/* Marked as seen on close as well as on grant: "Später" is an answer too, and re-asking
+          on every saved reminder would be exactly the nagging this replaces. The settings row in
+          the household tab stays available for anyone who changes their mind. */}
+      <NotificationPermissionModal
+        visible={showNotifPrimer}
+        deniedForever={notifPrimerDeniedForever}
+        onClose={() => {
+          setShowNotifPrimer(false);
+          setPendingReminder(null);
+          markNotificationPrimerSeen();
+        }}
+        onResult={async (granted) => {
+          await markNotificationPrimerSeen();
+          if (granted && pendingReminder) {
+            const r = pendingReminder;
+            await scheduleTaskNotification(r.taskId, r.title, r.dueDate, r.dueTime, r.remindTime);
+            // Permission has just arrived, so this device can finally get a push token too —
+            // registerPushToken no longer asks on its own, it only picks up a granted permission.
+            if (currentMember && household) registerPushToken(currentMember.id, household.id);
+          }
+        }}
+      />
 
       <TaskDetailModal
         task={selectedTask as any}

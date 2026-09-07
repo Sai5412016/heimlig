@@ -69,7 +69,7 @@ Der Betreiber ist **kein ausgebildeter Entwickler**. Deshalb verbindlich:
 - `supabase/functions/` — 5 Edge Functions: `extract-recipe`, `extract-receipt`, `extract-event`, `notify-message`, `verify-purchase`
 - `supabase/manual_migrations/` — SQL zum **manuellen** Ausführen; Schema wird nicht als echte Migrations-Historie getrackt
 - `eas.json` — Profile `development`, `preview` (APK), `production` (AAB); Supabase-URL und Publishable Key stehen dort als `EXPO_PUBLIC_*`-Env
-- `.github/workflows/eas-build.yml` — startet EAS-Production-Build bei **jedem** Push auf `main`, plus manuell per `workflow_dispatch`
+- `.github/workflows/eas-build.yml` — startet EAS-Production-Build bei Push auf `main`, **aber nur wenn `app.json` im Push enthalten ist** (`paths`-Filter), plus jederzeit manuell per `workflow_dispatch` (der Filter gilt dort nicht)
 - `graphify-out/` — automatisch erzeugte Code-Struktur-Karte, gitignored, nie als Wahrheit über Historie nutzen
 
 ## Supabase-Client-Setup
@@ -143,7 +143,10 @@ Ohne erfüllte Kriterien nichts als "fertig" melden, sondern das offene Kriteriu
 - auf echtem Android-Gerät getestet (nicht Expo Go, nicht nur Web)
 - DE- und EN-Strings vorhanden
 - RLS-Policy für neue Tabellen gesetzt und geprüft
-- `versionCode` in `app.json` erhöht
+- `app.json` **nicht** angefasst — kein `versionCode`-Bump im Feature-PR. Der Bump ist ein eigener
+  Schritt, den Andi anstößt, und sammelt dann mehrere Features in einen Build (siehe „Builds
+  sammeln, nicht einzeln auslösen" in `CLAUDE.md`). Ein Feature gilt also als fertig, **bevor** es
+  gebaut ist; der Gerätetest oben findet im nächsten gesammelten Build statt
 
 **Release fertig, wenn:**
 - EAS-Build hochgeladen und in der Play Console freigegeben
@@ -221,8 +224,11 @@ Developer Notifications).
   `trg_prevent_member_field_escalation` — dort steckt die Absicherung gegen fremde Haushalte
 - **`app.json`** `package`, `versionCode`, `googleServicesFile`, Plugin-Liste
 - **`detectSessionInUrl: false`** in `lib/supabase.ts` — Umstellen bricht den Passwort-Reset
-- **Direkt auf `main` pushen** — Feature-Arbeit läuft über Branch und PR. Ausnahme sind reine
-  `versionCode`-Bumps auf ausdrückliche Anweisung
+- **Direkt auf `main` pushen** — ausnahmslos alles läuft über Branch und PR, auch der reine
+  `versionCode`-Bump. Der bekommt einen eigenen kleinen PR, siehe „Builds sammeln, nicht einzeln
+  auslösen" in `CLAUDE.md`
+- **`app.json` in einem Feature-PR anfassen** — das löst einen EAS-Build aus und verbrennt
+  Credits. `versionCode`/`version` steigen nur, wenn Andi ausdrücklich einen Build will
 - **Produktionsdaten** — nur streng auf eine `household_id` gescopt und mit Guard, der abbricht,
   falls Name und ID nicht zusammenpassen
 - **Theme-Komponenten**: jede Sprite- oder Backdrop-Komponente muss **genau eine feste

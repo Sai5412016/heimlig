@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
@@ -26,6 +26,11 @@ import ThemeMotif from '../../components/ThemeMotif';
 import ShareModal from '../../components/ShareModal';
 import PremiumModal from '../../components/PremiumModal';
 import FeedbackModal from '../../components/FeedbackModal';
+import InviteQRCode from '../../components/InviteQRCode';
+import NotificationPermissionModal from '../../components/NotificationPermissionModal';
+import { hasNotificationPermission, canAskForNotificationPermission } from '../../lib/notifications';
+import { markNotificationPrimerSeen } from '../../lib/notificationPrimer';
+import { registerPushToken } from '../../lib/pushTokens';
 import { hasPremiumAccess, isMemberLimitError, HOUSEHOLD_MEMBER_CAP, FREE_MONTHLY_AI_ACTIONS } from '../../lib/premium';
 import { fetchAiActionsUsed } from '../../lib/aiUsage';
 import { captureScreenshot } from '../../lib/screenshotTool';
@@ -130,27 +135,39 @@ function InviteModal({ visible, onClose, inviteCode, householdName, householdId 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={styles.modalSheet}>
+        <Pressable style={[styles.modalSheet, styles.inviteSheet]}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>{t('household.inviteModalTitle')}</Text>
-          <Text style={styles.modalSub}>{t('household.inviteModalSub')}</Text>
+          {/* Scrollable since the QR added ~250dp: title + QR + code box + button + hints + close
+              is taller than a small phone's sheet, and without this the top of the sheet (and on
+              the shortest devices the close button) would sit off-screen. */}
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.inviteSheetContent}>
+            <Text style={styles.modalTitle}>{t('household.inviteModalTitle')}</Text>
+            <Text style={styles.modalSub}>{t('household.inviteModalSub')}</Text>
 
-          {/* Invite Code Display */}
-          <TouchableOpacity style={styles.codeBox} onPress={handleCopy} activeOpacity={0.8}>
-            <Text style={styles.codeText}>{inviteCode}</Text>
-            <Text style={styles.codeCopyHint}>{t('household.tapToCopy')}</Text>
-          </TouchableOpacity>
+            {/* The route for two people in the same room, which is how a household invite actually
+                happens — the share sheet and the clipboard both assume the other person is
+                somewhere else. Deliberately logs NOTHING: merely showing a QR is not a hand-off,
+                and counting it as one would inflate invite_shared exactly the way the double-
+                counted invite_opened once did. invite_code_copied and invite_shared are untouched. */}
+            <InviteQRCode code={inviteCode} />
 
-          {/* Share Button */}
-          <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-            <Text style={styles.shareBtnText}>{t('household.shareInvite')}</Text>
-          </TouchableOpacity>
+            {/* Invite Code Display */}
+            <TouchableOpacity style={styles.codeBox} onPress={handleCopy} activeOpacity={0.8}>
+              <Text style={styles.codeText}>{inviteCode}</Text>
+              <Text style={styles.codeCopyHint}>{t('household.tapToCopy')}</Text>
+            </TouchableOpacity>
 
-          <Text style={styles.webHint}>{t('household.webHint')}</Text>
+            {/* Share Button */}
+            <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
+              <Text style={styles.shareBtnText}>{t('household.shareInvite')}</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>{t('common.close')}</Text>
-          </TouchableOpacity>
+            <Text style={styles.webHint}>{t('household.webHint')}</Text>
+
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+              <Text style={styles.closeBtnText}>{t('common.close')}</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -279,6 +296,29 @@ export default function HouseholdScreen() {
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [showInvite, setShowInvite] = useState(false);
+  // Notification state for the settings row. Re-read on focus rather than cached once: the user
+  // can flip it in Android settings while the app sits in the background, and a stale 'Aus'
+  // next to working notifications is worse than no row at all.
+  const [notifGranted, setNotifGranted] = useState(false);
+  const [showNotifModal, setShowNotifModal] = useState(false);
+  const [notifDeniedForever, setNotifDeniedForever] = useState(false);
+
+  useFocusEffect(React.useCallback(() => {
+    let cancelled = false;
+    (async () => {
+      const granted = await hasNotificationPermission();
+      if (!cancelled) setNotifGranted(granted);
+    })();
+    return () => { cancelled = true; };
+  }, []));
+
+  // Already on: nothing to do here, turning them OFF is a system-level action and Android gives
+  // no in-app route for it, so we send them to the same place rather than pretending otherwise.
+  const handleNotificationsRow = async () => {
+    if (notifGranted) { Linking.openSettings().catch(() => {}); return; }
+    setNotifDeniedForever(!(await canAskForNotificationPermission()));
+    setShowNotifModal(true);
+  };
   const [showShare, setShowShare] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
   const premium = hasPremiumAccess(household);
@@ -748,6 +788,20 @@ export default function HouseholdScreen() {
           </View>
         </View>
 
+        {/* Notifications — the permanent way back in. registerPushToken no longer asks on its own
+            (see lib/pushTokens.ts), and the explainer at the first reminder only appears once, so
+            without this row somebody who tapped "Später" would have no route left at all. */}
+        {Platform.OS !== 'web' && (
+          <TouchableOpacity style={styles.settingsBtn} onPress={handleNotificationsRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <Text style={styles.settingsBtnText}>{t('household.notificationsLabel')}</Text>
+              <Text style={[styles.infoValue, notifGranted ? { color: colors.brand } : { color: colors.textMuted }]}>
+                {notifGranted ? t('household.notificationsOn') : t('household.notificationsOff')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Dark mode toggle */}
         <TouchableOpacity style={styles.settingsBtn} onPress={toggleDarkMode}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
@@ -955,6 +1009,18 @@ export default function HouseholdScreen() {
         householdId={household?.id}
       />
       <ShareModal visible={showShare} onClose={() => setShowShare(false)} />
+      <NotificationPermissionModal
+        visible={showNotifModal}
+        deniedForever={notifDeniedForever}
+        onClose={() => setShowNotifModal(false)}
+        onResult={async (granted) => {
+          // Coming through here counts as having seen the explanation, so the one-shot primer
+          // in the tasks tab does not turn up later and ask the same thing again.
+          await markNotificationPrimerSeen();
+          setNotifGranted(granted);
+          if (granted && currentMember && household) registerPushToken(currentMember.id, household.id);
+        }}
+      />
       <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} source="plan_row" />
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
       <JoinModal
@@ -1106,6 +1172,10 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
     padding: spacing.lg, paddingBottom: spacing.xxl,
     maxHeight: Platform.OS === 'web' ? '100%' : undefined,
   },
+  // Only the invite sheet: it is the tallest of the sheets sharing modalSheet, so the cap and the
+  // inner ScrollView live here rather than on the shared style.
+  inviteSheet: { maxHeight: '90%' },
+  inviteSheetContent: { paddingBottom: spacing.md },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   modalTitle: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
   modalSub: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.xl },

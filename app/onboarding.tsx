@@ -19,6 +19,7 @@ import { SUPPORTED_COUNTRIES } from '../lib/holidays';
 import { isMemberLimitError, HOUSEHOLD_MEMBER_CAP } from '../lib/premium';
 import { logInviteFunnelStep, logJoinOpenedOnce, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember, isAlreadyMemberError, resolveInviteCode, looksLikeInviteCode } from '../lib/inviteFunnel';
 import { savePendingHouseholdChoice, getPendingHouseholdChoice, clearPendingHouseholdChoice } from '../lib/householdChoice';
+import InviteQRCode from '../components/InviteQRCode';
 
 // 'household' (Haushaltswahl) sits BEFORE 'auth' on purpose: the old order asked for an
 // account first and only then what the account was for. See the report for build 91.
@@ -662,16 +663,33 @@ export default function OnboardingScreen() {
   // ─── INVITE ────────────────────────────────────────────────
   if (step === 'invite') return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.stepContent}>
+      {/* Scrollable because the QR plus the code raise this step well past a small phone's
+          height, and the skip button must stay reachable — it is the only way out of here. */}
+      <ScrollView contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.stepTitle}>{t('onboarding.inviteStepTitle')}</Text>
         <Text style={styles.stepSub}>{t('onboarding.inviteStepBody')}</Text>
+
+        {/* Until now this screen showed the code nowhere at all: if the share sheet was dismissed
+            — or the household had just been created on a device with nothing to share to — the
+            user left onboarding with no way to pass the invite on, and no second prompt exists
+            outside the dismissible solo banner. QR for someone sitting next to them, the code in
+            plain text for everyone else. */}
+        <InviteQRCode code={household?.invite_code ?? ''} />
+
+        {household?.invite_code ? (
+          <>
+            <Text style={styles.inviteStepCodeLabel}>{t('onboarding.inviteStepCodeLabel')}</Text>
+            <Text style={styles.inviteStepCode} selectable>{household.invite_code}</Text>
+          </>
+        ) : null}
+
         <TouchableOpacity style={styles.primaryBtn} onPress={handleShareInvite}>
           <Text style={styles.primaryBtnText}>{t('onboarding.inviteStepShareButton')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.inviteSkipBtn} onPress={() => router.replace('/(tabs)')}>
           <Text style={styles.inviteSkipText}>{t('onboarding.inviteStepSkip')}</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 
@@ -743,6 +761,13 @@ const styles = StyleSheet.create({
   hintText: { ...typography.xs, color: colors.textMuted, marginTop: -spacing.sm, marginBottom: spacing.md },
   switchModeBtn: { alignItems: 'center', padding: spacing.md },
   switchModeText: { ...typography.sm, color: colors.brand, fontWeight: '600' },
+  inviteStepCodeLabel: { ...typography.sm, color: colors.textSecondary, textAlign: 'center', marginBottom: spacing.xs },
+  // Same monospace + wide tracking as the invite modal's code box, so the code reads as one
+  // string of characters to type rather than a word.
+  inviteStepCode: {
+    fontSize: 32, fontWeight: '800', color: colors.brand, letterSpacing: 6,
+    fontFamily: 'monospace', textAlign: 'center', marginBottom: spacing.xl,
+  },
   inviteSkipBtn: { alignItems: 'center', padding: spacing.md, marginTop: spacing.sm },
   inviteSkipText: { ...typography.sm, color: colors.textMuted, textDecorationLine: 'underline' },
 });

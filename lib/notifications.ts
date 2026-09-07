@@ -20,6 +20,30 @@ if (Notifications) {
   });
 }
 
+// Reads the current permission WITHOUT ever opening the system dialog. Used by
+// lib/pushTokens.ts on every launch and by the settings row, both of which must never prompt.
+export async function hasNotificationPermission(): Promise<boolean> {
+  if (!Notifications) return false;
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    return status === 'granted';
+  } catch { return false; }
+}
+
+// Whether asking again can still produce a dialog. Android only offers the dialog once: after a
+// denial `canAskAgain` is false and the only remaining route is system settings — which is what
+// the settings row tells the user instead of showing a button that would do nothing.
+export async function canAskForNotificationPermission(): Promise<boolean> {
+  if (!Notifications) return false;
+  try {
+    const { status, canAskAgain } = await Notifications.getPermissionsAsync();
+    if (status === 'granted') return false;
+    return canAskAgain !== false;
+  } catch { return false; }
+}
+
+// OPENS THE SYSTEM DIALOG. Only call this from a place where the user has just been told what
+// the permission is for — see components/NotificationPermissionModal.
 export async function requestNotificationPermission(): Promise<boolean> {
   if (!Notifications) return false;
   try {
