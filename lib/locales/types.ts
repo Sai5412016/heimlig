@@ -91,6 +91,15 @@ export interface AppTranslations {
       deleteConfirmTitle: string;
       deleteConfirmBody: string;
     };
+    itemActions: {
+      changeQuantity: string;
+      moveToList: string;
+      quantityTitle: string;
+      moveTitle: string;
+      moveFailedBody: string;
+      deleteConfirmTitle: string;
+      deleteConfirmBody: string;
+    };
   };
   budget: {
     expenseType: string;

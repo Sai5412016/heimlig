@@ -21,8 +21,10 @@ export interface PlanRecipeOpts { date: string; mealType: MealType; addToCart: b
 
 const HOUSEHOLD_CATEGORIES = ['Haushalt', 'Einkauf', 'Wartung', 'Garten'];
 
-// Parse a quantity like "200 g" or "1,5 Stück" into a number + unit (original casing kept)
-function parseQuantity(q: string): { num: number; unit: string } | null {
+// Parse a quantity like "200 g" or "1,5 Stück" into a number + unit (original casing kept).
+// Exported so the quantity stepper in app/(tabs)/shopping.tsx's item-actions menu can reuse the
+// exact same parsing mergeQuantities relies on, instead of a second ad-hoc regex drifting apart.
+export function parseQuantity(q: string): { num: number; unit: string } | null {
   const m = q.trim().match(/^([\d.,]+)\s*(.*)$/);
   if (!m) return null;
   const num = parseFloat(m[1].replace(',', '.'));
@@ -38,7 +40,7 @@ const UNIT_CONVERSIONS: Record<string, { base: 'g' | 'ml'; factor: number }> = {
   l: { base: 'ml', factor: 1000 }, liter: { base: 'ml', factor: 1000 },
 };
 
-function formatNumber(n: number): string {
+export function formatNumber(n: number): string {
   const r = Math.round(n * 100) / 100;
   return Number.isInteger(r) ? String(r) : String(r).replace('.', ',');
 }
@@ -104,6 +106,10 @@ interface AppState {
   toggleItem: (itemId: string) => Promise<void>;
   addItem: (listId: string, name: string, quantity?: string, category?: string, mealPlanId?: string, brand?: string, recipeId?: string) => Promise<void>;
   deleteItem: (itemId: string) => Promise<void>;
+  updateItemQuantity: (itemId: string, quantity: string | null) => Promise<void>;
+  // Returns whether the move succeeded, so the item-actions menu can leave the sheet open and
+  // let the user retry instead of silently closing on a failed move.
+  moveItem: (itemId: string, targetListId: string) => Promise<boolean>;
   removeRecipeIngredientsFromCart: (recipeId: string) => Promise<number>;
 
   // 🛒 Learned item catalog (personalized autocomplete / frequent items)
@@ -456,6 +462,26 @@ export const useStore = create<AppState>((set, get) => ({
   deleteItem: async (itemId) => {
     set(s => ({ items: s.items.filter(i => i.id !== itemId) }));
     await shoppingRepo.deleteShoppingItem(itemId);
+  },
+
+  updateItemQuantity: async (itemId, quantity) => {
+    set(s => ({ items: s.items.map(i => i.id === itemId ? { ...i, quantity: quantity ?? undefined } : i) }));
+    await shoppingRepo.updateShoppingItemQuantity(itemId, quantity);
+  },
+
+  moveItem: async (itemId, targetListId) => {
+    const item = get().items.find(i => i.id === itemId);
+    if (!item || item.list_id === targetListId) return false;
+    // Optimistic: `items` only ever holds the ACTIVE list's rows (see loadItems in
+    // shopping.tsx), so a moved-away item simply drops out of it on this device immediately.
+    set(s => ({ items: s.items.filter(i => i.id !== itemId) }));
+    const moved = await shoppingRepo.moveShoppingItem(item, targetListId);
+    if (!moved) {
+      // Roll back so a failed move doesn't silently disappear an item from the user's list.
+      set(s => (s.items.some(i => i.id === item.id) ? {} as any : { items: [...s.items, item] }));
+      return false;
+    }
+    return true;
   },
 
   // Used when the user decides not to cook a recipe after all: pulls its not-yet-bought
