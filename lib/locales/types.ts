@@ -263,6 +263,9 @@ export interface AppTranslations {
     inviteModalSub: string;
     tapToCopy: string;
     qrHint: string;
+    notificationsLabel: string;
+    notificationsOn: string;
+    notificationsOff: string;
     shareInvite: string;
     webHint: string;
     joinModalTitle: string;
@@ -884,6 +887,16 @@ export interface AppTranslations {
     addButton: string;
     newButton: string;
     historyLabel: string;
+  };
+  notifPermission: {
+    title: string;
+    body: string;
+    reasonPinboard: string;
+    reasonReminders: string;
+    enableButton: string;
+    laterButton: string;
+    deniedHint: string;
+    openSettingsButton: string;
   };
   joinPage: {
     title: string;
