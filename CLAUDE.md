@@ -15,6 +15,26 @@ questions:
 This is a structural map of what the code currently looks like, not a log of past decisions —
 for "why was this built this way", CONTEXT.md is still the source of truth.
 
+## Builds sammeln, nicht einzeln auslösen
+
+`app.json` wird **nicht bei jedem PR angefasst**. `versionCode` und `version` bleiben unverändert,
+solange Andi nicht ausdrücklich einen Build will.
+
+- Ein PR **ohne** Änderung an `app.json` löst **keinen** EAS-Build aus. Das ist beabsichtigt und
+  spart Credits — der `paths`-Filter in `.github/workflows/eas-build.yml` hört allein auf
+  `app.json`, das Anfassen dieser einen Datei entscheidet also über den Build.
+- Sagt Andi **„Build"**, kommt ein **eigener kleiner PR, der NUR `app.json` ändert**: `versionCode`
+  plus eins, `version` passend nach der Regel unten. Alles, was seit dem letzten Build gemergt
+  wurde, geht dann gemeinsam raus.
+- In den Versionshinweisen für diesen Build stehen **alle gesammelten Änderungen**, nicht nur die
+  letzte. Dafür die Merges seit dem vorigen Bump durchgehen, nicht aus dem Gedächtnis schreiben.
+- Im Abschlussbericht **jedes** PRs ohne Build-Bump steht ausdrücklich:
+  **„Kein Build ausgelöst, `app.json` unverändert."**
+
+Grund: Zwischen dem 05.09. und dem 07.09. sind sieben Builds entstanden, weil in jedem PR der
+`versionCode` mitgezogen wurde. EAS-Credits sind knapp, und jeder dieser Builds war ein AAB, das
+nie in den Store ging.
+
 ## Versionsname mitziehen
 
 Bei **jedem** Bump von `expo.android.versionCode` in `app.json` wird `expo.version` (der
@@ -31,7 +51,8 @@ das, was Nutzer in der App sehen, mit dem Store überein, noch ließ sich aus ei
 
 Immer wenn der `versionCode` in `app.json` erhöht wird, gehören in denselben Bericht fertige
 Play-Store-Versionshinweise für de-DE und en-US, in genau diesem Format zum Direkt-Einfügen in
-die Play Console:
+die Play Console. Da Builds gesammelt werden (siehe oben), decken diese Texte **alles ab, was seit
+dem letzten Bump nach `main` gegangen ist** — nicht nur den PR, der den Bump enthält:
 
 ```
 <de-DE>
