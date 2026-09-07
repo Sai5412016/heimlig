@@ -66,25 +66,90 @@ serve(async (req) => {
       .eq('household_id', household_id)
       .neq('member_id', sender_member_id);
 
+    // Kept as a parallel array to `messages`: Expo answers with a data[] in the SAME order as
+    // the tickets were sent, so index i in the response belongs to sentTokens[i]. That mapping is
+    // the only way to know WHICH device a DeviceNotRegistered refers to.
+    const sentTokens: string[] = [];
     const messages = (tokens || [])
       .filter((t: any) => typeof t.token === 'string' && t.token.startsWith('ExponentPushToken'))
-      .map((t: any) => ({
-        to: t.token,
-        title: `💬 ${sender_name || 'Jemand'}`,
-        body: String(text).slice(0, 200),
-        sound: 'default',
-        data: { type: 'pinboard', household_id },
-      }));
+      .map((t: any) => {
+        sentTokens.push(t.token);
+        return {
+          to: t.token,
+          title: `💬 ${sender_name || 'Jemand'}`,
+          body: String(text).slice(0, 200),
+          sound: 'default',
+          data: { type: 'pinboard', household_id },
+        };
+      });
+
+    let ok = 0;
+    let failed = 0;
+    let removed = 0;
 
     if (messages.length > 0) {
-      await fetch('https://exp.host/--/api/v2/push/send', {
+      // The response used to be thrown away. { sent: n } then reported "3 sent" even when Expo
+      // had rejected all three, which is how a completely dead push path could look healthy.
+      const res = await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(messages),
       });
+
+      let body: any = null;
+      try { body = await res.json(); } catch { /* non-JSON body (gateway error page) */ }
+
+      const tickets: any[] = Array.isArray(body?.data) ? body.data : [];
+      const deadTokens: string[] = [];
+
+      if (!res.ok || tickets.length === 0) {
+        // Whole request failed, or Expo answered with something we can't read ticket-wise. Not a
+        // per-device problem, so nothing gets deleted — count them all as failed and let the
+        // push_debug row below make the outage visible.
+        failed = messages.length;
+      } else {
+        tickets.forEach((ticket, i) => {
+          if (ticket?.status === 'ok') { ok++; return; }
+          failed++;
+          // ONLY DeviceNotRegistered means the token itself is dead (app uninstalled, data
+          // cleared, token rotated). Every other error — MessageTooBig, MessageRateExceeded,
+          // InvalidCredentials, a transient outage — says nothing about the device, and deleting
+          // on those would silently unsubscribe healthy phones.
+          if (ticket?.details?.error === 'DeviceNotRegistered' && sentTokens[i]) {
+            deadTokens.push(sentTokens[i]);
+          }
+        });
+        // Expo can return fewer tickets than messages sent; those have no verdict at all.
+        if (tickets.length < messages.length) failed += messages.length - tickets.length;
+      }
+
+      if (deadTokens.length > 0) {
+        const { error: delError, count } = await admin
+          .from('push_tokens')
+          .delete({ count: 'exact' })
+          .in('token', deadTokens);
+        if (delError) console.error('notify-message: could not remove dead tokens:', delError.message);
+        else removed = count ?? deadTokens.length;
+      }
+
+      // supabase-js returns { error } on a rejected insert instead of throwing, so this is
+      // checked rather than wrapped in a bare try/catch — an RLS or constraint problem here
+      // would otherwise leave exactly the kind of silent gap this row exists to close.
+      // Verified before writing this: push_debug.stage has NO check constraint, so 'push_sent'
+      // is accepted as-is.
+      const { error: logError } = await admin.from('push_debug').insert({
+        member_id: sender_member_id,
+        household_id,
+        stage: 'push_sent',
+        message: `ok=${ok} failed=${failed} removed=${removed}`,
+      });
+      if (logError) console.error('notify-message: push_debug row not written:', logError.message);
     }
 
-    return new Response(JSON.stringify({ sent: messages.length }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+    return new Response(
+      JSON.stringify({ sent: messages.length, ok, failed, removed }),
+      { headers: { ...cors, 'Content-Type': 'application/json' } },
+    );
   } catch (e) {
     console.error('notify-message error:', e);
     return new Response(JSON.stringify({ error: 'Nachricht konnte nicht gesendet werden.' }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });

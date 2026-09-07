@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 const hapticNotification = (type: Haptics.NotificationFeedbackType) => { if (Platform.OS !== 'web') Haptics.notificationAsync(type); };
@@ -27,6 +27,10 @@ import ShareModal from '../../components/ShareModal';
 import PremiumModal from '../../components/PremiumModal';
 import FeedbackModal from '../../components/FeedbackModal';
 import InviteQRCode from '../../components/InviteQRCode';
+import NotificationPermissionModal from '../../components/NotificationPermissionModal';
+import { hasNotificationPermission, canAskForNotificationPermission } from '../../lib/notifications';
+import { markNotificationPrimerSeen } from '../../lib/notificationPrimer';
+import { registerPushToken } from '../../lib/pushTokens';
 import { hasPremiumAccess, isMemberLimitError, HOUSEHOLD_MEMBER_CAP, FREE_MONTHLY_AI_ACTIONS } from '../../lib/premium';
 import { fetchAiActionsUsed } from '../../lib/aiUsage';
 import { captureScreenshot } from '../../lib/screenshotTool';
@@ -292,6 +296,29 @@ export default function HouseholdScreen() {
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [showInvite, setShowInvite] = useState(false);
+  // Notification state for the settings row. Re-read on focus rather than cached once: the user
+  // can flip it in Android settings while the app sits in the background, and a stale 'Aus'
+  // next to working notifications is worse than no row at all.
+  const [notifGranted, setNotifGranted] = useState(false);
+  const [showNotifModal, setShowNotifModal] = useState(false);
+  const [notifDeniedForever, setNotifDeniedForever] = useState(false);
+
+  useFocusEffect(React.useCallback(() => {
+    let cancelled = false;
+    (async () => {
+      const granted = await hasNotificationPermission();
+      if (!cancelled) setNotifGranted(granted);
+    })();
+    return () => { cancelled = true; };
+  }, []));
+
+  // Already on: nothing to do here, turning them OFF is a system-level action and Android gives
+  // no in-app route for it, so we send them to the same place rather than pretending otherwise.
+  const handleNotificationsRow = async () => {
+    if (notifGranted) { Linking.openSettings().catch(() => {}); return; }
+    setNotifDeniedForever(!(await canAskForNotificationPermission()));
+    setShowNotifModal(true);
+  };
   const [showShare, setShowShare] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
   const premium = hasPremiumAccess(household);
@@ -761,6 +788,20 @@ export default function HouseholdScreen() {
           </View>
         </View>
 
+        {/* Notifications — the permanent way back in. registerPushToken no longer asks on its own
+            (see lib/pushTokens.ts), and the explainer at the first reminder only appears once, so
+            without this row somebody who tapped "Später" would have no route left at all. */}
+        {Platform.OS !== 'web' && (
+          <TouchableOpacity style={styles.settingsBtn} onPress={handleNotificationsRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <Text style={styles.settingsBtnText}>{t('household.notificationsLabel')}</Text>
+              <Text style={[styles.infoValue, notifGranted ? { color: colors.brand } : { color: colors.textMuted }]}>
+                {notifGranted ? t('household.notificationsOn') : t('household.notificationsOff')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Dark mode toggle */}
         <TouchableOpacity style={styles.settingsBtn} onPress={toggleDarkMode}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
@@ -968,6 +1009,18 @@ export default function HouseholdScreen() {
         householdId={household?.id}
       />
       <ShareModal visible={showShare} onClose={() => setShowShare(false)} />
+      <NotificationPermissionModal
+        visible={showNotifModal}
+        deniedForever={notifDeniedForever}
+        onClose={() => setShowNotifModal(false)}
+        onResult={async (granted) => {
+          // Coming through here counts as having seen the explanation, so the one-shot primer
+          // in the tasks tab does not turn up later and ask the same thing again.
+          await markNotificationPrimerSeen();
+          setNotifGranted(granted);
+          if (granted && currentMember && household) registerPushToken(currentMember.id, household.id);
+        }}
+      />
       <PremiumModal visible={showPremium} onClose={() => setShowPremium(false)} source="plan_row" />
       <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
       <JoinModal

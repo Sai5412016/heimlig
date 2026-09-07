@@ -5,7 +5,7 @@ import type { ScanResult, ScanHistoryEntry } from '../lib/productScore';
 import { format, startOfWeek, parseISO, addDays, addWeeks } from 'date-fns';
 import { advanceMonthlyPreservingDay, advanceYearlyPreservingDay } from '../lib/dateMath';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { registerPushToken } from '../lib/pushTokens';
+import { registerPushToken, logNotifyInvokeError } from '../lib/pushTokens';
 import * as shoppingRepo from '../repositories/shoppingRepository';
 import { supermarketKey } from '../lib/brands';
 import i18n, { type SupportedLanguage } from '../lib/i18n';
@@ -666,9 +666,22 @@ export const useStore = create<AppState>((set, get) => ({
     // The function derives the sender's own identity server-side from the auth token — it
     // doesn't trust a client-supplied sender id/name (that would let a member spoof another
     // member's display name in the push notification).
-    supabase.functions.invoke('notify-message', {
-      body: { household_id: household.id, text: trimmed },
-    }).catch(() => {});
+    // Deliberately not awaited and deliberately never shown to the user: the message itself is
+    // already stored above, so a failed notification must not block or interrupt sending. But it
+    // must not be INVISIBLE either — this used to be `.catch(() => {})` on an un-inspected
+    // result, which hid two different failures at once. functions.invoke does NOT throw on a
+    // non-2xx: a 401/403/500 comes back in `error`, and only a network-level failure rejects.
+    // Both are handled here now.
+    void (async () => {
+      try {
+        const { error } = await supabase.functions.invoke('notify-message', {
+          body: { household_id: household.id, text: trimmed },
+        });
+        if (error) await logNotifyInvokeError(household.id, currentMember?.id, error.message);
+      } catch (e: any) {
+        await logNotifyInvokeError(household.id, currentMember?.id, e?.message ?? String(e));
+      }
+    })();
   },
   deleteMessage: async (id) => {
     set(s => ({ messages: s.messages.filter(m => m.id !== id) }));
