@@ -3,7 +3,7 @@
     "name": "heimlig",
     "slug": "heimlig",
     "scheme": "heimlig",
-    "version": "1.6.1",
+    "version": "1.6.2",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,7 +24,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.fledderman.heimlig",
-      "versionCode": 97,
+      "versionCode": 98,
       "googleServicesFile": "./google-services.json",
       "permissions": ["NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED", "VIBRATE"],
       "intentFilters": [
@@ -43,6 +43,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      ["expo-build-properties", {
+        "android": {
+          "enableMinifyInReleaseBuilds": true,
+          "extraProguardRules": "# Heimlig keep rules for R8, added with versionCode 96.\n# Everything listed here is reached by NAME at runtime, not through a call R8 can see.\n# Removing or renaming any of it gives the classic failure mode: the build succeeds, the\n# app starts, and one single feature dies at runtime in the release build only.\n\n# expo-notifications ships android/proguard-rules.pro but does NOT wire it up through\n# consumerProguardFiles (checked in its build.gradle), so unlike every other Expo module\n# its rules do not arrive on their own.\n-keep class expo.modules.notifications.** { *; }\n\n# Home screen widget. The provider and its receiver are named as strings in\n# AndroidManifest.xml and instantiated by the OS, outside the app process.\n-keep class com.reactnativeandroidwidget.** { *; }\n-keep class * extends android.appwidget.AppWidgetProvider { *; }\n\n# Play Billing. The purchase listener is called back by the Play Store app across a\n# binder, and the response objects are deserialised by field name.\n-keep class com.android.billingclient.** { *; }\n-keep class expo.modules.iap.** { *; }\n\n# Sentry needs its own classes kept and needs line numbers to survive, otherwise every\n# stack trace it uploads becomes unreadable, which would remove the one tool for\n# diagnosing whatever else R8 breaks.\n-keep class io.sentry.** { *; }\n-keepattributes SourceFile,LineNumberTable,*Annotation*,Signature,InnerClasses,EnclosingMethod\n-renamesourcefileattribute SourceFile\n\n# React Native native modules and view managers are resolved by name from JavaScript,\n# so the class names have to survive.\n-keep class com.reactnativecommunity.asyncstorage.** { *; }\n-keep class com.reactnativecommunity.webview.** { *; }\n-keep class com.swmansion.** { *; }\n\n# Camera and image picker are covered in principle by expo-modules-core's consumer\n# rules, kept explicitly because both own an Activity result contract that the system\n# re-creates by name after the process was killed in the background.\n-keep class expo.modules.camera.** { *; }\n-keep class expo.modules.imagepicker.** { *; }\n\n# Optional transitive dependencies that are not on the runtime classpath.\n-dontwarn okhttp3.**\n-dontwarn okio.**\n"
+        }
+      }],
       "expo-router",
       "expo-iap",
       ["expo-notifications", {
