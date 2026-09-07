@@ -91,6 +91,15 @@ export const en: AppTranslations = {
       deleteConfirmTitle: 'Delete "{{name}}"?',
       deleteConfirmBody: 'All items in this list will also be deleted.',
     },
+    itemActions: {
+      changeQuantity: 'Change quantity',
+      moveToList: 'Move to another list',
+      quantityTitle: 'Change quantity',
+      moveTitle: 'Move to which list?',
+      moveFailedBody: 'Could not move the item. Please try again.',
+      deleteConfirmTitle: 'Delete "{{name}}"?',
+      deleteConfirmBody: 'The item will be permanently removed.',
+    },
   },
   budget: {
     expenseType: '- Expense',

@@ -90,6 +90,15 @@ export const de: AppTranslations = {
       deleteConfirmTitle: '"{{name}}" löschen?',
       deleteConfirmBody: 'Alle Artikel in dieser Liste werden ebenfalls gelöscht.',
     },
+    itemActions: {
+      changeQuantity: 'Menge ändern',
+      moveToList: 'In eine andere Liste verschieben',
+      quantityTitle: 'Menge ändern',
+      moveTitle: 'In welche Liste?',
+      moveFailedBody: 'Der Artikel konnte nicht verschoben werden. Versuch es noch einmal.',
+      deleteConfirmTitle: '"{{name}}" löschen?',
+      deleteConfirmBody: 'Der Artikel wird endgültig entfernt.',
+    },
   },
   budget: {
     expenseType: '- Ausgabe',
