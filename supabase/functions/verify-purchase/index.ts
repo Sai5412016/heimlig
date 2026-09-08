@@ -284,9 +284,17 @@ serve(async (req) => {
         }
 
         // Mirrors the upgrade path's discipline below: only ever moves 'premium' -> 'free',
-        // never touches 'premium_plus'/'family'/an already-'free' household.
+        // never touches 'premium_plus'/'family'/an already-'free' household. Also excludes
+        // grandfathered households: `grandfathered` is a manually-granted, purchase-independent
+        // entitlement (see lib/premium.ts isGrandfathered()) — a household that never bought
+        // Premium in the first place can't have its access revoked by a purchase-token check
+        // that was never what granted it. Without this, a grandfathered household that happens
+        // to also have an old/expired purchases row (e.g. a past real purchase, or test data)
+        // would get its plan_tier stripped by this endpoint even though grandfathered=true was
+        // never meant to depend on any purchase token being valid.
         const { error: downgradeError, count } = await serviceClient
-          .from('households').update({ plan_tier: 'free' }, { count: 'exact' }).eq('id', householdId).eq('plan_tier', 'premium');
+          .from('households').update({ plan_tier: 'free' }, { count: 'exact' })
+          .eq('id', householdId).eq('plan_tier', 'premium').eq('grandfathered', false);
         if (downgradeError) {
           console.error('verify-purchase: failed to downgrade households.plan_tier —', downgradeError.code, downgradeError.message);
         } else if ((count ?? 0) > 0) {
