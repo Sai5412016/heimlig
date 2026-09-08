@@ -11,7 +11,7 @@ import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { useTheme } from '../hooks/useTheme';
 import { checkForUpdate } from '../lib/appUpdate';
-import { initBilling, restorePurchases } from '../lib/billing';
+import { initBilling, restorePurchases, checkSubscriptionStatusOnLaunch } from '../lib/billing';
 import WhatsNewModal from '../components/WhatsNewModal';
 import ErrorFallback from '../components/ErrorFallback';
 import { initSentry, Sentry } from '../lib/sentry';
@@ -192,6 +192,10 @@ function RootLayout() {
       const householdId = chosen.households?.id as string | undefined;
       if (householdId) {
         initBilling(householdId).then(ok => { if (ok) restorePurchases(householdId); });
+        // Separate from the restore above — catches an expiry/cancellation that Google Play
+        // already stopped surfacing via getAvailablePurchases(). Throttled to ~once/24h and
+        // fully non-blocking/error-swallowing internally, see checkSubscriptionStatusOnLaunch().
+        checkSubscriptionStatusOnLaunch(householdId);
       }
     } catch (e) {
       console.error(e);
