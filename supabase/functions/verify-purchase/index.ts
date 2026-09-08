@@ -113,7 +113,18 @@ async function getGoogleAccessToken(): Promise<string> {
   return data.access_token as string;
 }
 
-interface VerifyResult { valid: boolean; expiresAt: string | null; errorCode?: string }
+interface VerifyResult {
+  valid: boolean;
+  expiresAt: string | null;
+  errorCode?: string;
+  // True only when Google gave a well-formed, definitive answer about this token — a real
+  // subscriptionState came back, whether that state was "active" or not (CANCELED, EXPIRED,
+  // ON_HOLD, PAUSED, ...). False for every case where we couldn't reach Google or couldn't make
+  // sense of what it said (network error, non-2xx, unparseable body, OAuth failure, or a 2xx
+  // response with no subscriptionState at all). The caller must only ever downgrade a household
+  // to free when this is true — see the comment at that call site for why.
+  definitive: boolean;
+}
 
 // Validates a subscription purchase token via the current Play Developer API
 // (purchases.subscriptionsv2 — the v3 purchases.subscriptions.get endpoint it replaced is
@@ -126,7 +137,7 @@ async function verifyAndroidSubscription(purchaseToken: string): Promise<VerifyR
     accessToken = await getGoogleAccessToken();
   } catch (e) {
     console.error('verify-purchase: failed to obtain a Google access token —', errMsg(e));
-    return { valid: false, expiresAt: null, errorCode: 'google_auth_failed' };
+    return { valid: false, expiresAt: null, errorCode: 'google_auth_failed', definitive: false };
   }
   console.log('verify-purchase: obtained a Google OAuth access token successfully');
 
@@ -136,7 +147,7 @@ async function verifyAndroidSubscription(purchaseToken: string): Promise<VerifyR
     res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   } catch (e) {
     console.error('verify-purchase: network error calling the Play Developer API —', errMsg(e));
-    return { valid: false, expiresAt: null, errorCode: 'play_api_error' };
+    return { valid: false, expiresAt: null, errorCode: 'play_api_error', definitive: false };
   }
 
   if (!res.ok) {
@@ -146,7 +157,7 @@ async function verifyAndroidSubscription(purchaseToken: string): Promise<VerifyR
     // causes at this status: the service account's Play Console access hasn't propagated yet
     // (can take a while after granting it), a package-name mismatch, or a malformed token.
     console.error(`verify-purchase: Play Developer API (subscriptionsv2) returned ${res.status} —`, body);
-    return { valid: false, expiresAt: null, errorCode: 'play_api_error' };
+    return { valid: false, expiresAt: null, errorCode: 'play_api_error', definitive: false };
   }
 
   let data: any;
@@ -154,17 +165,22 @@ async function verifyAndroidSubscription(purchaseToken: string): Promise<VerifyR
     data = await res.json();
   } catch (e) {
     console.error('verify-purchase: could not parse the Play Developer API response as JSON —', errMsg(e));
-    return { valid: false, expiresAt: null, errorCode: 'play_api_error' };
+    return { valid: false, expiresAt: null, errorCode: 'play_api_error', definitive: false };
   }
 
   const state = data.subscriptionState as string | undefined;
   const valid = state === 'SUBSCRIPTION_STATE_ACTIVE' || state === 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD';
   const expiresAt = data.lineItems?.[0]?.expiryTime ?? null;
+  // A 2xx response with a real subscriptionState field is Google's definitive word on this
+  // token. A MISSING subscriptionState (malformed/unexpected response shape despite a 2xx) is
+  // deliberately NOT treated as definitive — that shape mismatch is not something to strip
+  // anyone's Premium over.
+  const definitive = typeof state === 'string' && state.length > 0;
   // Always logged, not just on rejection — this is the actual answer Google gave us, and the
   // single most useful line for diagnosing a "responds 200 but writes nothing" report: it shows
   // whether the call even reached Google, and if so, exactly what state it returned.
-  console.log(`verify-purchase: Play API subscriptionsv2 responded — subscriptionState=${state ?? '<missing>'} valid=${valid} hasExpiresAt=${!!expiresAt}`);
-  return { valid, expiresAt };
+  console.log(`verify-purchase: Play API subscriptionsv2 responded — subscriptionState=${state ?? '<missing>'} valid=${valid} definitive=${definitive} hasExpiresAt=${!!expiresAt}`);
+  return { valid, expiresAt, definitive };
 }
 
 serve(async (req) => {
@@ -244,6 +260,40 @@ serve(async (req) => {
       // exactly this "responds 200, writes nothing" failure mode invisible.
       const infraFailure = result.errorCode === 'google_auth_failed' || result.errorCode === 'play_api_error';
       console.error(`verify-purchase: rejecting purchase for household ${householdId} — errorCode=${result.errorCode ?? 'not_active'}`);
+
+      // Downgrade ONLY on a definitive "no" from Google (a real subscriptionState came back and
+      // it wasn't active/in-grace — CANCELED, EXPIRED, ON_HOLD, PAUSED, ...). infraFailure here
+      // is a subset of !definitive (both errorCodes above always carry definitive: false), so
+      // this check alone is enough to exclude every unreachable/unparseable/OAuth-failure case.
+      // Deliberately asymmetric with the upgrade path below: better someone keeps Premium a
+      // little too long than a paying customer gets locked out by a Google hiccup we
+      // misread as "not active".
+      if (result.definitive) {
+        const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        const { error: purchaseWriteError } = await serviceClient.from('purchases').upsert({
+          user_id: user.id,
+          household_id: householdId,
+          product_id: productId,
+          purchase_token: purchaseToken,
+          platform,
+          status: 'expired',
+          expires_at: result.expiresAt,
+        }, { onConflict: 'purchase_token' });
+        if (purchaseWriteError) {
+          console.error('verify-purchase: failed to upsert the expired purchases row —', purchaseWriteError.code, purchaseWriteError.message);
+        }
+
+        // Mirrors the upgrade path's discipline below: only ever moves 'premium' -> 'free',
+        // never touches 'premium_plus'/'family'/an already-'free' household.
+        const { error: downgradeError, count } = await serviceClient
+          .from('households').update({ plan_tier: 'free' }, { count: 'exact' }).eq('id', householdId).eq('plan_tier', 'premium');
+        if (downgradeError) {
+          console.error('verify-purchase: failed to downgrade households.plan_tier —', downgradeError.code, downgradeError.message);
+        } else if ((count ?? 0) > 0) {
+          console.log(`verify-purchase: downgraded household ${householdId} to plan_tier=free — subscription no longer active`);
+        }
+      }
+
       return new Response(JSON.stringify({ valid: false, error: result.errorCode ?? 'not_active' }), {
         status: infraFailure ? 502 : 402,
         headers: { ...cors, 'Content-Type': 'application/json' },
@@ -273,8 +323,8 @@ serve(async (req) => {
 
     // Additive only: this never touches a household that's already 'premium' (incl.
     // manually-granted testers), 'premium_plus' or 'family' — only upgrades a 'free' one.
-    // Downgrading on expiry/cancellation is explicitly out of scope for this pass (needs
-    // Real-time Developer Notifications, a separate follow-up task).
+    // The mirror-image downgrade ('premium' -> 'free' on a definitive non-active answer from
+    // Google) lives in the !result.valid branch above.
     const { error: householdUpdateError } = await serviceClient
       .from('households').update({ plan_tier: 'premium' }).eq('id', householdId).eq('plan_tier', 'free');
     if (householdUpdateError) {

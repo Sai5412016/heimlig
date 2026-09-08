@@ -5,6 +5,7 @@
 // against the Google Play Developer API server-side before granting anything. A client
 // could otherwise just fabricate a token and unlock Premium for free.
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   initConnection, endConnection, fetchProducts, requestPurchase, finishTransaction,
   getAvailablePurchases, purchaseUpdatedListener, purchaseErrorListener,
@@ -15,6 +16,15 @@ import i18n from './i18n';
 import { Sentry } from './sentry';
 
 export const PREMIUM_PRODUCT_ID = 'heimlig_premium_monthly';
+
+// Remembers the last purchase token that verify-purchase confirmed as active, purely so
+// checkSubscriptionStatusOnLaunch() below has something to re-verify later — once a
+// subscription expires or is cancelled, Google Play can stop returning it from
+// getAvailablePurchases() entirely, which is what restorePurchases() relies on, so that path
+// alone would never notice the expiry and downgrade plan_tier.
+const LAST_VERIFIED_TOKEN_KEY = '@heimlig/lastVerifiedPurchaseToken';
+const LAST_STATUS_CHECK_KEY = '@heimlig/lastPurchaseStatusCheckAt';
+const STATUS_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export interface PurchaseResult { success: boolean; error?: string }
 
@@ -79,6 +89,9 @@ async function verifyAndFinish(purchase: Purchase, householdId: string): Promise
     if (!data?.valid) return { ok: false, error: data?.error };
     // Non-consumable (a subscription, not a coin pack) — don't consume the token.
     await finishTransaction({ purchase, isConsumable: false });
+    if (purchase.purchaseToken) {
+      try { await AsyncStorage.setItem(LAST_VERIFIED_TOKEN_KEY, purchase.purchaseToken); } catch { /* best-effort */ }
+    }
     return { ok: true };
   } catch (e) {
     // supabase.functions.invoke() threw before any HTTP response came back at all — a purely
@@ -184,5 +197,35 @@ export async function restorePurchases(householdId: string): Promise<number> {
   } catch (e) {
     console.warn('[billing] restorePurchases failed', e);
     return 0;
+  }
+}
+
+// Re-verifies the last known purchase token against Google on app start, at most once every
+// 24 hours (timestamp in AsyncStorage) and only if a token was actually saved by a previous
+// successful verification. This exists because restorePurchases() above can't be relied on to
+// ever notice an expiry — Google Play only returns *currently owned* purchases from
+// getAvailablePurchases(), and can simply stop listing a subscription once it's expired or
+// cancelled, so there'd be nothing left to re-verify through that path. Calling verify-purchase
+// directly with the remembered token closes that gap: the edge function itself decides whether
+// to downgrade plan_tier (see its `result.definitive` handling) — this function only triggers
+// that check, it never reads or acts on the result itself.
+// Must never throw and must never block app startup — every failure (network, invoke, storage)
+// is swallowed silently. Safe to call unawaited (fire-and-forget) from app start.
+export async function checkSubscriptionStatusOnLaunch(householdId: string): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    const token = await AsyncStorage.getItem(LAST_VERIFIED_TOKEN_KEY);
+    if (!token) return;
+    const lastCheckedRaw = await AsyncStorage.getItem(LAST_STATUS_CHECK_KEY);
+    const lastChecked = lastCheckedRaw ? Number(lastCheckedRaw) : 0;
+    if (Date.now() - lastChecked < STATUS_CHECK_INTERVAL_MS) return;
+    // Recorded before the network call, not after — so a call that hangs or fails still counts
+    // toward the 24h throttle instead of being retried on every subsequent launch.
+    await AsyncStorage.setItem(LAST_STATUS_CHECK_KEY, String(Date.now()));
+    await supabase.functions.invoke('verify-purchase', {
+      body: { purchaseToken: token, productId: PREMIUM_PRODUCT_ID, platform: 'android', householdId },
+    });
+  } catch {
+    /* silent on purpose — see function comment above */
   }
 }
