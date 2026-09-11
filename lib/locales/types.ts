@@ -335,6 +335,7 @@ export interface AppTranslations {
     dailyDigestLabel: string;
     notesLabel: string;
     googleCalendarLabel: string;
+    deviceCalendarLabel: string;
     locationLabel: string;
     changePasswordLabel: string;
     screenshotToolLabel: string;
@@ -420,6 +421,28 @@ export interface AppTranslations {
     importHint: string;
     exportButton: string;
     exportHint: string;
+  };
+  deviceCal: {
+    title: string;
+    permissionEmoji: string;
+    permissionTitle: string;
+    permissionBody: string;
+    reasonReadOnly: string;
+    reasonNoDuplicates: string;
+    allowButton: string;
+    laterButton: string;
+    deniedHint: string;
+    openSettingsButton: string;
+    pickTitle: string;
+    pickBody: string;
+    noCalendars: string;
+    importButton: string;
+    importHint: string;
+    importedTitle: string;
+    importedBody_one: string;
+    importedBody_other: string;
+    noNewEvents: string;
+    importFailedBody: string;
   };
   birthdays: {
     title: string;

@@ -21,6 +21,7 @@ import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import NotesModal from '../../components/NotesModal';
 import GoogleCalendarModal from '../../components/GoogleCalendarModal';
+import DeviceCalendarModal from '../../components/DeviceCalendarModal';
 import LocationModal from '../../components/LocationModal';
 import ThemeMotif from '../../components/ThemeMotif';
 import ShareModal from '../../components/ShareModal';
@@ -29,6 +30,7 @@ import FeedbackModal from '../../components/FeedbackModal';
 import InviteQRCode from '../../components/InviteQRCode';
 import NotificationPermissionModal from '../../components/NotificationPermissionModal';
 import { hasNotificationPermission, canAskForNotificationPermission } from '../../lib/notifications';
+import { hasCalendarPermission, canAskForCalendarPermission } from '../../lib/deviceCalendar';
 import { markNotificationPrimerSeen } from '../../lib/notificationPrimer';
 import { registerPushToken } from '../../lib/pushTokens';
 import { hasPremiumAccess, isMemberLimitError, HOUSEHOLD_MEMBER_CAP, FREE_MONTHLY_AI_ACTIONS } from '../../lib/premium';
@@ -319,6 +321,20 @@ export default function HouseholdScreen() {
     setNotifDeniedForever(!(await canAskForNotificationPermission()));
     setShowNotifModal(true);
   };
+
+  // Device calendar import — same "check first, never prompt from the row itself" shape as
+  // notifications above. The actual requestCalendarPermissionsAsync() call only happens inside
+  // DeviceCalendarModal, after the user has read why and tapped a button themselves.
+  const [showDeviceCal, setShowDeviceCal] = useState(false);
+  const [deviceCalGranted, setDeviceCalGranted] = useState(false);
+  const [deviceCalDeniedForever, setDeviceCalDeniedForever] = useState(false);
+  const handleDeviceCalendarRow = async () => {
+    const granted = await hasCalendarPermission();
+    setDeviceCalGranted(granted);
+    if (!granted) setDeviceCalDeniedForever(!(await canAskForCalendarPermission()));
+    setShowDeviceCal(true);
+  };
+
   const [showShare, setShowShare] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
   const premium = hasPremiumAccess(household);
@@ -931,10 +947,22 @@ export default function HouseholdScreen() {
           <Text style={styles.settingsBtnText}>{t('household.notesLabel')}</Text>
         </TouchableOpacity>
 
-        {/* Google Calendar */}
-        <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowGCal(true)}>
-          <Text style={styles.settingsBtnText}>{t('household.googleCalendarLabel')}</Text>
-        </TouchableOpacity>
+        {/* Google Calendar — web only. GoogleCalendarModal.tsx's own OAuth flow doesn't work on
+            native (Google blocks sign-in in this WebView-based flow there), so the row itself
+            must not appear on Android/iOS either — a button that opens to a dead end is worse
+            than no button. */}
+        {Platform.OS === 'web' && (
+          <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowGCal(true)}>
+            <Text style={styles.settingsBtnText}>{t('household.googleCalendarLabel')}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Device calendar — native only. expo-calendar has no OS calendar to read on web. */}
+        {Platform.OS !== 'web' && (
+          <TouchableOpacity style={styles.settingsBtn} onPress={handleDeviceCalendarRow}>
+            <Text style={styles.settingsBtnText}>{t('household.deviceCalendarLabel')}</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Location sharing */}
         <TouchableOpacity style={styles.settingsBtn} onPress={() => setShowLocation(true)}>
@@ -1000,6 +1028,12 @@ export default function HouseholdScreen() {
 
       <NotesModal visible={showNotes} onClose={() => setShowNotes(false)} />
       <GoogleCalendarModal visible={showGCal} onClose={() => setShowGCal(false)} />
+      <DeviceCalendarModal
+        visible={showDeviceCal}
+        onClose={() => setShowDeviceCal(false)}
+        granted={deviceCalGranted}
+        deniedForever={deviceCalDeniedForever}
+      />
       <LocationModal visible={showLocation} onClose={() => setShowLocation(false)} />
       <InviteModal
         visible={showInvite}

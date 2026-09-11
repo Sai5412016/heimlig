@@ -114,6 +114,10 @@ export interface Task {
   recurrence_interval?: number;
   due_time?: string;
   google_event_id?: string;
+  // Distinct from google_event_id on purpose — a different ID namespace (expo-calendar's local,
+  // on-device event ID vs. the Google Calendar API's own event ID) that must never be compared
+  // or merged with it. See lib/deviceCalendar.ts and importDeviceCalendarEvents in useStore.ts.
+  device_calendar_event_id?: string;
   points: number;
   created_at: string;
   attachment_path?: string;
