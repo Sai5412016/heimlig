@@ -10,28 +10,63 @@
 // Two modes:
 //   - can still ask  → primary button opens the system dialog
 //   - already denied → no dialog is possible any more, so the button goes to system settings
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, Modal, Pressable, TouchableOpacity, Linking, ActivityIndicator, AppState } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { spacing, radius, typography, shadow, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
-import { requestNotificationPermission } from '../lib/notifications';
+import { requestNotificationPermission, hasNotificationPermission, canAskForNotificationPermission } from '../lib/notifications';
 
 export default function NotificationPermissionModal({
-  visible, onClose, onResult, deniedForever = false,
+  visible, onClose, onResult, deniedForever: initialDeniedForever = false,
 }: {
   visible: boolean;
   onClose: () => void;
   // Called with whether permission ended up granted. The caller decides what to do next (e.g.
   // schedule the reminder that triggered this).
   onResult?: (granted: boolean) => void;
-  // True when the OS will no longer show a dialog — the only remaining route is system settings.
+  // Only an initial hint from the caller, read before this modal opened — re-verified inside the
+  // modal itself too, see refreshPermissionStatus below (same reasoning as DeviceCalendarModal).
   deniedForever?: boolean;
 }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [busy, setBusy] = useState(false);
+  const [deniedForever, setDeniedForever] = useState(initialDeniedForever);
+
+  // Reads the OS permission directly rather than trusting a value from before the modal opened
+  // or from before the user left for Settings. If it turns out already granted — most likely the
+  // user just enabled it from Settings while this modal sat open — there is nothing left to ask,
+  // so this closes the modal exactly like a successful in-app tap on "Enable" does below.
+  const refreshPermissionStatus = useCallback(async () => {
+    const granted = await hasNotificationPermission();
+    if (granted) {
+      onResult?.(true);
+      onClose();
+      return;
+    }
+    setDeniedForever(!(await canAskForNotificationPermission()));
+  }, [onResult, onClose]);
+
+  // Fixes a dead end: leaving this modal open, granting the permission from Android Settings and
+  // coming back never used to update anything here — `visible` doesn't toggle (the modal was
+  // never closed) and the caller's prop is stale, so "denied forever, open settings" could stick
+  // around until a full app restart. AppState 'active' fires exactly on that return.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active' && visible) refreshPermissionStatus();
+    });
+    return () => sub.remove();
+  }, [visible, refreshPermissionStatus]);
+
+  // Re-checks every time the modal opens instead of trusting what the caller remembered from
+  // before — the prop still seeds state synchronously so the right screen shows immediately.
+  useEffect(() => {
+    if (!visible) return;
+    setDeniedForever(initialDeniedForever);
+    refreshPermissionStatus();
+  }, [visible, initialDeniedForever, refreshPermissionStatus]);
 
   const handleEnable = async () => {
     if (busy) return;
