@@ -12,6 +12,7 @@ import i18n, { type SupportedLanguage } from '../lib/i18n';
 import { uploadRecipeImage, deleteRecipeImage } from '../lib/recipeAttachments';
 import { setBillingHousehold } from '../lib/billing';
 import { notifyUserAction } from '../lib/reviewPrompt';
+import type { DeviceCalendarEvent } from '../lib/deviceCalendar';
 
 export interface SaveRecipeOpts {
   sourceUrl?: string; date?: string; mealType?: MealType; addToCart: boolean;
@@ -160,6 +161,9 @@ interface AppState {
   // 📅 Google Calendar sync
   importGoogleEvents: (events: any[]) => Promise<number>;
   exportTasksToGoogle: (token: string) => Promise<number>;
+
+  // 📅 Device calendar import (expo-calendar, read-only — no export/write counterpart)
+  importDeviceCalendarEvents: (events: DeviceCalendarEvent[]) => Promise<number>;
 
   // 📍 Shared member locations
   locations: MemberLocation[];
@@ -772,6 +776,30 @@ export const useStore = create<AppState>((set, get) => ({
           count++;
         }
       } catch { /* skip individual failures */ }
+    }
+    return count;
+  },
+
+  // Dedup key is device_calendar_event_id, NOT google_event_id — these are two different ID
+  // namespaces (expo-calendar's on-device event ID vs. the Google Calendar API's own event ID),
+  // and an event synced to the device from Google still gets a different, device-local ID here.
+  // Reusing google_event_id would also break exportTasksToGoogle's `!google_event_id` filter
+  // above, which relies on that column meaning "already has a Google Calendar counterpart".
+  importDeviceCalendarEvents: async (events) => {
+    const { household, tasks } = get();
+    if (!household) return 0;
+    const existing = new Set(tasks.map(t => (t as any).device_calendar_event_id).filter(Boolean));
+    let count = 0;
+    for (const e of events) {
+      if (!e?.id || existing.has(e.id) || !e.date) continue;
+      const { data } = await supabase.from('tasks').insert({
+        household_id: household.id,
+        title: e.title || 'Termin',
+        description: e.description || null,
+        category: 'Sonstiges', priority: 'normal', points: 10,
+        due_date: e.date, due_time: e.time ?? null, device_calendar_event_id: e.id,
+      }).select().single();
+      if (data) { set(s => ({ tasks: [...s.tasks, data] })); count++; }
     }
     return count;
   },
