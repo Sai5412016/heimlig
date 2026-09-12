@@ -30,7 +30,7 @@ export default function DatenschutzScreen() {
         <View style={styles.section}>
           <Text style={styles.h2}>2. Welche Daten wir verarbeiten</Text>
           <Text style={styles.p}>
-            • Konto: E-Mail-Adresse, Passwort (verschlüsselt gespeichert){'\n'}
+            • Konto: E-Mail-Adresse, Passwort (verschlüsselt gespeichert). Meldest du dich stattdessen mit „Mit Google anmelden" an, erhalten wir von Google deine E-Mail-Adresse, deinen Namen und die URL deines Profilbilds, um dein Konto anzulegen bzw. wiederzuerkennen — es wird dabei kein Passwort bei uns gespeichert{'\n'}
             • Haushaltsdaten: Anzeigename, Avatarfarbe, Haushaltsname, Einkaufslisten, Aufgaben, Budget/Transaktionen, Rezepte, Notizen — sichtbar für die Mitglieder deines Haushalts{'\n'}
             • Optional, nur wenn du es aktivierst: dein Standort (einmalig beim Tippen auf „Standort teilen", kein dauerhaftes Tracking, Freigaben werden automatisch nach einiger Zeit wieder gelöscht){'\n'}
             • Optional: Fotos von Rezepten, die du zur Zutaten-Erkennung hochlädst{'\n'}
@@ -45,7 +45,7 @@ export default function DatenschutzScreen() {
             • Supabase Inc. — Datenbank, Authentifizierung, Backend-Funktionen. Alle App-Inhalte (Konto, Haushaltsdaten) werden dort gespeichert.{'\n\n'}
             • Anthropic (USA) — in zwei Fällen: (1) wenn du ein Rezept per Foto oder Text importierst oder einen Kassenzettel scannst, wird der Inhalt zur Texterkennung an die Claude-API übermittelt; (2) wenn du Feedback über „Feedback & Wünsche" abschickst, wird der Text deiner Nachricht an die Claude-API übermittelt, um automatisch zu prüfen, ob es sich um eine Rückmeldung zur App handelt — das schützt das Postfach vor Spam. Deine Kontakt-E-Mail wird dabei nicht mit übermittelt. In beiden Fällen findet eine Datenübermittlung in ein Land außerhalb der EU (USA) statt.{'\n\n'}
             • Open Food Facts — beim Scannen eines Produkt-Barcodes wird die Barcode-Nummer an die offene Produktdatenbank Open Food Facts gesendet, um Produktinfos abzurufen. Es werden dabei keine Konto- oder Personendaten übermittelt.{'\n\n'}
-            • Google — nur wenn du „Google Kalender verbinden" nutzt: nach deiner ausdrücklichen Anmeldung bei Google werden Kalendertermine zwischen Heimlig und deinem Google-Kalender abgeglichen.{'\n\n'}
+            • Google — in zwei unabhängigen Fällen: (1) meldest du dich mit „Mit Google anmelden" an, übermittelt Google beim Login deine E-Mail-Adresse, deinen Namen und die URL deines Profilbilds, damit dein Konto angelegt bzw. wiedererkannt werden kann; (2) nur wenn du zusätzlich „Google Kalender verbinden" nutzt, werden nach deiner separaten, ausdrücklichen Anmeldung dort Kalendertermine zwischen Heimlig und deinem Google-Kalender abgeglichen. Beides ist unabhängig voneinander nutzbar.{'\n\n'}
             • Vercel Inc. — Hosting der Web-Version (heimlig.app, heimlig.vercel.app).{'\n\n'}
             • Expo (EAS Push Service) — wenn du Push-Benachrichtigungen erlaubst, wird bei neuen Haushalts-Nachrichten der Nachrichtentext, der Absendername und dein Geräte-Push-Token an Expos Push-Zustelldienst übermittelt, um die Benachrichtigung an dein Gerät zuzustellen.
           </Text>
@@ -54,7 +54,7 @@ export default function DatenschutzScreen() {
         <View style={styles.section}>
           <Text style={styles.h2}>4. Zweck und Rechtsgrundlage</Text>
           <Text style={styles.p}>
-            Die Verarbeitung erfolgt zur Bereitstellung der App-Funktionen, die du nutzt (Art. 6 Abs. 1 lit. b DSGVO — Vertragserfüllung), bzw. bei optionalen Funktionen (Standort, Rezeptfoto-Import, Kassenzettel-Scan, Google-Kalender, Feedback) auf Grundlage deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit widerrufen kannst, indem du die jeweilige Funktion einfach nicht nutzt.
+            Die Verarbeitung erfolgt zur Bereitstellung der App-Funktionen, die du nutzt (Art. 6 Abs. 1 lit. b DSGVO — Vertragserfüllung), bzw. bei optionalen Funktionen (Standort, Rezeptfoto-Import, Kassenzettel-Scan, Google-Kalender, Feedback) auf Grundlage deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit widerrufen kannst, indem du die jeweilige Funktion einfach nicht nutzt. Entscheidest du dich bei der Anmeldung für „Mit Google anmelden" statt E-Mail/Passwort, ist die Übermittlung von E-Mail, Name und Profilbild-URL durch Google zur Kontoerstellung notwendig (ebenfalls Art. 6 Abs. 1 lit. b DSGVO) — unabhängig von der optionalen Google-Kalender-Funktion oben.
           </Text>
         </View>
 

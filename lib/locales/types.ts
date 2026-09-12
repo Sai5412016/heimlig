@@ -697,6 +697,10 @@ export interface AppTranslations {
     continueButton: string;
     welcomeBack: string;
     createAccount: string;
+    googleSignInButton: string;
+    orDivider: string;
+    googlePlayServicesError: string;
+    googleGenericError: string;
     emailPlaceholder: string;
     passwordPlaceholder: string;
     loadingButton: string;
