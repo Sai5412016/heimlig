@@ -312,6 +312,33 @@ serve(async (req) => {
     // `purchases` or a plan_tier upgrade ever gets written from, deliberately unreachable
     // directly from the client (see the migration's RLS comment).
     const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Refuse to let this request take over a purchase_token a DIFFERENT user already owns.
+    // purchase_token is the upsert's own conflict key below (onConflict: 'purchase_token') — a
+    // token cached on a device from a PREVIOUS account (see lib/billing.ts's
+    // lastVerifiedPurchaseToken, which survives until app/_layout.tsx's SIGNED_OUT handler
+    // clears it) would otherwise silently reassign that purchases row, and the plan_tier
+    // upgrade that comes with it, to whichever user/household calls this next with the same
+    // token — a real cross-account Premium leak, not just a cosmetic data mismatch.
+    // Read-before-write is fine here: a race only ever produces a false negative (both callers
+    // pass this check, one write wins, the other's `count` below just stays 0) — never a false
+    // positive that lets a hijack through.
+    const { data: existingPurchase } = await serviceClient
+      .from('purchases').select('user_id, household_id').eq('purchase_token', purchaseToken).maybeSingle();
+    if (existingPurchase && existingPurchase.user_id !== user.id) {
+      console.error(`verify-purchase: purchase_token already claimed by a different user — rejecting upgrade for user ${user.id} household ${householdId}`);
+      return new Response(JSON.stringify({ valid: false, error: 'token_already_claimed' }), {
+        status: 409, headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+    // Same user, different household_id than the existing row: deliberately ALLOWED, not
+    // rejected — this is the legitimate "user switches households and brings their
+    // subscription along" case. The upsert below moves the purchases row (and with it, the
+    // subscription) onto the new household by overwriting household_id — same user, so no
+    // hijack risk. NOTE: this does not (yet) touch the OLD household's plan_tier, which stays
+    // 'premium' even though the purchases row backing it just moved away — a known gap, not
+    // addressed here.
+
     const { error: purchaseWriteError } = await serviceClient.from('purchases').upsert({
       user_id: user.id,
       household_id: householdId,

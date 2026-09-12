@@ -19,6 +19,7 @@ import { Alert } from '../lib/alert';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../lib/supabase';
+import { signOutOfGoogle } from '../lib/googleAuth';
 import { useStore } from '../store/useStore';
 
 type PreviewHousehold = {
@@ -80,6 +81,7 @@ export default function KontoLoeschenScreen() {
       // The account is gone at this point; the local session is just a stale token. Clear the
       // store first so no household data is left in memory behind the onboarding screen.
       resetSession();
+      await signOutOfGoogle();
       await supabase.auth.signOut();
       router.replace('/onboarding');
     } catch (e: any) {

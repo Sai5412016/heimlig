@@ -31,6 +31,7 @@ import InviteQRCode from '../../components/InviteQRCode';
 import NotificationPermissionModal from '../../components/NotificationPermissionModal';
 import { hasNotificationPermission, canAskForNotificationPermission } from '../../lib/notifications';
 import { hasCalendarPermission, canAskForCalendarPermission } from '../../lib/deviceCalendar';
+import { signOutOfGoogle } from '../../lib/googleAuth';
 import { markNotificationPrimerSeen } from '../../lib/notificationPrimer';
 import { registerPushToken } from '../../lib/pushTokens';
 import { hasPremiumAccess, isMemberLimitError, HOUSEHOLD_MEMBER_CAP, FREE_MONTHLY_AI_ACTIONS } from '../../lib/premium';
@@ -477,6 +478,7 @@ export default function HouseholdScreen() {
             await switchHousehold(result.remaining[0].id);
           } else {
             setHousehold(null);
+            await signOutOfGoogle();
             await supabase.auth.signOut();
           }
       }},
@@ -1017,7 +1019,7 @@ export default function HouseholdScreen() {
           style={styles.signOutBtn}
           onPress={() => Alert.alert(t('household.signOutConfirmTitle'), t('household.signOutConfirmBody'), [
             { text: t('common.cancel'), style: 'cancel' },
-            { text: t('household.signOutButton'), style: 'destructive', onPress: () => supabase.auth.signOut() }
+            { text: t('household.signOutButton'), style: 'destructive', onPress: async () => { await signOutOfGoogle(); await supabase.auth.signOut(); } }
           ])}
         >
           <Text style={styles.signOutBtnText}>{t('household.signOutButton')}</Text>
