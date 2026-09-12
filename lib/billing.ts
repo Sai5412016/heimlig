@@ -229,3 +229,18 @@ export async function checkSubscriptionStatusOnLaunch(householdId: string): Prom
     /* silent on purpose — see function comment above */
   }
 }
+
+// Call this on sign-out (app/_layout.tsx's SIGNED_OUT handler) — without it, a purchase token
+// cached from the PREVIOUS account stays around and gets re-verified on the next launch against
+// whatever household the NEXT signed-in account happens to be in (checkSubscriptionStatusOnLaunch
+// above takes the caller's current householdId, not the token's actual owner). verify-purchase
+// itself now also refuses to upgrade a household with a token that belongs to a different
+// user/household, but clearing it here removes the stale token instead of merely being caught
+// server-side — same "clear it locally, not just reject it server-side" discipline as
+// clearPendingInviteCode/clearPendingHouseholdChoice in that same handler. Best-effort like every
+// other AsyncStorage cleanup here — never allowed to block sign-out.
+export async function clearCachedPurchaseVerification(): Promise<void> {
+  try {
+    await AsyncStorage.multiRemove([LAST_VERIFIED_TOKEN_KEY, LAST_STATUS_CHECK_KEY]);
+  } catch { /* best-effort */ }
+}

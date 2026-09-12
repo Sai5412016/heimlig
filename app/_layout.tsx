@@ -11,7 +11,7 @@ import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { useTheme } from '../hooks/useTheme';
 import { checkForUpdate } from '../lib/appUpdate';
-import { initBilling, restorePurchases, checkSubscriptionStatusOnLaunch } from '../lib/billing';
+import { initBilling, restorePurchases, checkSubscriptionStatusOnLaunch, clearCachedPurchaseVerification } from '../lib/billing';
 import WhatsNewModal from '../components/WhatsNewModal';
 import ErrorFallback from '../components/ErrorFallback';
 import { initSentry, Sentry } from '../lib/sentry';
@@ -102,6 +102,16 @@ function RootLayout() {
         // otherwise it would pre-fill the onboarding screen for whoever logs in next on this
         // device, with a household name or invite code they never entered.
         clearPendingHouseholdChoice();
+        // Same reasoning, same parity: a pending invite code (lib/inviteFunnel.ts) would
+        // otherwise auto-apply to whichever account logs in next on this device, and a cached
+        // purchase token (lib/billing.ts) would get re-verified against that NEXT account's
+        // household on its next launch — verify-purchase now refuses that server-side too, but
+        // there is no reason to leave the stale token sitting here waiting to be rejected.
+        clearPendingInviteCode();
+        clearCachedPurchaseVerification();
+        // Deliberately NOT clearing the notification primer (lib/notificationPrimer.ts) — that
+        // flag is correctly device-scoped ("has this device seen the permission explainer"),
+        // not account-scoped, so a new account signing in here should still skip it.
         setReady(true);
         router.replace('/onboarding');
       }
