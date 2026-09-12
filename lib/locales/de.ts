@@ -931,6 +931,9 @@ export const de: AppTranslations = {
   joinPage: {
     title: 'Haushalt beitreten',
     webOpening: 'App wird geöffnet… Falls nichts passiert, installiere zuerst Heimlig.',
+    webNoAppBody: 'Du hast Heimlig noch nicht installiert. Am einfachsten geht es mit der App — du kannst aber auch direkt hier im Browser weitermachen.',
+    installFromPlayStoreButton: 'Heimlig aus dem Play Store installieren',
+    continueInBrowserButton: 'Weiter im Browser',
     loginPrompt: 'Bitte logge dich zuerst ein oder erstelle einen Account. Danach kannst du mit dem Code {{code}} beitreten.',
     invitedPrompt: 'Du wurdest eingeladen. Mit diesem Code beitreten:',
     joinButton: 'Beitreten 🎉',
