@@ -19,6 +19,7 @@ import { SUPPORTED_COUNTRIES } from '../lib/holidays';
 import { isMemberLimitError, HOUSEHOLD_MEMBER_CAP } from '../lib/premium';
 import { logInviteFunnelStep, logJoinOpenedOnce, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember, isAlreadyMemberError, resolveInviteCode, looksLikeInviteCode } from '../lib/inviteFunnel';
 import { savePendingHouseholdChoice, getPendingHouseholdChoice, clearPendingHouseholdChoice } from '../lib/householdChoice';
+import { signInWithGoogle } from '../lib/googleAuth';
 import InviteQRCode from '../components/InviteQRCode';
 
 // 'household' (Haushaltswahl) sits BEFORE 'auth' on purpose: the old order asked for an
@@ -114,6 +115,41 @@ export default function OnboardingScreen() {
       }
     } catch (e: any) {
       setErrorMsg(e.message || JSON.stringify(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── GOOGLE SIGN-IN ──────────────────────────────────────
+  // Covers login AND signup in one flow — Supabase either finds a matching user (existing
+  // email/password account with the same verified email gets this Google identity auto-linked
+  // to it, or a returning Google user) or creates a brand-new one, and signInWithIdToken can't
+  // tell those apart up front. loadExistingHousehold() below is the exact same function
+  // handleAuth's login branch already uses for that reason: "does this user have a household
+  // yet" is the only distinction that actually matters here, and it already handles both cases
+  // (existing household -> load it and hand off to any pending invite code, exactly like a
+  // returning email login; no household -> step 'name', where the pending invite code and
+  // household choice captured before this screen was ever reached get applied exactly as they
+  // do for a fresh email signup).
+  const handleGoogleAuth = async () => {
+    if (loading) return;
+    setErrorMsg(null);
+    setLoading(true);
+    try {
+      const result = await signInWithGoogle();
+      if (!result.ok) {
+        // A user-cancelled account picker is not an error — just go back to the form.
+        if (!result.cancelled) {
+          setErrorMsg(result.errorCode === 'play_services_unavailable'
+            ? t('onboarding.googlePlayServicesError')
+            : t('onboarding.googleGenericError'));
+        }
+        return;
+      }
+      if (result.displayName) setDisplayName(result.displayName);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setErrorMsg(t('onboarding.googleGenericError')); return; }
+      await loadExistingHousehold(user.id);
     } finally {
       setLoading(false);
     }
@@ -552,6 +588,27 @@ export default function OnboardingScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.stepContent}>
           <Text style={styles.stepTitle}>{isLogin ? t('onboarding.welcomeBack') : t('onboarding.createAccount')}</Text>
+          {/* Native-only: the whole point of @react-native-google-signin/google-signin over the
+              expo-auth-session flow already used for Calendar (lib/googleCalendar.ts) is the
+              native account picker with no browser detour — there is no equivalent on web, so
+              the button simply isn't offered there rather than showing a "Play Services
+              unavailable" message that would be true but meaningless to a web user. */}
+          {Platform.OS !== 'web' && (
+            <>
+              <TouchableOpacity
+                style={[styles.googleBtn, loading && styles.disabled]}
+                onPress={handleGoogleAuth} disabled={loading}
+              >
+                <Text style={styles.googleBtnIcon}>G</Text>
+                <Text style={styles.googleBtnText}>{t('onboarding.googleSignInButton')}</Text>
+              </TouchableOpacity>
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>{t('onboarding.orDivider')}</Text>
+                <View style={styles.dividerLine} />
+              </View>
+            </>
+          )}
           <TextInput
             style={styles.textInput} placeholder={t('onboarding.emailPlaceholder')} value={email}
             onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none"
@@ -728,6 +785,12 @@ const styles = StyleSheet.create({
   typeLabelActive: { color: colors.brand },
   typeSub: { ...typography.xs, color: colors.textSecondary, marginTop: 2, textAlign: 'center' },
   textInput: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, ...typography.body, color: colors.text, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md },
+  googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md + 2, marginBottom: spacing.md, ...shadow.sm },
+  googleBtnIcon: { fontSize: 18, fontWeight: '800', color: '#4285F4' },
+  googleBtnText: { ...typography.body, color: colors.text, fontWeight: '700' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { ...typography.xs, color: colors.textMuted },
   passwordRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md },
   passwordInput: { flex: 1, padding: spacing.md, ...typography.body, color: colors.text },
   eyeBtn: { paddingHorizontal: spacing.md },

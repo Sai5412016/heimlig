@@ -69,6 +69,7 @@
         "calendarPermission": "Heimlig braucht Zugriff auf deine Kalender, um bestehende Termine von deinem Gerät zu importieren.",
         "remindersPermission": false
       }],
+      "@react-native-google-signin/google-signin",
       ["react-native-android-widget", {
         "widgets": [{
           "name": "Heimlig",
