@@ -6,6 +6,7 @@
 // account picker, no browser detour. (lib/googleCalendar.ts's Calendar connection is a SEPARATE,
 // unrelated OAuth flow via expo-auth-session — that one legitimately needs a browser since it's
 // requesting Calendar API scopes for direct Google API calls, not signing in to Heimlig itself.)
+import { Platform } from 'react-native';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { supabase } from './supabase';
 import { GOOGLE_OAUTH } from '../constants/google';
@@ -33,6 +34,17 @@ export interface GoogleSignInResult {
 export async function signInWithGoogle(): Promise<GoogleSignInResult> {
   ensureConfigured();
   try {
+    // Forces the account picker to appear every time, even though Google/Play Services will
+    // otherwise silently remember the last account and skip it entirely on a later signIn()
+    // call. That silent reuse is the exact bug this addresses: after signing out of Heimlig (or
+    // even within the same install, e.g. wanting to switch accounts), tapping "Mit Google
+    // anmelden" again re-authenticated with the SAME account with no picker and no way to choose
+    // a different one short of clearing the app's storage — a convenience that is actively in
+    // the way for an explicit, user-initiated sign-in. Harmless if there is nothing cached
+    // (Google's SDK treats that as a no-op), and never allowed to block the actual sign-in
+    // attempt below if it fails for some other reason.
+    try { await GoogleSignin.signOut(); } catch { /* nothing cached, or it failed — proceed regardless */ }
+
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     const response = await GoogleSignin.signIn();
     if (response.type === 'cancelled') {
@@ -66,6 +78,29 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
     // generic message below leads with that.
     console.warn('[googleAuth] Google sign-in failed —', e?.code ?? e?.message ?? e);
     return { ok: false, errorCode: 'generic' };
+  }
+}
+
+// Call this wherever Heimlig signs the user out (supabase.auth.signOut()) — clears the NATIVE
+// Google Sign-In module's own cached account too, not just Heimlig's Supabase session. Without
+// this, GoogleSignin keeps remembering the last account across a Heimlig sign-out, so a later
+// "Mit Google anmelden" tap silently re-authenticates with the same account, no picker shown —
+// the account could only be switched by clearing the app's storage entirely.
+//
+// Checked cleanly via GoogleSignin.getCurrentUser() — a local, synchronous, no-network read of
+// the module's own cached state — rather than guessed (e.g. from Supabase's provider metadata,
+// which says how the CURRENT session was created, not whether this device's native module has
+// anything cached to sign out of). No-ops on web (no native module there) and whenever nothing
+// is cached. Never throws and never blocks the caller's own signOut() — every failure here is
+// swallowed, since a failed Google sign-out must not prevent the user from actually leaving
+// their Heimlig session.
+export async function signOutOfGoogle(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    if (!GoogleSignin.getCurrentUser()) return;
+    await GoogleSignin.signOut();
+  } catch (e) {
+    console.warn('[googleAuth] GoogleSignin.signOut() failed —', e);
   }
 }
 
