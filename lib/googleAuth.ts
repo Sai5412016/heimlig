@@ -78,10 +78,15 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
 export async function signInWithGoogleWeb(): Promise<{ ok: boolean }> {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    // Same convention as signUp's emailRedirectTo and resetPasswordForEmail's redirectTo
-    // elsewhere in this app (app/onboarding.tsx) — heimlig.vercel.app, not heimlig.app, since
-    // that's the origin already proven to work for a Supabase-issued redirect link.
-    options: { redirectTo: 'https://heimlig.vercel.app/onboarding' },
+    // MUST be the CURRENT origin, not a hardcoded one — unlike emailRedirectTo/
+    // resetPasswordForEmail elsewhere in this app, this redirect round-trips through a
+    // DIFFERENT site (Google) and back, and the pending invite code it needs to survive that
+    // trip lives in this origin's localStorage (see lib/inviteFunnel.ts). A visitor who opened
+    // an invite link lands on heimlig.app, not heimlig.vercel.app — hardcoding the latter here
+    // sent them back to an origin that can't see the code their invite link saved, breaking the
+    // exact case this whole feature is for. localStorage is never shared across origins, so this
+    // has to match wherever the user actually is, not a fixed canonical domain.
+    options: { redirectTo: `${window.location.origin}/onboarding` },
   });
   if (error) {
     // Only reached if signInWithOAuth failed before it could even redirect (e.g. it couldn't
