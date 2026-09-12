@@ -1,6 +1,6 @@
 // app/join/[code].tsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -12,7 +12,7 @@ import { isMemberLimitError, HOUSEHOLD_MEMBER_CAP } from '../../lib/premium';
 import { DEFAULT_STORE_URL } from '../../lib/appUpdate';
 import { logInviteFunnelStep, logJoinOpenedOnce, resolveInviteCode, savePendingInviteCode, clearPendingInviteCode, isAlreadyMemberError } from '../../lib/inviteFunnel';
 
-type Status = 'idle' | 'joining' | 'done' | 'error' | 'login' | 'web';
+type Status = 'idle' | 'joining' | 'done' | 'error' | 'login' | 'web' | 'web-no-app';
 
 export default function JoinByCode() {
   const { code: rawCode } = useLocalSearchParams<{ code: string }>();
@@ -45,14 +45,20 @@ export default function JoinByCode() {
   useEffect(() => {
     if (Platform.OS === 'web') {
       setStatus('web');
-      // Log join_opened here as well. This branch returned before any logging ever ran, and the
-      // browser is exactly where an invite link lands for the recipient this feature is about:
-      // somebody with no Heimlig account, and usually no app, tapping a link in a chat. On
-      // native an "anonymous opener" would have to be someone who installed the app but is not
-      // signed in — a rare combination — which is why the anon_id branch never recorded a single
-      // row. Fire-and-forget and deliberately started before the scheme handoff below: the tab
-      // stays alive for the ~1.5s of the fallback timer, which is the window this insert gets.
       (async () => {
+        // Persist FIRST, before the custom-scheme handoff below might navigate the tab away —
+        // same discipline the native branch already follows below for the same reason. This is
+        // new: the web branch never saved the code before, so nothing here would have survived a
+        // trip through Google sign-in and back, or even just a visit to the Play Store and back.
+        await savePendingInviteCode(code);
+
+        // Log join_opened here as well. This branch returned before any logging ever ran, and
+        // the browser is exactly where an invite link lands for the recipient this feature is
+        // about: somebody with no Heimlig account, and usually no app, tapping a link in a chat.
+        // On native an "anonymous opener" would have to be someone who installed the app but is
+        // not signed in — a rare combination — which is why the anon_id branch never recorded a
+        // single row. Deliberately started before the scheme handoff below: the tab stays alive
+        // for the ~1.5s of the fallback timer, which is the window this insert gets.
         const resolved = await resolveInviteCode(code);
         if (!resolved) return;
         const { data: { user } } = await supabase.auth.getUser();
@@ -60,11 +66,13 @@ export default function JoinByCode() {
       })();
       const fallbackTimer = setTimeout(() => {
         // If the tab is still visible/focused when this fires, the custom-scheme handoff never
-        // navigated away — the app isn't installed (or the handoff was blocked).
+        // navigated away — the app isn't installed (or the handoff was blocked). Used to redirect
+        // straight to the Play Store here; that is exactly the automatic redirect this was asked
+        // NOT to do, and it also skipped past the in-browser Google sign-in entirely. Shows an
+        // explicit choice instead — see the 'web-no-app' render block below.
         // @ts-ignore - document only exists on web
         if (typeof document === 'undefined' || !document.hidden) {
-          // @ts-ignore - window only exists on web
-          window.location.href = DEFAULT_STORE_URL;
+          setStatus('web-no-app');
         }
       }, 1500);
       // @ts-ignore - window only exists on web
@@ -203,6 +211,23 @@ export default function JoinByCode() {
 
         {status === 'web' && (
           <Text style={styles.sub}>{t('joinPage.webOpening')}</Text>
+        )}
+
+        {/* App isn't installed (or the custom-scheme handoff above was blocked) — the invite
+            code was already saved above, so both routes here can pick it up: the Play Store
+            button is an offer, not a redirect (see the report), and "weiter im Browser" hands
+            off to onboarding.tsx, where the code is applied exactly as it is for a fresh email
+            signup. */}
+        {status === 'web-no-app' && (
+          <>
+            <Text style={styles.sub}>{t('joinPage.webNoAppBody')}</Text>
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => Linking.openURL(DEFAULT_STORE_URL)}>
+              <Text style={styles.primaryBtnText}>{t('joinPage.installFromPlayStoreButton')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={() => router.replace('/onboarding')}>
+              <Text style={styles.secondaryBtnText}>{t('joinPage.continueInBrowserButton')}</Text>
+            </TouchableOpacity>
+          </>
         )}
 
         {status === 'login' && (

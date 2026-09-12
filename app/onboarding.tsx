@@ -19,7 +19,7 @@ import { SUPPORTED_COUNTRIES } from '../lib/holidays';
 import { isMemberLimitError, HOUSEHOLD_MEMBER_CAP } from '../lib/premium';
 import { logInviteFunnelStep, logJoinOpenedOnce, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember, isAlreadyMemberError, resolveInviteCode, looksLikeInviteCode } from '../lib/inviteFunnel';
 import { savePendingHouseholdChoice, getPendingHouseholdChoice, clearPendingHouseholdChoice } from '../lib/householdChoice';
-import { signInWithGoogle } from '../lib/googleAuth';
+import { signInWithGoogle, signInWithGoogleWeb, completeGoogleWebSignIn } from '../lib/googleAuth';
 import InviteQRCode from '../components/InviteQRCode';
 
 // 'household' (Haushaltswahl) sits BEFORE 'auth' on purpose: the old order asked for an
@@ -49,6 +49,30 @@ export default function OnboardingScreen() {
   // once on mount; carries through signup/email-verify/login without the user retyping anything.
   const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
   useEffect(() => { getPendingInviteCode().then(setPendingInviteCode); }, []);
+
+  // ─── COMPLETE WEB GOOGLE SIGN-IN ─────────────────────────
+  // signInWithGoogleWeb() (handleGoogleWebAuth below) redirects the whole page to Google and
+  // back to this exact URL (see its redirectTo) — this is the other half, run once on mount to
+  // pick up whatever Google sent back. A completely ordinary page load (no redirect pending) has
+  // nothing in the hash and completeGoogleWebSignIn() no-ops immediately, so this is safe to run
+  // unconditionally on every mount, not just after a redirect.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    (async () => {
+      const result = await completeGoogleWebSignIn();
+      if (!result.handled) return;
+      if (!result.ok) {
+        // Cancelled (denied consent on Google's screen) shows nothing, same as the native path.
+        if (!result.cancelled) setErrorMsg(t('onboarding.googleGenericError'));
+        return;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const name = (user.user_metadata?.full_name || user.user_metadata?.name) as string | undefined;
+      if (name) setDisplayName(name);
+      await loadExistingHousehold(user.id);
+    })();
+  }, []);
 
   // Restore the pre-signup household choice and, if a session already exists without any
   // membership, skip straight to the step that finishes the job. That combination is what a cold
@@ -151,6 +175,23 @@ export default function OnboardingScreen() {
       if (!user) { setErrorMsg(t('onboarding.googleGenericError')); return; }
       await loadExistingHousehold(user.id);
     } finally {
+      setLoading(false);
+    }
+  };
+
+  // Web counterpart to handleGoogleAuth. Deliberately NOT the same shape: a successful call here
+  // navigates the whole tab to Google almost immediately, so there is nothing to await beyond
+  // that — the actual sign-in completes later, in the "COMPLETE WEB GOOGLE SIGN-IN" mount effect
+  // above, once Google redirects back. Only reachable outcome here is a failure to even start
+  // (still resets loading — otherwise the button stays stuck disabled on a page nothing is about
+  // to navigate away from).
+  const handleGoogleWebAuth = async () => {
+    if (loading) return;
+    setErrorMsg(null);
+    setLoading(true);
+    const result = await signInWithGoogleWeb();
+    if (!result.ok) {
+      setErrorMsg(t('onboarding.googleGenericError'));
       setLoading(false);
     }
   };
@@ -588,27 +629,23 @@ export default function OnboardingScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.stepContent}>
           <Text style={styles.stepTitle}>{isLogin ? t('onboarding.welcomeBack') : t('onboarding.createAccount')}</Text>
-          {/* Native-only: the whole point of @react-native-google-signin/google-signin over the
-              expo-auth-session flow already used for Calendar (lib/googleCalendar.ts) is the
-              native account picker with no browser detour — there is no equivalent on web, so
-              the button simply isn't offered there rather than showing a "Play Services
-              unavailable" message that would be true but meaningless to a web user. */}
-          {Platform.OS !== 'web' && (
-            <>
-              <TouchableOpacity
-                style={[styles.googleBtn, loading && styles.disabled]}
-                onPress={handleGoogleAuth} disabled={loading}
-              >
-                <Text style={styles.googleBtnIcon}>G</Text>
-                <Text style={styles.googleBtnText}>{t('onboarding.googleSignInButton')}</Text>
-              </TouchableOpacity>
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>{t('onboarding.orDivider')}</Text>
-                <View style={styles.dividerLine} />
-              </View>
-            </>
-          )}
+          {/* Shown on both platforms — native calls the account picker
+              (@react-native-google-signin/google-signin), web redirects to Google's own consent
+              screen instead (supabase.auth.signInWithOAuth, see lib/googleAuth.ts). Unrelated to
+              the Calendar connection's expo-auth-session flow (lib/googleCalendar.ts), which is
+              a separate OAuth grant for Calendar API scopes, not a sign-in to Heimlig. */}
+          <TouchableOpacity
+            style={[styles.googleBtn, loading && styles.disabled]}
+            onPress={Platform.OS === 'web' ? handleGoogleWebAuth : handleGoogleAuth} disabled={loading}
+          >
+            <Text style={styles.googleBtnIcon}>G</Text>
+            <Text style={styles.googleBtnText}>{t('onboarding.googleSignInButton')}</Text>
+          </TouchableOpacity>
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>{t('onboarding.orDivider')}</Text>
+            <View style={styles.dividerLine} />
+          </View>
           <TextInput
             style={styles.textInput} placeholder={t('onboarding.emailPlaceholder')} value={email}
             onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none"

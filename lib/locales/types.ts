@@ -937,6 +937,9 @@ export interface AppTranslations {
   joinPage: {
     title: string;
     webOpening: string;
+    webNoAppBody: string;
+    installFromPlayStoreButton: string;
+    continueInBrowserButton: string;
     loginPrompt: string;
     invitedPrompt: string;
     joinButton: string;
