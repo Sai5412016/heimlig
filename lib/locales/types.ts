@@ -506,11 +506,14 @@ export interface AppTranslations {
   };
   receiptScan: {
     title: string;
-    pickPlaceholder: string;
+    takePhoto: string;
+    pickFromGallery: string;
     extracting: string;
     hint: string;
     extractErrorBody: string;
     saveButton: string;
+    cameraPermissionDeniedTitle: string;
+    cameraPermissionDeniedBody: string;
   };
   scanner: {
     topTitle: string;
