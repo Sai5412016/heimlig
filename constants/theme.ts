@@ -264,15 +264,16 @@ export const APP_THEMES: AppTheme[] = [
     // tief" (the sky), accent = "Enzian" (buttons, per the brief). brandLight/brandDark are a
     // 35% white/black blend of brand, same relationship the other themes use. "Firn" is the
     // given background; "Kalkfels hell" became border/borderLight (a pale rock-toned divider
-    // fits that name better than a surface color); "Nadelwald" is the primary text; "Fels
-    // Schatten" is textMuted, used exactly as given even though it falls short of 4.5:1 against
-    // this background/surface — see the contrast audit in the PR/report rather than silently
-    // darkening a color that was handed to us by name.
+    // fits that name better than a surface color); "Nadelwald" is the primary text. textMuted
+    // started as "Fels Schatten" (#8A8D86) as given, but that undershot 4.5:1 against both
+    // background and surface (~3.1:1 / ~3.4:1) — darkened in two steps (#6E7268 still missed
+    // background at ~4.49:1) to #64685E, which clears 4.5:1 against both with margin. See the
+    // contrast audit in the PR/report for the exact numbers.
     id: 'alpen', label: 'Bayerische Alpen', emoji: '🏔️',
     brand: '#2D6FB8', brandLight: '#77A1D1', brandDark: '#1D4878', accent: '#1F5FA8',
     background: '#F2F5F7', surface: '#FFFFFF', surfaceElevated: '#FFFFFF',
     border: '#D8D9D4', borderLight: '#ECECEA',
-    text: '#2E4A33', textSecondary: '#5C6C5D', textMuted: '#8A8D86', textInverse: '#FFFFFF',
+    text: '#2E4A33', textSecondary: '#5C6C5D', textMuted: '#64685E', textInverse: '#FFFFFF',
   },
 ];
 
