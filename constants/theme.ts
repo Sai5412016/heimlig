@@ -257,6 +257,23 @@ export const APP_THEMES: AppTheme[] = [
     border: '#3A4048', borderLight: '#2E343C',
     text: '#F2F3F5', textSecondary: '#A9AFB8', textMuted: '#616872', textInverse: '#14171B',
   },
+  {
+    // Alpine-daylight palette — unlike the forceDark themes above, this one locks to its own
+    // fixed LIGHT look (every surface-stack key set explicitly, no forceDark) rather than a
+    // dark backdrop, since a snow/sky palette has no coherent dark variant. brand = "Himmel
+    // tief" (the sky), accent = "Enzian" (buttons, per the brief). brandLight/brandDark are a
+    // 35% white/black blend of brand, same relationship the other themes use. "Firn" is the
+    // given background; "Kalkfels hell" became border/borderLight (a pale rock-toned divider
+    // fits that name better than a surface color); "Nadelwald" is the primary text; "Fels
+    // Schatten" is textMuted, used exactly as given even though it falls short of 4.5:1 against
+    // this background/surface — see the contrast audit in the PR/report rather than silently
+    // darkening a color that was handed to us by name.
+    id: 'alpen', label: 'Bayerische Alpen', emoji: '🏔️',
+    brand: '#2D6FB8', brandLight: '#77A1D1', brandDark: '#1D4878', accent: '#1F5FA8',
+    background: '#F2F5F7', surface: '#FFFFFF', surfaceElevated: '#FFFFFF',
+    border: '#D8D9D4', borderLight: '#ECECEA',
+    text: '#2E4A33', textSecondary: '#5C6C5D', textMuted: '#8A8D86', textInverse: '#FFFFFF',
+  },
 ];
 
 export const CATEGORY_COLORS: Record<string, string> = {
