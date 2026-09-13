@@ -503,11 +503,14 @@ export const de: AppTranslations = {
   },
   receiptScan: {
     title: '🧾 Kassenzettel scannen',
-    pickPlaceholder: '📷 Kassenzettel fotografieren / auswählen',
+    takePhoto: '📷 Foto aufnehmen',
+    pickFromGallery: '🖼️ Aus Galerie wählen',
     extracting: '⏳ Kassenzettel wird gelesen...',
     hint: 'Foto vom Kassenzettel machen oder aus der Galerie wählen – Betrag, Rubrik und Datum werden automatisch erkannt. Du kannst alles vor dem Speichern noch anpassen.',
     extractErrorBody: 'Kassenzettel konnte nicht gelesen werden. Bitte trage die Daten manuell ein.',
     saveButton: 'Als Ausgabe speichern ✓',
+    cameraPermissionDeniedTitle: 'Kamera-Zugriff fehlt',
+    cameraPermissionDeniedBody: 'Heimlig braucht Zugriff auf die Kamera, um ein Foto vom Kassenzettel aufzunehmen. Du kannst die Berechtigung in den Geräte-Einstellungen erteilen oder stattdessen ein Foto aus der Galerie auswählen.',
   },
   scanner: {
     topTitle: 'Produkt scannen',

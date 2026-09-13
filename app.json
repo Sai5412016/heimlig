@@ -57,10 +57,11 @@
         "color": "#2D6A4F"
       }],
       ["expo-image-picker", {
-        "photosPermission": "Heimlig braucht Zugriff auf deine Fotos, um Zutaten aus Rezept-Screenshots zu erkennen."
+        "photosPermission": "Heimlig braucht Zugriff auf deine Fotos, um Zutaten aus Rezept-Screenshots zu erkennen.",
+        "cameraPermission": "Heimlig braucht Zugriff auf die Kamera, um Fotos aufzunehmen (z. B. Kassenzettel oder Rezepte)."
       }],
       ["expo-camera", {
-        "cameraPermission": "Heimlig braucht Zugriff auf die Kamera, um Produkt-Barcodes zu scannen."
+        "cameraPermission": "Heimlig braucht Zugriff auf die Kamera, um Produkt-Barcodes zu scannen und Fotos aufzunehmen (z. B. Kassenzettel)."
       }],
       ["expo-location", {
         "locationWhenInUsePermission": "Heimlig teilt deinen Standort nur, wenn du auf „Standort teilen“ tippst – für deine Haushaltsmitglieder."

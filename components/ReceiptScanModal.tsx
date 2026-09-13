@@ -65,12 +65,7 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
 
   useEffect(() => { if (!visible) reset(); }, [visible]);
 
-  const pickAndExtract = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      base64: true,
-      quality: 0.6,
-    });
+  const extractFromResult = async (res: ImagePicker.ImagePickerResult) => {
     if (res.canceled || !res.assets?.[0]) return;
     const asset = res.assets[0];
     if (!asset.base64) return;
@@ -102,6 +97,33 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
     }
   };
 
+  const pickFromGallery = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      base64: true,
+      quality: 0.6,
+    });
+    await extractFromResult(res);
+  };
+
+  // Permission is asked for here, on tap — not on modal open — so opening the scanner never
+  // surfaces an OS permission dialog before the user has chosen "take a photo" at all (they
+  // might only ever want the gallery button). A denial gets an explicit German alert instead
+  // of launchCameraAsync's own silent no-op on a missing permission.
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(t('receiptScan.cameraPermissionDeniedTitle'), t('receiptScan.cameraPermissionDeniedBody'));
+      return;
+    }
+    const res = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      base64: true,
+      quality: 0.6,
+    });
+    await extractFromResult(res);
+  };
+
   const handleConfirm = () => {
     const num = language === 'en'
       ? parseFloat(amount.replace(/,/g, ''))
@@ -123,9 +145,20 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
             {step === 'pick' ? (
               <>
                 <AiQuotaHint refreshKey={visible} />
-                <TouchableOpacity style={s.imagePick} onPress={pickAndExtract} disabled={loading}>
-                  <Text style={s.imagePickText}>{loading ? t('receiptScan.extracting') : t('receiptScan.pickPlaceholder')}</Text>
-                </TouchableOpacity>
+                {loading ? (
+                  <View style={s.imagePick}>
+                    <Text style={s.imagePickText}>{t('receiptScan.extracting')}</Text>
+                  </View>
+                ) : (
+                  <View style={s.pickRow}>
+                    <TouchableOpacity style={[s.imagePick, s.pickHalf]} onPress={takePhoto} disabled={loading}>
+                      <Text style={s.imagePickText}>{t('receiptScan.takePhoto')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[s.imagePick, s.pickHalf]} onPress={pickFromGallery} disabled={loading}>
+                      <Text style={s.imagePickText}>{t('receiptScan.pickFromGallery')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
                 <Text style={s.hint}>{t('receiptScan.hint')}</Text>
               </>
             ) : (
@@ -192,8 +225,10 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.xxl },
   handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: spacing.lg },
   title: { ...typography.h3, color: colors.text, marginBottom: spacing.md },
+  pickRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
   imagePick: { borderWidth: 1.5, borderColor: colors.brand, borderStyle: 'dashed', borderRadius: radius.md, padding: spacing.lg, alignItems: 'center', backgroundColor: colors.brandPale, marginBottom: spacing.sm },
-  imagePickText: { ...typography.body, color: colors.brand, fontWeight: '700' },
+  pickHalf: { flex: 1, marginBottom: 0 },
+  imagePickText: { ...typography.body, color: colors.brand, fontWeight: '700', textAlign: 'center' },
   hint: { ...typography.xs, color: colors.textMuted, marginBottom: spacing.sm },
   preview: { width: '100%', height: 160, borderRadius: radius.md, marginBottom: spacing.md },
   fieldLabel: { ...typography.xs, color: colors.textMuted, fontWeight: '700', letterSpacing: 0.5, marginBottom: spacing.xs, marginTop: spacing.sm },

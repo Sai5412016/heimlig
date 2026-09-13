@@ -506,11 +506,14 @@ export const en: AppTranslations = {
   },
   receiptScan: {
     title: '🧾 Scan receipt',
-    pickPlaceholder: '📷 Photograph / pick a receipt',
+    takePhoto: '📷 Take a photo',
+    pickFromGallery: '🖼️ Pick from gallery',
     extracting: '⏳ Reading receipt...',
     hint: 'Take a photo of the receipt or pick one from your gallery – amount, category and date are recognized automatically. You can still adjust everything before saving.',
     extractErrorBody: 'Could not read the receipt. Please enter the details manually.',
     saveButton: 'Save as expense ✓',
+    cameraPermissionDeniedTitle: 'No camera access',
+    cameraPermissionDeniedBody: 'Heimlig needs camera access to take a photo of the receipt. You can grant the permission in your device settings, or pick a photo from your gallery instead.',
   },
   scanner: {
     topTitle: 'Scan product',

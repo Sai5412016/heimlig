@@ -49,7 +49,14 @@ Regeln:
 - "amount": der bezahlte Gesamtbetrag (Summe/Total/Endbetrag) als Zahl mit Punkt als Dezimaltrennzeichen, z.B. 23.45. Falls kein Gesamtbetrag erkennbar ist, setze null.
 - "description": Name des Geschäfts/Händlers, falls erkennbar, sonst null
 - "date": Kaufdatum im Format YYYY-MM-DD, falls kein Jahr erkennbar ist nimm das aktuellste passende Datum nicht in der Zukunft. Falls gar kein Datum erkennbar ist, setze null.
-- "category": ordne die Ausgabe genau EINER dieser Kategorien zu: ${CATEGORIES.join(', ')}. Ein Supermarkt-Kassenzettel ist praktisch immer "Lebensmittel". Wenn unklar, nimm "Sonstiges".
+- "category": ordne die Ausgabe genau EINER dieser Kategorien zu: ${CATEGORIES.join(', ')}. Wähle AUSSCHLIESSLICH aus dieser Liste, erfinde keine eigene Kategorie und gib den Namen exakt wie oben geschrieben zurück.
+  Hinweise für häufige Fälle:
+  - Tankstelle, Kraftstoff, Diesel, Super, Säule, Liter/Volumen in Litern -> "Transport" (auch wenn der Händlername wie ein Supermarkt klingt, z.B. eine Tankstelle eines Supermarkt-Betreibers)
+  - Supermarkt, Discounter, Lebensmittelgeschäft (Lebensmittel-Einkauf ohne Tankstellen-Merkmale) -> "Lebensmittel"
+  - Apotheke -> "Gesundheit"
+  - Drogerie (Rossmann, dm, Müller o.ä., Haushalts-/Pflegeprodukte) -> "Haushalt"
+  - Restaurant, Café, Lieferdienst für Essen -> "Restaurant"
+  Wenn wirklich nichts davon passt und auch sonst keine Kategorie erkennbar ist, nimm "Sonstiges".
 
 Format:
 {"amount": 23.45 | null, "description": "..." | null, "date": "YYYY-MM-DD" | null, "category": "Lebensmittel"}`;
