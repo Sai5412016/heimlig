@@ -853,15 +853,29 @@ export const useStore = create<AppState>((set, get) => ({
     if (!isAlreadyCompleted && task.recurrence && task.due_date) {
       const n = (task as any).recurrence_interval || 1;
       const base = parseISO(task.due_date);
-      // recurrence_day anchors the series to its original day-of-month/year, so a clamp in
-      // a short month (e.g. Jan 31 -> Feb 28) doesn't compound into a permanent drift —
-      // see advanceMonthlyPreservingDay/advanceYearlyPreservingDay in lib/dateMath.ts.
+      // recurrence_day anchors MONTHLY series to their original day-of-month, so a clamp in a
+      // short month (e.g. Jan 31 -> Feb 28) doesn't compound into a permanent drift — see
+      // advanceMonthlyPreservingDay in lib/dateMath.ts. YEARLY deliberately does NOT use this
+      // anymore: it used to (same anchorDay, fed into advanceYearlyPreservingDay), but
+      // recurrence_day can go stale the moment a recurring task's due_date is edited/moved
+      // without it — app/(tabs)/tasks.tsx's handleSave now keeps the two in sync going forward,
+      // but a task edited before that fix (or any other write path that missed it) can still be
+      // carrying a recurrence_day that silently disagrees with due_date. due_date is the field
+      // a user actually looks at and edits, so for yearly it is now the ONLY source for the
+      // next occurrence's day — recurrence_day is derived fresh from it below instead of read.
       const anchorDay = (task as any).recurrence_day ?? base.getDate();
       let next: Date | null = null;
+      let nextRecurrenceDay = anchorDay;
       if (task.recurrence === 'daily') next = addDays(base, n);
       else if (task.recurrence === 'weekly') next = addWeeks(base, n);
       else if (task.recurrence === 'monthly') next = advanceMonthlyPreservingDay(base, n, anchorDay);
-      else if (task.recurrence === 'yearly') next = advanceYearlyPreservingDay(base, n, anchorDay);
+      else if (task.recurrence === 'yearly') {
+        // Same month AND day as due_date, one year later — advanceYearlyPreservingDay still
+        // does the Feb 29 -> Feb 28 (non-leap year) clamp, just anchored on due_date's own day
+        // now instead of the separately-stored (and possibly stale) recurrence_day.
+        next = advanceYearlyPreservingDay(base, n, base.getDate());
+        nextRecurrenceDay = base.getDate();
+      }
       // 🔁 Rotation: pass the next occurrence to the next person in the cycle.
       const rotation = (task as any).rotation as string[] | null | undefined;
       let nextAssignee = task.assigned_to;
@@ -883,7 +897,7 @@ export const useStore = create<AppState>((set, get) => ({
           due_time: (task as any).due_time || null,
           recurrence: task.recurrence,
           recurrence_interval: n,
-          recurrence_day: anchorDay,
+          recurrence_day: nextRecurrenceDay,
           created_by: task.created_by,
         }).select().single();
         if (newTask) set(s => ({ tasks: [...s.tasks, newTask] }));
