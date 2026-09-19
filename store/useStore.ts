@@ -75,7 +75,8 @@ interface AppState {
   // Clears every user/household-specific field back to its just-booted default — called on
   // sign-out (see app/_layout.tsx's onAuthStateChange listener) so a second account logging in
   // on the same device never briefly renders the previous account's data. Device-level prefs
-  // (darkMode/themeId/language) are deliberately left untouched, same as AsyncStorage for those.
+  // (darkMode/themeId/language/weatherWidget*) are deliberately left untouched, same as
+  // AsyncStorage for those.
   resetSession: () => void;
 
   household: Household | null;
@@ -210,6 +211,19 @@ interface AppState {
   language: SupportedLanguage;
   setLanguage: (lang: SupportedLanguage) => void;
   selectLanguage: (lang: SupportedLanguage) => Promise<void>;
+
+  // 🌦️ Widget weather line (device-local, off by default). Coordinates are typed in by hand
+  // in household.tsx — deliberately never read from a location permission, see widgets/weather.ts.
+  weatherWidgetEnabled: boolean;
+  weatherLat: string;
+  weatherLon: string;
+  setWeatherWidgetEnabled: (v: boolean) => void;
+  toggleWeatherWidget: () => Promise<void>;
+  // Local-only (no AsyncStorage write) — used to hydrate state from a value already read out
+  // of AsyncStorage on launch, see app/_layout.tsx. setWeatherCoords is the persisting version,
+  // called from the settings screen.
+  setWeatherCoordsLocal: (lat: string, lon: string) => void;
+  setWeatherCoords: (lat: string, lon: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -1060,5 +1074,20 @@ export const useStore = create<AppState>((set, get) => ({
     set({ language: lang });
     i18n.changeLanguage(lang);
     await AsyncStorage.setItem('@heimlig/language', lang);
+  },
+
+  weatherWidgetEnabled: false,
+  weatherLat: '48.22',
+  weatherLon: '10.85',
+  setWeatherWidgetEnabled: (v) => set({ weatherWidgetEnabled: v }),
+  toggleWeatherWidget: async () => {
+    const next = !get().weatherWidgetEnabled;
+    set({ weatherWidgetEnabled: next });
+    await AsyncStorage.setItem('@heimlig/weatherWidgetEnabled', next ? '1' : '0');
+  },
+  setWeatherCoordsLocal: (lat, lon) => set({ weatherLat: lat, weatherLon: lon }),
+  setWeatherCoords: async (lat, lon) => {
+    set({ weatherLat: lat, weatherLon: lon });
+    await AsyncStorage.multiSet([['@heimlig/weatherLat', lat], ['@heimlig/weatherLon', lon]]);
   },
 }));

@@ -35,7 +35,10 @@ function RootLayout() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const { colors } = useTheme();
-  const { setUserId, loadMyHouseholds, activateHousehold, setDarkMode, setThemeId, setLanguage, resetSession } = useStore();
+  const {
+    setUserId, loadMyHouseholds, activateHousehold, setDarkMode, setThemeId, setLanguage, resetSession,
+    setWeatherWidgetEnabled, setWeatherCoordsLocal,
+  } = useStore();
 
   // Lock phones to portrait, but let large screens (tablets/foldables) rotate freely.
   // The static manifest restriction is removed (orientation: default) so Play stops
@@ -126,6 +129,17 @@ function RootLayout() {
       if (dm === '1') setDarkMode(true);
       const savedThemeId = await AsyncStorage.getItem('@heimlig/themeId');
       if (savedThemeId) setThemeId(savedThemeId);
+
+      // Widget weather line — device-local, off by default (see household.tsx settings and
+      // widgets/weather.ts, which reads these same AsyncStorage keys independently for the
+      // widget's own headless JS context).
+      const weatherEnabled = await AsyncStorage.getItem('@heimlig/weatherWidgetEnabled');
+      if (weatherEnabled === '1') setWeatherWidgetEnabled(true);
+      const [savedLat, savedLon] = await Promise.all([
+        AsyncStorage.getItem('@heimlig/weatherLat'),
+        AsyncStorage.getItem('@heimlig/weatherLon'),
+      ]);
+      if (savedLat && savedLon) setWeatherCoordsLocal(savedLat, savedLon);
 
       // Language: respect an explicit earlier choice, otherwise fall back to the device's
       // own language on first launch (English if set to English, German for everyone else —
