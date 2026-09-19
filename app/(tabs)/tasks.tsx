@@ -269,6 +269,14 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       due_time: useTime ? dueTime : undefined,
       recurrence: recurrence || undefined,
       recurrence_interval: recurrence ? recurrenceInterval : undefined,
+      // Kept in lock-step with due_date's own day-of-month whenever a recurrence is set — this
+      // is the field the yearly/monthly "spawn next occurrence" step (store/useStore.ts,
+      // toggleTaskComplete) anchors its day on. Without this, editing/moving due_date here
+      // leaves recurrence_day silently stale, and it can then override the day of the NEXT
+      // generated occurrence with a value that no longer matches due_date at all — exactly what
+      // happened to a real recurring birthday task (see the "Evi" data fix in
+      // claude/geburtstag-banner-fix).
+      recurrence_day: recurrence && dueDate ? parseISO(dueDate).getDate() : undefined,
       points: priority === 'high' ? 20 : priority === 'normal' ? 10 : 5,
       notify,
       remind_time: notify ? remindTime : undefined,

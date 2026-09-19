@@ -240,7 +240,8 @@ export interface AppTranslations {
     afternoonGreeting: string;
     eveningGreeting: string;
     defaultName: string;
-    birthdayToday: string;
+    birthdayToday_one: string;
+    birthdayToday_other: string;
     nextBirthdayLabel: string;
     birthdayTomorrow: string;
     birthdayDaysLeft: string;

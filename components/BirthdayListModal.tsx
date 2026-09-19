@@ -6,9 +6,9 @@ import { useTheme } from '../hooks/useTheme';
 import { useStore } from '../store/useStore';
 import { spacing, radius, typography, type ColorPalette } from '../constants/theme';
 import type { Task } from '../lib/supabase';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
-import { nextYearlyOccurrence } from '../lib/dateMath';
+import { sortedYearlyOccurrences } from '../lib/dateMath';
 
 // Strip "Geburtstag" boilerplate from a task title so we show just the person's name.
 function birthdayName(title: string): string {
@@ -23,17 +23,12 @@ export default function BirthdayListModal({ visible, onClose, tasks }: { visible
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const upcoming = useMemo(() => {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    return tasks
-      .filter(task => task.category === 'Geburtstag' && task.due_date)
-      .map(task => {
-        const d = parseISO(task.due_date!);
-        const next = nextYearlyOccurrence(d.getMonth(), d.getDate(), today);
-        const days = Math.round((next.getTime() - today.getTime()) / 86400000);
-        return { task, date: next, days };
-      })
+    return sortedYearlyOccurrences(
+      tasks.filter(task => task.category === 'Geburtstag'),
+      task => task.due_date,
+    )
       .filter(x => x.days <= 366)
-      .sort((a, b) => a.days - b.days);
+      .map(({ item, days, date }) => ({ task: item, days, date }));
   }, [tasks]);
 
   return (
