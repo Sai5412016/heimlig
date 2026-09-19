@@ -76,7 +76,10 @@ async function fetchWeather(lat: number, lon: number): Promise<WeatherCache | nu
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=Europe%2FBerlin&forecast_days=1`;
+    // timezone=auto lets Open-Meteo derive the local timezone from lat/lon itself, so "today's"
+    // high/low lines up with the entered coordinates instead of always being anchored to
+    // Europe/Berlin's calendar day (would drift for e.g. an AU/NZ household's coordinates).
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1`;
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) return null;
     const data = await res.json();
