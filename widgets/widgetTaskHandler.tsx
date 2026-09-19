@@ -3,6 +3,7 @@ import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 import { HeimligWidget, type WidgetData } from './HeimligWidget';
+import { getWeatherLine } from './weather';
 
 export const WIDGET_SNAPSHOT_KEY = '@heimlig/widget';
 
@@ -22,6 +23,9 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
     case 'WIDGET_UPDATE':
     case 'WIDGET_RESIZED': {
       const data = await readData();
+      // Own try/catch already lives inside getWeatherLine() (never throws, never returns an
+      // error string) — a weather hiccup must never stop the rest of the widget from rendering.
+      data.weatherLine = await getWeatherLine();
       props.renderWidget(<HeimligWidget data={data} />);
       break;
     }

@@ -328,6 +328,10 @@ export interface AppTranslations {
     planPremium: string;
     upgradeChip: string;
     darkMode: string;
+    weatherWidgetLabel: string;
+    weatherLatLabel: string;
+    weatherLonLabel: string;
+    weatherCoordsHint: string;
     designLabel: string;
     scoreboardLabel: string;
     on: string;
@@ -1041,5 +1045,22 @@ export interface AppTranslations {
   system: {
     taskDueTodayTitle: string;
     exportShareTitle: string;
+    // Widget weather line (widgets/weather.ts) — same "no React tree, use i18n.t() directly"
+    // reasoning as the rest of this namespace. widgetWeatherLine is the line template
+    // ("{{temp}} Grad - {{condition}} - hoch {{high}} / tief {{low}}"); widgetWeather.* maps
+    // Open-Meteo's WMO weather_code groups to a short condition word.
+    widgetWeatherLine: string;
+    widgetWeather: {
+      clear: string;
+      mainlyClear: string;
+      partlyCloudy: string;
+      overcast: string;
+      fog: string;
+      drizzle: string;
+      rain: string;
+      snow: string;
+      thunderstorm: string;
+      unknown: string;
+    };
   };
 }

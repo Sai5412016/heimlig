@@ -294,7 +294,8 @@ export default function HouseholdScreen() {
   const { colors, isDark } = useTheme();
   const { household, currentMember, members, setMembers, setHousehold, tasks, transactions,
     myHouseholds, loadMyHouseholds, switchHousehold, leaveHousehold, toggleDarkMode, themeId, selectTheme,
-    language, selectLanguage } = useStore();
+    language, selectLanguage,
+    weatherWidgetEnabled, toggleWeatherWidget, weatherLat, weatherLon, setWeatherCoords } = useStore();
   const { t } = useTranslation();
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -830,6 +831,47 @@ export default function HouseholdScreen() {
           </View>
         </TouchableOpacity>
 
+        {/* Weather line in the Android home-screen widget — off by default, device-local like
+            Dark Mode above. Coordinates are plain number fields the user types in themselves;
+            deliberately never read from a location permission (see widgets/weather.ts). */}
+        <TouchableOpacity style={styles.settingsBtn} onPress={toggleWeatherWidget}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <Text style={styles.settingsBtnText}>{t('household.weatherWidgetLabel')}</Text>
+            <View style={[styles.toggle, weatherWidgetEnabled && styles.toggleOn]}>
+              <View style={[styles.toggleThumb, weatherWidgetEnabled && styles.toggleThumbOn]} />
+            </View>
+          </View>
+        </TouchableOpacity>
+        {weatherWidgetEnabled && (
+          <View style={styles.settingsBtn}>
+            <Text style={styles.hint}>{t('household.weatherCoordsHint')}</Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, width: '100%' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>{t('household.weatherLatLabel')}</Text>
+                <TextInput
+                  style={styles.coordInput}
+                  value={weatherLat}
+                  onChangeText={(v) => setWeatherCoords(v, weatherLon)}
+                  keyboardType="numbers-and-punctuation"
+                  placeholder="48.22"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>{t('household.weatherLonLabel')}</Text>
+                <TextInput
+                  style={styles.coordInput}
+                  value={weatherLon}
+                  onChangeText={(v) => setWeatherCoords(weatherLat, v)}
+                  keyboardType="numbers-and-punctuation"
+                  placeholder="10.85"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Accent theme picker */}
         <View style={styles.settingsBtn}>
           <Text style={[styles.settingsBtnText, { alignSelf: 'flex-start' }]}>{t('household.designLabel')}</Text>
@@ -1240,4 +1282,9 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   toggleOn: { backgroundColor: colors.brand },
   toggleThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: 'flex-start' },
   toggleThumbOn: { alignSelf: 'flex-end' },
+
+  // Weather widget coordinate fields
+  hint: { ...typography.xs, color: colors.textMuted, alignSelf: 'flex-start' },
+  fieldLabel: { ...typography.xs, color: colors.textMuted, fontWeight: '700', marginBottom: spacing.xs },
+  coordInput: { backgroundColor: colors.background, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.sm, ...typography.body, color: colors.text },
 }); }

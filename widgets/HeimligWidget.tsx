@@ -6,6 +6,10 @@ export interface WidgetData {
   openTasks: number;
   shoppingCount: number;
   nextTask?: string;
+  // Pre-formatted (e.g. "13 Grad - Sonnig - hoch 22 / tief 10"), or null/undefined to leave the
+  // line out entirely — off switch, no coordinates yet, offline with no cache, whatever the
+  // reason. See widgets/weather.ts; this component never talks to the network or i18n itself.
+  weatherLine?: string | null;
 }
 
 export function HeimligWidget({ data }: { data: WidgetData }) {
@@ -23,6 +27,9 @@ export function HeimligWidget({ data }: { data: WidgetData }) {
       }}
     >
       <TextWidget text="🏡 Heimlig" style={{ fontSize: 14, color: '#D8F3DC', fontWeight: 'bold' }} />
+      {!!data.weatherLine && (
+        <TextWidget text={data.weatherLine} style={{ fontSize: 11, color: '#89B89A' }} maxLines={1} truncate="END" />
+      )}
       <TextWidget text={`✅ ${data.openTasks} Aufgaben offen`} style={{ fontSize: 14, color: '#FFFFFF' }} />
       <TextWidget text={`🛒 ${data.shoppingCount} Artikel fehlen`} style={{ fontSize: 14, color: '#FFFFFF' }} />
       <TextWidget
