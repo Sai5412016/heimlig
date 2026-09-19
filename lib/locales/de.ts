@@ -239,7 +239,9 @@ export const de: AppTranslations = {
     afternoonGreeting: 'Hallo',
     eveningGreeting: 'Guten Abend',
     defaultName: 'Zuhause',
-    birthdayToday: '{{name}} hat heute Geburtstag! 🎉',
+    // i18next plural forms — needed once two people can share the same "today" banner.
+    birthdayToday_one: '{{name}} hat heute Geburtstag! 🎉',
+    birthdayToday_other: '{{name}} haben heute Geburtstag! 🎉',
     nextBirthdayLabel: 'Nächster Geburtstag',
     birthdayTomorrow: 'morgen',
     birthdayDaysLeft: 'noch {{days}} Tage',

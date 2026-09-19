@@ -11,7 +11,7 @@ import { supabase } from '../../lib/supabase';
 import { fetchRecentTransactions } from '../../repositories/budgetRepository';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
-import { nextYearlyOccurrence } from '../../lib/dateMath';
+import { sortedYearlyOccurrences } from '../../lib/dateMath';
 import { formatCurrency } from '../../lib/currency';
 import ChatModal from '../../components/ChatModal';
 import BirthdayListModal from '../../components/BirthdayListModal';
@@ -96,19 +96,17 @@ export default function DashboardScreen() {
   const birthdayName = (title: string) =>
     title.replace(/geburtstag/ig, '').replace(/[:•\-–]/g, '').replace(/🎂/g, '').replace(/\s+/g, ' ').trim() || title;
 
-  // Next upcoming birthday (treats birthdays as recurring annually).
-  const nextBirthday = useMemo(() => {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const cands = tasks
-      .filter(t => t.category === 'Geburtstag' && t.due_date)
-      .map(t => {
-        const d = parseISO(t.due_date!);
-        const next = nextYearlyOccurrence(d.getMonth(), d.getDate(), today);
-        const days = Math.round((next.getTime() - today.getTime()) / 86400000);
-        return { task: t, days };
-      })
-      .sort((a, b) => a.days - b.days);
-    return cands[0] ?? null;
+  // Next upcoming birthday (treats birthdays as recurring annually) — the soonest, not
+  // necessarily the only one: if several people share a day, every one of them lands in
+  // `tasks`, not just the first.
+  const nextBirthdayGroup = useMemo(() => {
+    const sorted = sortedYearlyOccurrences(
+      tasks.filter(t => t.category === 'Geburtstag'),
+      t => t.due_date,
+    );
+    if (sorted.length === 0) return null;
+    const days = sorted[0].days;
+    return { days, tasks: sorted.filter(x => x.days === days).map(x => x.item) };
   }, [tasks]);
 
   const now = new Date();
@@ -188,18 +186,24 @@ export default function DashboardScreen() {
           <Text style={styles.householdName}>🏡 {household?.name ?? t('shopping.defaultHouseholdName')}</Text>
         </View>
 
-        {/* Next birthday */}
-        {nextBirthday && (
+        {/* Next birthday — nextBirthdayGroup.tasks can hold more than one name when several
+            people share the soonest day. */}
+        {nextBirthdayGroup && (
           <TouchableOpacity style={styles.birthdayCard} activeOpacity={0.85} onPress={() => setShowBirthdays(true)}>
             <Text style={styles.birthdayEmoji}>🎂</Text>
             <View style={{ flex: 1 }}>
-              {nextBirthday.days === 0 ? (
-                <Text style={styles.birthdayToday}>{t('home.birthdayToday', { name: birthdayName(nextBirthday.task.title) })}</Text>
+              {nextBirthdayGroup.days === 0 ? (
+                <Text style={styles.birthdayToday}>
+                  {t('home.birthdayToday', {
+                    count: nextBirthdayGroup.tasks.length,
+                    name: nextBirthdayGroup.tasks.map(task => birthdayName(task.title)).join(', '),
+                  })}
+                </Text>
               ) : (
                 <>
                   <Text style={styles.birthdayLabel}>{t('home.nextBirthdayLabel')}</Text>
                   <Text style={styles.birthdayName}>
-                    {birthdayName(nextBirthday.task.title)} · {nextBirthday.days === 1 ? t('home.birthdayTomorrow') : t('home.birthdayDaysLeft', { days: nextBirthday.days })}
+                    {nextBirthdayGroup.tasks.map(task => birthdayName(task.title)).join(', ')} · {nextBirthdayGroup.days === 1 ? t('home.birthdayTomorrow') : t('home.birthdayDaysLeft', { days: nextBirthdayGroup.days })}
                   </Text>
                 </>
               )}

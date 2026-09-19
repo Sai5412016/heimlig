@@ -74,3 +74,40 @@ export function nextYearlyOccurrence(monthIndex: number, day: number, from: Date
 export function formatDateKey(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+
+// Whole calendar days between two local dates, using each date's Y/M/D components projected
+// onto Date.UTC() as a neutral, DST-free millisecond axis — NOT a reinterpretation of either
+// date as UTC (that's the new Date('yyyy-MM-dd') bug this whole file exists to avoid). Plain
+// `(a.getTime() - b.getTime()) / 86400000` can be off by one around a DST transition, because a
+// local calendar day isn't always exactly 24h; this can't be, since Date.UTC never has DST.
+function toNeutralDayNumber(d: Date): number {
+  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000;
+}
+export function calendarDaysBetween(from: Date, to: Date): number {
+  return toNeutralDayNumber(to) - toNeutralDayNumber(from);
+}
+
+export interface YearlyOccurrence<T> { item: T; days: number; date: Date }
+
+// Maps each item to its next yearly month/day occurrence (the item's own stored year, if any,
+// never matters — see nextYearlyOccurrence), counted in whole calendar days from `from` (0 =
+// today), ascending. Ties keep their relative input order. Shared by the birthday banner
+// (app/(tabs)/index.tsx) and the full birthday list (components/BirthdayListModal.tsx) so the
+// leap-day/DST/"next vs. first" handling only has to be right in one place.
+export function sortedYearlyOccurrences<T>(
+  items: T[],
+  getDueDate: (item: T) => string | null | undefined,
+  from: Date = new Date(),
+): YearlyOccurrence<T>[] {
+  const today = new Date(from); today.setHours(0, 0, 0, 0);
+  return items
+    .map(item => {
+      const raw = getDueDate(item);
+      if (!raw) return null;
+      const d = parseISO(raw);
+      const next = nextYearlyOccurrence(d.getMonth(), d.getDate(), today);
+      return { item, days: calendarDaysBetween(today, next), date: next };
+    })
+    .filter((x): x is YearlyOccurrence<T> => x !== null)
+    .sort((a, b) => a.days - b.days);
+}
