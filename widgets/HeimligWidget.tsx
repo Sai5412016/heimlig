@@ -21,14 +21,18 @@ export function HeimligWidget({ data }: { data: WidgetData }) {
         width: 'match_parent',
         backgroundColor: '#162A1C',
         borderRadius: 16,
-        padding: 14,
+        padding: 16,
         flexDirection: 'column',
         justifyContent: 'space-between',
       }}
     >
-      <TextWidget text="🏡 Heimlig" style={{ fontSize: 14, color: '#D8F3DC', fontWeight: 'bold' }} />
+      {/* Default size is now 4x2 cells (~250x110dp, was 3x2/~180x110dp) — the extra room is
+          all width, not height, so only the title and weather line (the two rows with room to
+          breathe before they'd wrap/truncate) grow; the three data rows below keep their size
+          so five lines still fit the unchanged height. */}
+      <TextWidget text="🏡 Heimlig" style={{ fontSize: 18, color: '#D8F3DC', fontWeight: 'bold' }} />
       {!!data.weatherLine && (
-        <TextWidget text={data.weatherLine} style={{ fontSize: 11, color: '#89B89A' }} maxLines={1} truncate="END" />
+        <TextWidget text={data.weatherLine} style={{ fontSize: 14, color: '#89B89A' }} maxLines={1} truncate="END" />
       )}
       <TextWidget text={`✅ ${data.openTasks} Aufgaben offen`} style={{ fontSize: 14, color: '#FFFFFF' }} />
       <TextWidget text={`🛒 ${data.shoppingCount} Artikel fehlen`} style={{ fontSize: 14, color: '#FFFFFF' }} />
