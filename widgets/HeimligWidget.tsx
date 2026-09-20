@@ -1,7 +1,7 @@
 // widgets/HeimligWidget.tsx — the Android home-screen widget UI (react-native-android-widget).
 import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
-import { darkColors, lightColors } from '../constants/theme';
+import { resolveThemeColors } from '../constants/theme';
 
 export interface WidgetData {
   openTasks: number;
@@ -11,24 +11,29 @@ export interface WidgetData {
   // line out entirely — off switch, no coordinates yet, offline with no cache, whatever the
   // reason. See widgets/weather.ts; this component never talks to the network or i18n itself.
   weatherLine?: string | null;
+  // Mirrors store/useStore.ts's themeId/darkMode, read straight from AsyncStorage by
+  // widgetTaskHandler.tsx (see THEME_ID_KEY/DARK_MODE_KEY there) — undefined whenever the keys
+  // are missing (e.g. an install that never touched the theme picker), in which case this
+  // component falls back to the widget's original always-dark look, unchanged.
+  themeId?: string;
+  darkMode?: boolean;
 }
 
-// The widget is always the dark palette regardless of the app's own Hell/Dunkel toggle (it's a
-// home-screen surface, not a themed in-app screen) — same tokens constants/theme.ts uses for
-// dark mode, not new colors invented for this component. brandPale comes from the LIGHT
-// palette on purpose: darkColors.brandPale (#1B3D28) is itself a dark tone meant to sit behind
-// light text, not to BE text on a dark background — lightColors.brandPale (#D8F3DC) is the pale
-// mint that actually reads well here, which is why the title used it before this redesign too.
-// constants/theme.ts types these as plain `string` (no `as const`), but every value in it is
-// actually a hex literal — the widget library's ColorProp type wants that spelled out.
+// constants/theme.ts types ColorPalette values as plain `string` (no `as const`), but every value
+// in it is actually a hex literal — the widget library's ColorProp type wants that spelled out.
 const hex = (v: string) => v as `#${string}`;
-const WIDGET_BG = hex(darkColors.surface);        // #162A1C
-const TILE_BG = hex(darkColors.surfaceElevated);  // #1E3526 — "a little lighter than the widget"
-const TITLE_COLOR = hex(lightColors.brandPale);   // #D8F3DC
-const MUTED_COLOR = hex(darkColors.textSecondary); // #89B89A
-const NUMBER_COLOR = hex(darkColors.text);        // #E8F5EC
 
 export function HeimligWidget({ data }: { data: WidgetData }) {
+  // 'standard' + darkMode=true reproduces exactly the palette this widget always used before
+  // theme-awareness (darkColors, unmodified) — so a missing/unknown theme keeps today's look.
+  const { colors } = resolveThemeColors(data.themeId ?? 'standard', data.darkMode ?? true);
+  const WIDGET_BG = hex(colors.surface);
+  const TILE_BG = hex(colors.surfaceElevated);
+  const TILE_BORDER = hex(colors.border);
+  const TITLE_COLOR = hex(colors.text);
+  const MUTED_COLOR = hex(colors.textSecondary);
+  const NUMBER_COLOR = hex(colors.text);
+
   return (
     <FlexWidget
       clickAction="OPEN_APP"
@@ -54,7 +59,10 @@ export function HeimligWidget({ data }: { data: WidgetData }) {
 
       {/* Two equal tiles. Each has its own clickAction, which — on the actual widget host —
           takes over the tap for its own area; OPEN_APP on the root FlexWidget above still
-          handles every tap outside these two tiles. */}
+          handles every tap outside these two tiles. A theme-derived border keeps the tile shape
+          visible even for the themes/modes where surface and surfaceElevated resolve to the same
+          color (e.g. standard in light mode) — otherwise the tiles would blend into the
+          background there. */}
       <FlexWidget style={{ width: 'match_parent', flexDirection: 'row', flexGap: 10 }}>
         <FlexWidget
           clickAction="OPEN_URI"
@@ -62,6 +70,7 @@ export function HeimligWidget({ data }: { data: WidgetData }) {
           accessibilityLabel="Aufgaben öffnen"
           style={{
             flex: 1, backgroundColor: TILE_BG, borderRadius: 12, padding: 8,
+            borderColor: TILE_BORDER, borderWidth: 1,
             flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           }}
         >
@@ -74,6 +83,7 @@ export function HeimligWidget({ data }: { data: WidgetData }) {
           accessibilityLabel="Einkauf öffnen"
           style={{
             flex: 1, backgroundColor: TILE_BG, borderRadius: 12, padding: 8,
+            borderColor: TILE_BORDER, borderWidth: 1,
             flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           }}
         >
