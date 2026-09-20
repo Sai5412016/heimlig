@@ -6,12 +6,34 @@ import { HeimligWidget, type WidgetData } from './HeimligWidget';
 
 export const WIDGET_SNAPSHOT_KEY = '@heimlig/widget';
 const WEATHER_ENABLED_KEY = '@heimlig/weatherWidgetEnabled';
+// Same two keys store/useStore.ts's toggleDarkMode()/selectTheme() already write on every
+// change — read directly here rather than added to WIDGET_SNAPSHOT_KEY, same "own dedicated
+// AsyncStorage key, read straight from the widget task" pattern widgets/weather.ts already uses
+// for its own settings. Nothing else has to change to keep these current: app/(tabs)/index.tsx
+// never needs to know about theme/dark-mode at all.
+const THEME_ID_KEY = '@heimlig/themeId';
+const DARK_MODE_KEY = '@heimlig/darkMode';
 
 async function readData(): Promise<WidgetData> {
   const fallback: WidgetData = { openTasks: 0, shoppingCount: 0, nextTask: '' };
   try {
-    const raw = await AsyncStorage.getItem(WIDGET_SNAPSHOT_KEY);
-    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+    // All three are local AsyncStorage reads (no network), same risk class as the snapshot
+    // read this function already did — safe to do before the first render, unlike weather's
+    // network call below.
+    const [raw, themeId, darkModeRaw] = await Promise.all([
+      AsyncStorage.getItem(WIDGET_SNAPSHOT_KEY),
+      AsyncStorage.getItem(THEME_ID_KEY),
+      AsyncStorage.getItem(DARK_MODE_KEY),
+    ]);
+    const snapshot = raw ? JSON.parse(raw) : {};
+    return {
+      ...fallback,
+      ...snapshot,
+      // undefined (key missing, e.g. an install that never set it) lets HeimligWidget fall
+      // back to today's look — never a crash, never an unstyled/blank color.
+      themeId: themeId || undefined,
+      darkMode: darkModeRaw === '1' ? true : darkModeRaw === '0' ? false : undefined,
+    };
   } catch {
     return fallback;
   }
