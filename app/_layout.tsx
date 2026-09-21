@@ -159,6 +159,16 @@ function RootLayout() {
 
       if (!user) {
         setReady(true);
+        // A web visitor already sitting on /join/CODE (an invite link opened straight from a
+        // chat) owns its own end-to-end flow there — app-open attempt, install-fallback screen,
+        // "continue in browser" straight into onboarding. Redirecting away from it here, ~500ms
+        // after that screen mounted, cut it off before its own fallback (Play Store button,
+        // tappable code) ever got a chance to render: the page looked permanently stuck on
+        // "Opening the app…" because this is what silently replaced it every single time.
+        // @ts-ignore - window only exists on web
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.pathname.startsWith('/join/')) {
+          return;
+        }
         router.replace('/onboarding');
         return;
       }

@@ -959,6 +959,8 @@ export interface AppTranslations {
     webOpening: string;
     webNoAppBody: string;
     installFromPlayStoreButton: string;
+    installThenEnterCodeHint: string;
+    openOnPhoneHint: string;
     continueInBrowserButton: string;
     loginPrompt: string;
     invitedPrompt: string;

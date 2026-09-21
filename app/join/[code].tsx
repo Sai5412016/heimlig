@@ -5,12 +5,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Clipboard from 'expo-clipboard';
 import { colors, spacing, radius, typography, shadow } from '../../constants/theme';
+import { Alert } from '../../lib/alert';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { isMemberLimitError, HOUSEHOLD_MEMBER_CAP } from '../../lib/premium';
 import { DEFAULT_STORE_URL } from '../../lib/appUpdate';
 import { logInviteFunnelStep, logJoinOpenedOnce, resolveInviteCode, savePendingInviteCode, clearPendingInviteCode, isAlreadyMemberError } from '../../lib/inviteFunnel';
+
+// Heimlig only exists as an Android app (see CONTEXT.md) — "Android" is the one platform worth
+// attempting the heimlig:// handoff on at all. Everything else (desktop, iOS, anything Chrome's
+// UA reports oddly) skips straight to the install-fallback screen instead of burning the 2s
+// timeout on a scheme no OS here will ever resolve.
+function isAndroidWeb(): boolean {
+  // @ts-ignore - navigator only exists on web
+  return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '');
+}
 
 type Status = 'idle' | 'joining' | 'done' | 'error' | 'login' | 'web' | 'web-no-app';
 
@@ -19,32 +30,47 @@ export default function JoinByCode() {
   const code = String(rawCode || '').toUpperCase().trim();
   const router = useRouter();
   const { t } = useTranslation();
-  const { currentMember, switchHousehold, setUserId } = useStore();
+  const { currentMember, switchHousehold, setUserId, setLanguage } = useStore();
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
+  const [copied, setCopied] = useState(false);
 
-  // On web, the page acts as a bridge: open the installed app via the custom scheme.
+  // On web, the page acts as a bridge: open the installed app via the custom scheme, on Android
+  // only (see isAndroidWeb() above) — Heimlig has no iOS build, and no desktop OS registers a
+  // heimlig:// handler, so attempting it there only delayed the one screen that actually explains
+  // what an invite link is.
   //
-  // This comment used to claim there was no Android App Link configured. That was wrong on both
-  // counts and is corrected here, because it invited the next reader to rebuild something that
-  // already exists: app.json DOES declare an intent filter for https://heimlig.app/join and
+  // app.json DOES declare an Android App Link intent filter for https://heimlig.app/join and
   // https://heimlig.vercel.app with autoVerify, and public/.well-known/assetlinks.json exists and
-  // is excluded from the SPA rewrite in vercel.json, so it is served as a real file.
+  // is excluded from the SPA rewrite in vercel.json, so it is served as a real file. When
+  // verification succeeds, Android opens the app directly via the OS and this page is never
+  // reached at all. It IS still reached — and still needed — whenever that doesn't happen: no app
+  // installed, verification not (yet) succeeded for this device/build, or (as of this fix) any
+  // non-Android browser, which skips the attempt entirely and lands straight on the fallback below.
   //
-  // What that means for this branch: when verification succeeds, Android opens the app directly
-  // and this page is never reached. It is still reached, and still needed, in three cases — the
-  // recipient has no app installed, verification has not (yet) succeeded for this device or
-  // build, or the link is opened on a desktop or iPhone. So the browser fallback below STAYS.
-  // If the app isn't there, the custom-scheme handoff does nothing visible and the tab would just
-  // sit on this page; the fallback timer below sends it to the Play Store instead of dead-ending.
+  // Worth knowing when debugging App Link verification itself: it hinges on the SHA-256 in
+  // assetlinks.json matching the key Play actually signs with. Under Play App Signing that is the
+  // app signing key, not the upload key — a mismatch fails silently and every link quietly takes
+  // this browser detour instead.
   //
-  // Worth knowing when debugging: App Links verification hinges on the SHA-256 in assetlinks.json
-  // matching the key Play actually signs with. Under Play App Signing that is the app signing
-  // key, not the upload key — a mismatch fails silently and every link quietly takes this
-  // browser detour instead.
+  // A second, previously silent failure mode this fix also closes: app/_layout.tsx's own
+  // checkSession() used to unconditionally router.replace('/onboarding') for any anonymous web
+  // visitor ~500ms after mount — including one sitting right here, mid-handoff. That won the race
+  // against this screen's own fallback every time, which is why the page looked permanently stuck
+  // on "Opening the app…" with no Play Store link ever appearing: it wasn't stuck, it was being
+  // silently swapped for a different screen before its own logic ever got to finish. See the
+  // pathname guard in that file's `if (!user)` branch.
   useEffect(() => {
     if (Platform.OS === 'web') {
-      setStatus('web');
+      // Derived straight from the browser, synchronously, on this page — not left to
+      // app/_layout.tsx's own device-language detection, which only runs ~500ms later (behind a
+      // setTimeout) and previously raced this screen's very first paint. German stays the
+      // default; only an explicitly English browser gets English. This is the visitor's own
+      // language, not the inviter's — an invite link carries no record of who sent it.
+      // @ts-ignore - navigator only exists on web
+      const browserLang = (typeof navigator !== 'undefined' && navigator.language) || '';
+      setLanguage(browserLang.toLowerCase().startsWith('en') ? 'en' : 'de');
+
       (async () => {
         // Persist FIRST, before the custom-scheme handoff below might navigate the tab away —
         // same discipline the native branch already follows below for the same reason. This is
@@ -57,13 +83,23 @@ export default function JoinByCode() {
         // about: somebody with no Heimlig account, and usually no app, tapping a link in a chat.
         // On native an "anonymous opener" would have to be someone who installed the app but is
         // not signed in — a rare combination — which is why the anon_id branch never recorded a
-        // single row. Deliberately started before the scheme handoff below: the tab stays alive
-        // for the ~1.5s of the fallback timer, which is the window this insert gets.
+        // single row.
         const resolved = await resolveInviteCode(code);
         if (!resolved) return;
         const { data: { user } } = await supabase.auth.getUser();
         logJoinOpenedOnce(code, resolved.household_id, user?.id ?? null);
       })();
+
+      if (!isAndroidWeb()) {
+        // Desktop, iPhone, or anything else that isn't Android: heimlig:// can never resolve
+        // here (Heimlig has no iOS build, and no desktop OS registers it), so attempting it only
+        // wastes the time before this screen explains what an invite link even is. Straight to
+        // the fallback, no attempt, no wait.
+        setStatus('web-no-app');
+        return;
+      }
+
+      setStatus('web');
       const fallbackTimer = setTimeout(() => {
         // If the tab is still visible/focused when this fires, the custom-scheme handoff never
         // navigated away — the app isn't installed (or the handoff was blocked). Used to redirect
@@ -74,7 +110,7 @@ export default function JoinByCode() {
         if (typeof document === 'undefined' || !document.hidden) {
           setStatus('web-no-app');
         }
-      }, 1500);
+      }, 2000);
       // @ts-ignore - window only exists on web
       window.location.href = `heimlig://join/${code}`;
       return () => clearTimeout(fallbackTimer);
@@ -102,6 +138,19 @@ export default function JoinByCode() {
       if (!user) { setStatus('login'); return; }
     })();
   }, [code]);
+
+  // Same pattern as the invite modal's own copy button (app/(tabs)/household.tsx) — expo-clipboard
+  // works on web too, unlike React Native's Alert (see lib/alert.ts), which is why that import is
+  // needed here specifically for this screen.
+  const handleCopyCode = async () => {
+    try {
+      await Clipboard.setStringAsync(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      Alert.alert(t('joinPage.title'), code);
+    }
+  };
 
   const handleJoin = async () => {
     setStatus('joining');
@@ -220,10 +269,22 @@ export default function JoinByCode() {
             signup. */}
         {status === 'web-no-app' && (
           <>
+            <Text style={styles.sub}>{t('joinPage.invitedPrompt')}</Text>
+            {/* Tappable to copy (expo-clipboard, see handleCopyCode) — same pattern as the
+                invite modal's own code box in app/(tabs)/household.tsx. Visible and copyable
+                whether or not the visitor ends up installing the app at all. */}
+            <TouchableOpacity style={styles.codeBox} onPress={handleCopyCode} activeOpacity={0.8}>
+              <Text style={styles.codeText}>{code}</Text>
+              <Text style={styles.codeCopyHint}>{copied ? t('household.copiedTitle') : t('household.tapToCopy')}</Text>
+            </TouchableOpacity>
             <Text style={styles.sub}>{t('joinPage.webNoAppBody')}</Text>
             <TouchableOpacity style={styles.primaryBtn} onPress={() => Linking.openURL(DEFAULT_STORE_URL)}>
               <Text style={styles.primaryBtnText}>{t('joinPage.installFromPlayStoreButton')}</Text>
             </TouchableOpacity>
+            <Text style={styles.hint}>{t('joinPage.installThenEnterCodeHint')}</Text>
+            {!isAndroidWeb() && (
+              <Text style={styles.hint}>{t('joinPage.openOnPhoneHint')}</Text>
+            )}
             <TouchableOpacity style={styles.secondaryBtn} onPress={() => router.replace('/onboarding')}>
               <Text style={styles.secondaryBtnText}>{t('joinPage.continueInBrowserButton')}</Text>
             </TouchableOpacity>
@@ -278,12 +339,14 @@ const styles = StyleSheet.create({
   logo: { fontSize: 72, marginBottom: spacing.md },
   title: { fontSize: 32, fontWeight: '800', color: colors.textInverse, marginBottom: spacing.md, textAlign: 'center' },
   sub: { ...typography.body, color: 'rgba(255,255,255,0.9)', textAlign: 'center', marginBottom: spacing.xl },
-  codeBox: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.xl, marginBottom: spacing.xl },
+  codeBox: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.xl, marginBottom: spacing.xl },
   codeText: { fontSize: 28, fontWeight: '800', color: colors.textInverse, letterSpacing: 4 },
+  codeCopyHint: { ...typography.xs, color: 'rgba(255,255,255,0.7)', marginTop: spacing.xs },
   primaryBtn: { backgroundColor: colors.surface, borderRadius: radius.md, paddingVertical: spacing.md + 2, paddingHorizontal: spacing.xxl, alignItems: 'center', minWidth: 200, ...shadow.md },
   primaryBtnText: { ...typography.body, color: colors.brand, fontWeight: '700' },
   secondaryBtn: { padding: spacing.md },
   secondaryBtnText: { ...typography.body, color: 'rgba(255,255,255,0.85)' },
+  hint: { ...typography.xs, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginTop: spacing.sm, paddingHorizontal: spacing.md },
   disabled: { opacity: 0.6 },
   errorText: { color: '#fff', backgroundColor: 'rgba(0,0,0,0.25)', borderRadius: 8, padding: 12, marginBottom: 16, textAlign: 'center' },
 });
