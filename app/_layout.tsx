@@ -135,11 +135,12 @@ function RootLayout() {
       // widget's own headless JS context).
       const weatherEnabled = await AsyncStorage.getItem('@heimlig/weatherWidgetEnabled');
       if (weatherEnabled === '1') setWeatherWidgetEnabled(true);
-      const [savedLat, savedLon] = await Promise.all([
+      const [savedLat, savedLon, savedPlaceName] = await Promise.all([
         AsyncStorage.getItem('@heimlig/weatherLat'),
         AsyncStorage.getItem('@heimlig/weatherLon'),
+        AsyncStorage.getItem('@heimlig/weatherPlaceName'),
       ]);
-      if (savedLat && savedLon) setWeatherCoordsLocal(savedLat, savedLon);
+      if (savedLat && savedLon) setWeatherCoordsLocal(savedLat, savedLon, savedPlaceName ?? '');
 
       // Language: respect an explicit earlier choice, otherwise fall back to the device's
       // own language on first launch (English if set to English, German for everyone else —

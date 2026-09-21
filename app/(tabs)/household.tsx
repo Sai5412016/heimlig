@@ -37,6 +37,8 @@ import { registerPushToken } from '../../lib/pushTokens';
 import { hasPremiumAccess, isMemberLimitError, HOUSEHOLD_MEMBER_CAP, FREE_MONTHLY_AI_ACTIONS } from '../../lib/premium';
 import { fetchAiActionsUsed } from '../../lib/aiUsage';
 import { captureScreenshot } from '../../lib/screenshotTool';
+import WeatherLocationPicker from '../../components/WeatherLocationPicker';
+import { refreshWidgetNow } from '../../widgets/refreshWidget';
 import * as Clipboard from 'expo-clipboard';
 import * as StoreReview from 'expo-store-review';
 import { DEFAULT_STORE_URL } from '../../lib/appUpdate';
@@ -295,7 +297,7 @@ export default function HouseholdScreen() {
   const { household, currentMember, members, setMembers, setHousehold, tasks, transactions,
     myHouseholds, loadMyHouseholds, switchHousehold, leaveHousehold, toggleDarkMode, themeId, selectTheme,
     language, selectLanguage,
-    weatherWidgetEnabled, toggleWeatherWidget, weatherLat, weatherLon, setWeatherCoords } = useStore();
+    weatherWidgetEnabled, toggleWeatherWidget, weatherLat, weatherLon, weatherPlaceName, setWeatherCoords } = useStore();
   const { t } = useTranslation();
   const dateLocale = language === 'en' ? enUS : de;
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -355,6 +357,10 @@ export default function HouseholdScreen() {
   const [weekScores, setWeekScores] = useState<Record<string, number>>({});
   const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
   const [capturingScreens, setCapturingScreens] = useState(false);
+  // Brief label swap after tapping "Widget jetzt aktualisieren" — refreshWidgetNow() itself is
+  // best-effort/never throws (see widgets/refreshWidget.tsx), so this is purely the "yes,
+  // something happened" feedback the task asked for, not a real success/failure state.
+  const [refreshingWidget, setRefreshingWidget] = useState(false);
   // AI actions this household has spent this month — null while loading or if it can't be
   // read, in which case the row simply isn't shown rather than showing a wrong number.
   const [aiUsed, setAiUsed] = useState<number | null>(null);
@@ -382,6 +388,12 @@ export default function HouseholdScreen() {
     } finally {
       setCapturingScreens(false);
     }
+  };
+
+  const handleRefreshWidget = async () => {
+    setRefreshingWidget(true);
+    await refreshWidgetNow();
+    setTimeout(() => setRefreshingWidget(false), 1500);
   };
 
   const handleSwitch = async (id: string) => {
@@ -857,7 +869,7 @@ export default function HouseholdScreen() {
         )}
 
         {/* Dark mode toggle */}
-        <TouchableOpacity style={styles.settingsBtn} onPress={toggleDarkMode}>
+        <TouchableOpacity style={styles.settingsBtn} onPress={async () => { await toggleDarkMode(); refreshWidgetNow(); }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <Text style={styles.settingsBtnText}>{isDark ? '☀️' : '🌙'} {t('household.darkMode')}</Text>
             <View style={[styles.toggle, isDark && styles.toggleOn]}>
@@ -867,8 +879,9 @@ export default function HouseholdScreen() {
         </TouchableOpacity>
 
         {/* Weather line in the Android home-screen widget — off by default, device-local like
-            Dark Mode above. Coordinates are plain number fields the user types in themselves;
-            deliberately never read from a location permission (see widgets/weather.ts). */}
+            Dark Mode above. Location comes from a place-name search (WeatherLocationPicker,
+            Open-Meteo's free geocoding API) — deliberately never a location permission, see
+            widgets/weather.ts and lib/weatherGeocoding.ts. */}
         <TouchableOpacity style={styles.settingsBtn} onPress={toggleWeatherWidget}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <Text style={styles.settingsBtnText}>{t('household.weatherWidgetLabel')}</Text>
@@ -880,32 +893,26 @@ export default function HouseholdScreen() {
         {weatherWidgetEnabled && (
           <View style={styles.settingsBtn}>
             <Text style={styles.hint}>{t('household.weatherCoordsHint')}</Text>
-            <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, width: '100%' }}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>{t('household.weatherLatLabel')}</Text>
-                <TextInput
-                  style={styles.coordInput}
-                  value={weatherLat}
-                  onChangeText={(v) => setWeatherCoords(v, weatherLon)}
-                  keyboardType="numbers-and-punctuation"
-                  placeholder="48.22"
-                  placeholderTextColor={colors.textMuted}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>{t('household.weatherLonLabel')}</Text>
-                <TextInput
-                  style={styles.coordInput}
-                  value={weatherLon}
-                  onChangeText={(v) => setWeatherCoords(weatherLat, v)}
-                  keyboardType="numbers-and-punctuation"
-                  placeholder="10.85"
-                  placeholderTextColor={colors.textMuted}
-                />
-              </View>
+            <View style={{ marginTop: spacing.sm, width: '100%' }}>
+              <WeatherLocationPicker
+                placeName={weatherPlaceName}
+                lat={weatherLat}
+                lon={weatherLon}
+                onSelect={({ lat, lon, placeName }) => { setWeatherCoords(lat, lon, placeName); refreshWidgetNow(); }}
+              />
             </View>
           </View>
         )}
+
+        {/* Manual redraw — the widget otherwise only picks up a theme/dark-mode/location change
+            at its next native update cycle (up to ~30 min, app.json's updatePeriodMillis) or the
+            next WIDGET_RESIZED. Auto-triggered from the toggles/pickers above and the theme chips
+            below too; this button is for whenever someone doesn't want to wait even a moment. */}
+        <TouchableOpacity style={styles.settingsBtn} onPress={handleRefreshWidget} disabled={refreshingWidget}>
+          <Text style={styles.settingsBtnText}>
+            {refreshingWidget ? t('household.refreshWidgetDone') : t('household.refreshWidgetButton')}
+          </Text>
+        </TouchableOpacity>
 
         {/* Accent theme picker */}
         <View style={styles.settingsBtn}>
@@ -915,7 +922,7 @@ export default function HouseholdScreen() {
               <TouchableOpacity
                 key={theme.id}
                 style={[styles.themeChip, themeId === theme.id && { borderColor: theme.brand, backgroundColor: theme.brand + '15' }]}
-                onPress={() => selectTheme(theme.id)}
+                onPress={() => { selectTheme(theme.id); refreshWidgetNow(); }}
               >
                 <View style={[styles.themeSwatch, { backgroundColor: theme.brand }]}>
                   <Text style={styles.themeSwatchEmoji}>{theme.emoji}</Text>
@@ -1325,8 +1332,5 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   toggleThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: 'flex-start' },
   toggleThumbOn: { alignSelf: 'flex-end' },
 
-  // Weather widget coordinate fields
   hint: { ...typography.xs, color: colors.textMuted, alignSelf: 'flex-start' },
-  fieldLabel: { ...typography.xs, color: colors.textMuted, fontWeight: '700', marginBottom: spacing.xs },
-  coordInput: { backgroundColor: colors.background, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.sm, ...typography.body, color: colors.text },
 }); }
