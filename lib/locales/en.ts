@@ -957,6 +957,8 @@ export const en: AppTranslations = {
     webOpening: "Opening the app… If nothing happens, install Heimlig first.",
     webNoAppBody: "You don't have Heimlig installed yet. The app is the easiest way — but you can also continue right here in the browser.",
     installFromPlayStoreButton: 'Install Heimlig from the Play Store',
+    installThenEnterCodeHint: 'After installing, enter this code in the app.',
+    openOnPhoneHint: 'Open this link on your Android phone to install Heimlig directly.',
     continueInBrowserButton: 'Continue in browser',
     loginPrompt: 'Please log in or create an account first. Then you can join with the code {{code}}.',
     invitedPrompt: "You've been invited. Join with this code:",
