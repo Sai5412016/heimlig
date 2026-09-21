@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Share, Modal, Pressable, TextInput, Platform, KeyboardAvoidingView, Linking
+  Share, Modal, Pressable, TextInput, Platform, KeyboardAvoidingView, Linking, ActivityIndicator
 } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -348,6 +348,10 @@ export default function HouseholdScreen() {
   const [showGCal, setShowGCal] = useState(false);
   const [showLocation, setShowLocation] = useState(false);
   const [showSwitcher, setShowSwitcher] = useState(false);
+  // Household id currently being switched to, or null — drives the inline spinner on that row
+  // and blocks tapping another row mid-switch, instead of closing the modal immediately and
+  // leaving the tabs showing the OLD household's data with no sign anything is happening.
+  const [switchingId, setSwitchingId] = useState<string | null>(null);
   const [weekScores, setWeekScores] = useState<Record<string, number>>({});
   const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
   const [capturingScreens, setCapturingScreens] = useState(false);
@@ -381,9 +385,22 @@ export default function HouseholdScreen() {
   };
 
   const handleSwitch = async (id: string) => {
+    if (id === household?.id) { setShowSwitcher(false); return; }
+    // Modal stays open with a spinner on the tapped row instead of closing immediately —
+    // switchHousehold() can take a moment (members, shopping list, tasks, budget, recipes) and a
+    // household that failed to load (see below) used to leave the tabs silently showing whatever
+    // the PREVIOUS household had, with no indication the tap did anything at all.
+    setSwitchingId(id);
+    const switched = await switchHousehold(id);
+    setSwitchingId(null);
+    if (!switched) {
+      Alert.alert(t('common.error'), t('household.switchLoadFailedBody'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('household.retryButton'), onPress: () => handleSwitch(id) },
+      ]);
+      return;
+    }
     setShowSwitcher(false);
-    if (id === household?.id) return;
-    await switchHousehold(id);
   };
 
   // Play's review policy forbids gating this on sentiment — no "do you like the app?" in front
@@ -604,7 +621,25 @@ export default function HouseholdScreen() {
     }
 
     if (!result?.error) logInviteFunnelStep('join_completed', household_id);
-    await switchHousehold(household_id);
+    const switched = await switchHousehold(household_id);
+    if (!switched) {
+      // Membership row exists server-side (the RPC above already succeeded) — only loading it
+      // into the app failed. Retrying just re-runs switchHousehold, not the whole RPC (which
+      // would only hit the "already a member" branch again anyway).
+      Alert.alert(t('common.error'), t('household.switchLoadFailedBody'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('household.retryButton'), onPress: async () => {
+            const retried = await switchHousehold(household_id);
+            if (retried) {
+              Alert.alert(t('household.welcomeTitle'), t('household.welcomeBody', { name: household_name }));
+              setShowJoin(false);
+            } else {
+              Alert.alert(t('common.error'), t('household.switchLoadFailedBody'));
+            }
+        } },
+      ]);
+      return;
+    }
     Alert.alert(t('household.welcomeTitle'), t('household.welcomeBody', { name: household_name }));
     setShowJoin(false);
   };
@@ -1121,9 +1156,16 @@ export default function HouseholdScreen() {
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>{t('household.switchHouseholdTitle')}</Text>
             {myHouseholds.map(h => (
-              <TouchableOpacity key={h.id} style={styles.switchRow} onPress={() => handleSwitch(h.id)}>
+              <TouchableOpacity
+                key={h.id} style={styles.switchRow} onPress={() => handleSwitch(h.id)}
+                disabled={!!switchingId} activeOpacity={switchingId ? 1 : 0.7}
+              >
                 <Text style={styles.switchName}>{h.name}</Text>
-                {h.id === household?.id && <Text style={styles.switchActive}>{t('household.activeLabel')}</Text>}
+                {switchingId === h.id ? (
+                  <ActivityIndicator size="small" color={colors.brand} />
+                ) : h.id === household?.id ? (
+                  <Text style={styles.switchActive}>{t('household.activeLabel')}</Text>
+                ) : null}
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={styles.closeBtn} onPress={() => setShowSwitcher(false)}>

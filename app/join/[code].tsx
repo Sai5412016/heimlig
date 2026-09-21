@@ -34,6 +34,10 @@ export default function JoinByCode() {
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
   const [copied, setCopied] = useState(false);
+  // Set only when the RPC join itself already succeeded (a real membership row exists) and just
+  // loading it into the app failed — drives a genuine "Erneut versuchen" button on the error
+  // screen, as opposed to a rejected/invalid code, where retrying the same thing can't help.
+  const [retryHouseholdId, setRetryHouseholdId] = useState<string | null>(null);
 
   // On web, the page acts as a bridge: open the installed app via the custom scheme, on Android
   // only (see isAndroidWeb() above) — Heimlig has no iOS build, and no desktop OS registers a
@@ -205,7 +209,10 @@ export default function JoinByCode() {
         if (resolved) {
           const switched = await switchHousehold(resolved.household_id);
           await clearPendingInviteCode();
-          if (!switched) { setStatus('error'); setMessage(t('joinPage.switchFailedBody')); return; }
+          if (!switched) {
+            setRetryHouseholdId(resolved.household_id);
+            setStatus('error'); setMessage(t('joinPage.switchFailedBody')); return;
+          }
           setStatus('done');
           setMessage(resolved.household_name);
           setTimeout(() => router.replace('/(tabs)'), 1400);
@@ -238,6 +245,7 @@ export default function JoinByCode() {
       // must not resurface on the next login.
       await clearPendingInviteCode();
       if (!switched) {
+        setRetryHouseholdId(result.household_id);
         setStatus('error');
         setMessage(t('joinPage.switchFailedBody'));
         return;
@@ -250,6 +258,23 @@ export default function JoinByCode() {
       setStatus('error');
       setMessage(e?.message ?? t('joinPage.joinFailedBody'));
     }
+  };
+
+  // Retries ONLY the load, not the whole RPC — the membership row from the earlier successful
+  // join_household_by_code call already exists, so re-running that would just hit its
+  // "already a member" branch for no benefit.
+  const handleRetrySwitch = async () => {
+    if (!retryHouseholdId) return;
+    setStatus('joining');
+    const switched = await switchHousehold(retryHouseholdId);
+    if (!switched) {
+      setStatus('error');
+      setMessage(t('joinPage.switchFailedBody'));
+      return;
+    }
+    setRetryHouseholdId(null);
+    setStatus('done');
+    setTimeout(() => router.replace('/(tabs)'), 1400);
   };
 
   return (
@@ -323,6 +348,11 @@ export default function JoinByCode() {
         {status === 'error' && (
           <>
             <Text style={styles.errorText}>{message}</Text>
+            {retryHouseholdId && (
+              <TouchableOpacity style={styles.primaryBtn} onPress={handleRetrySwitch}>
+                <Text style={styles.primaryBtnText}>{t('household.retryButton')}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.secondaryBtn} onPress={() => router.replace('/(tabs)')}>
               <Text style={styles.secondaryBtnText}>{t('joinPage.goToApp')}</Text>
             </TouchableOpacity>

@@ -302,6 +302,8 @@ export interface AppTranslations {
     welcomeBody: string;
     notFoundTitle: string;
     joinFailed: string;
+    switchLoadFailedBody: string;
+    retryButton: string;
     memberLimitTitle: string;
     memberLimitBody: string;
     removeMemberTitle: string;
@@ -765,6 +767,7 @@ export interface AppTranslations {
     inviteCodePlaceholder: string;
     joining: string;
     joinHouseholdButton: string;
+    joinLoadFailedBody: string;
   };
   tasksTab: {
     headerTitle: string;

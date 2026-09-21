@@ -7,6 +7,7 @@ import { advanceMonthlyPreservingDay, advanceYearlyPreservingDay } from '../lib/
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerPushToken, logNotifyInvokeError } from '../lib/pushTokens';
 import * as shoppingRepo from '../repositories/shoppingRepository';
+import * as budgetRepo from '../repositories/budgetRepository';
 import { supermarketKey } from '../lib/brands';
 import i18n, { type SupportedLanguage } from '../lib/i18n';
 import { uploadRecipeImage, deleteRecipeImage } from '../lib/recipeAttachments';
@@ -302,6 +303,26 @@ export const useStore = create<AppState>((set, get) => ({
     } else {
       set({ shoppingLists: [], activeListId: null, items: [] });
     }
+
+    // Tasks, transactions and recipes — the rest of what the dashboard and the Tasks/Budget/
+    // Recipes tabs read from the store. Previously only cleared here, never reloaded: each of
+    // those screens has its own effect that reloads on `household` changing, but that only
+    // covers a screen that gets MOUNTED again — a tab that was already mounted from a PREVIOUS
+    // household (e.g. the Home tab still sitting in the navigator underneath the join/switch
+    // flow) does not automatically remount just because the store's household changed, so its
+    // data stayed empty until something else (a full app restart, which always mounts Home
+    // fresh) forced a reload. Loading it centrally here — the one function every join, switch
+    // and cold-start path already funnels through — closes that gap regardless of what happens
+    // to be mounted. Queries match each tab's own full-data query exactly (not the Home
+    // dashboard's narrower "open tasks only" / "50 most recent transactions" queries), so this
+    // doesn't leave the store in a different shape than that tab would have loaded itself.
+    const [tasksRes, transactionsData] = await Promise.all([
+      supabase.from('tasks').select('*').eq('household_id', household.id).order('due_date', { ascending: true, nullsFirst: false }),
+      budgetRepo.fetchTransactions(household.id),
+    ]);
+    if (tasksRes.data) set({ tasks: tasksRes.data });
+    if (transactionsData) set({ transactions: transactionsData });
+    await get().loadRecipes();
 
     registerPushToken(member.id, household.id); // fire-and-forget, best-effort
 

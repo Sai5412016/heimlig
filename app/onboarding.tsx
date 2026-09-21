@@ -368,7 +368,16 @@ export default function OnboardingScreen() {
       // store though, which — unlike app/_layout.tsx's checkSession — nothing on this screen ever
       // sets; without this, switchHousehold would silently no-op here.
       if (user) setUserId(user.id);
-      await switchHousehold(household_id);
+      const switched = await switchHousehold(household_id);
+      if (!switched) {
+        // The join itself already succeeded server-side (household_id is real) — only loading it
+        // into the app failed, e.g. a network hiccup right after the RPC. Deliberately NOT
+        // clearing the pending code (unlike the final failures above): this is the transient
+        // case, and tapping "Beitreten" again just re-runs switchHousehold — the RPC's own
+        // "already a member" branch already covers a retry hitting join_household_by_code again.
+        setErrorMsg(t('onboarding.joinLoadFailedBody'));
+        return;
+      }
       await clearPendingInviteCode();
       await clearPendingHouseholdChoice();
       router.replace('/(tabs)');
