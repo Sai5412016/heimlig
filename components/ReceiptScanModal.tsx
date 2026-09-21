@@ -16,11 +16,27 @@ import { currencySymbol } from '../lib/currency';
 import { format } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
 import { ALL_CATEGORIES, CAT_EMOJIS, CAT_COLORS, categoryLabel } from '../lib/budgetCategories';
+import { resizeImage } from '../lib/imageResize';
 import PayerPicker from './PayerPicker';
 import AiQuotaHint from './AiQuotaHint';
 import PremiumModal from './PremiumModal';
 import AiQuotaWallModal from './AiQuotaWallModal';
 import { readAiLimitError } from '../lib/aiUsage';
+
+// The permanent copy that ends up in Supabase Storage (transactions.receipt_url) — nobody reads
+// this at more than phone-screen size, so it can be compressed hard. Target is well under 150 KB.
+const STORAGE_MAX_DIMENSION = 1400;
+const STORAGE_JPEG_QUALITY = 0.65;
+// The copy sent to extract-receipt only, discarded right after — never uploaded. 1568px is the
+// exact long-edge ceiling the Claude API already downscales "standard tier" vision requests to
+// server-side (extract-receipt calls claude-haiku-4-5, which is standard tier — see
+// platform.claude.com/docs/en/build-with-claude/vision, "Resolution and token cost"). Sending
+// anything bigger than that has never bought any recognition quality, only a bigger upload — the
+// model was already only ever seeing this many pixels. Kept at a higher JPEG quality than the
+// storage copy on purpose: this one exists purely to be read, legibility matters more here than
+// size.
+const AI_MAX_DIMENSION = 1568;
+const AI_JPEG_QUALITY = 0.85;
 
 export interface ReceiptDraft {
   amount: number; description?: string; category: string; date: string;
@@ -70,14 +86,25 @@ export default function ReceiptScanModal({ visible, onClose, onConfirm }: {
     const asset = res.assets[0];
     if (!asset.base64) return;
     const mime = asset.mimeType || 'image/jpeg';
-    setImageB64(asset.base64);
-    setImageMime(mime);
     setLoading(true);
     try {
+      // Two independently sized copies of the same photo, both kept only in memory here — never
+      // both uploaded (see the constants above for why they're sized differently). Either resize
+      // can fail (e.g. asset.width/height unknown) without losing the receipt: resizeImage()
+      // returns null on failure and each falls back to the original, unresized picker output.
+      const [forStorage, forAi] = await Promise.all([
+        resizeImage(asset.uri, asset.width, asset.height, STORAGE_MAX_DIMENSION, STORAGE_JPEG_QUALITY),
+        resizeImage(asset.uri, asset.width, asset.height, AI_MAX_DIMENSION, AI_JPEG_QUALITY),
+      ]);
+      const storageImage = forStorage ?? { base64: asset.base64, mimeType: mime };
+      const aiImage = forAi ?? { base64: asset.base64, mimeType: mime };
+      setImageB64(storageImage.base64);
+      setImageMime(storageImage.mimeType);
+
       const { data, error } = await supabase.functions.invoke('extract-receipt', {
         // householdId is what lets the server count this against the shared AI quota — without
         // it the edge function deliberately fails open and the scan wouldn't be metered at all.
-        body: { imageBase64: asset.base64, imageMediaType: mime, householdId: household?.id },
+        body: { imageBase64: aiImage.base64, imageMediaType: aiImage.mimeType, householdId: household?.id },
       });
       if (error) throw error;
       setAmount(data.amount != null ? String(data.amount).replace('.', language === 'en' ? '.' : ',') : '');

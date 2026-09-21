@@ -260,6 +260,7 @@ export interface AppTranslations {
     seeAll: string;
     toBuy: string;
     openList: string;
+    emptyStateHint: string;
   };
   household: {
     inviteMessage: string;
@@ -702,6 +703,17 @@ export interface AppTranslations {
     inviteStepShareButton: string;
     inviteStepCodeLabel: string;
     inviteStepSkip: string;
+    quickstartStepTitle: string;
+    quickstartStepSub: string;
+    quickstartItemMilk: string;
+    quickstartItemBread: string;
+    quickstartItemEggs: string;
+    quickstartItemButter: string;
+    quickstartItemCoffee: string;
+    quickstartItemToiletPaper: string;
+    quickstartItemPasta: string;
+    quickstartItemBananas: string;
+    quickstartItemCheese: string;
     continueButton: string;
     welcomeBack: string;
     createAccount: string;
