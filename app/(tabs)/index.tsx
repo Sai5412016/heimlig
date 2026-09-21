@@ -303,6 +303,16 @@ export default function DashboardScreen() {
           </View>
         )}
 
+        {/* Both sections above are hidden entirely when empty — without this, a genuinely fresh
+            household (no tasks, nothing to buy yet) showed nothing at all between the quick
+            actions and the bottom padding. One short pointer to the shopping list instead. */}
+        {openTasks.length === 0 && uncheckedItems.length === 0 && (
+          <TouchableOpacity style={styles.emptyStateCard} activeOpacity={0.85} onPress={() => router.push('/(tabs)/shopping')}>
+            <Text style={styles.emptyStateText}>{t('home.emptyStateHint')}</Text>
+            <Text style={styles.emptyStateArrow}>›</Text>
+          </TouchableOpacity>
+        )}
+
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
 
@@ -361,4 +371,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   shoppingPreviewItems: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   previewChip: { backgroundColor: colors.background, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
   previewChipText: { ...typography.sm, color: colors.text },
+  emptyStateCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.lg, ...shadow.sm },
+  emptyStateText: { ...typography.body, color: colors.textSecondary, flex: 1 },
+  emptyStateArrow: { fontSize: 22, color: colors.textMuted, fontWeight: '300', marginLeft: spacing.sm },
 }); }

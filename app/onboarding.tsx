@@ -20,17 +20,48 @@ import { isMemberLimitError, HOUSEHOLD_MEMBER_CAP } from '../lib/premium';
 import { logInviteFunnelStep, logJoinOpenedOnce, getPendingInviteCode, clearPendingInviteCode, isPendingCodeAlreadyMember, isAlreadyMemberError, resolveInviteCode, looksLikeInviteCode } from '../lib/inviteFunnel';
 import { savePendingHouseholdChoice, getPendingHouseholdChoice, clearPendingHouseholdChoice } from '../lib/householdChoice';
 import { signInWithGoogle, signInWithGoogleWeb, completeGoogleWebSignIn } from '../lib/googleAuth';
+import { categoryForItem } from '../lib/groceries';
 import InviteQRCode from '../components/InviteQRCode';
 
 // 'household' (Haushaltswahl) sits BEFORE 'auth' on purpose: the old order asked for an
 // account first and only then what the account was for. See the report for build 91.
-type Step = 'welcome' | 'slides' | 'household' | 'auth' | 'verify' | 'name' | 'invite';
+type Step = 'welcome' | 'slides' | 'household' | 'auth' | 'verify' | 'name' | 'quickstart' | 'invite';
+
+// A small, curated subset of lib/groceries.ts's German catalog for the post-signup quick-start
+// chips. canonicalName is the German catalog spelling — that catalog is deliberately German-only
+// (see CONTEXT.md, "Daten, keine UI-Chrome"), used here ONLY to look up the right category via
+// categoryForItem(). The item NAME actually written to shopping_items is t(labelKey) instead,
+// same convention the normal add-item flow follows (app/(tabs)/shopping.tsx): an item is stored
+// exactly as the user's own app language shows it, never silently written in German for an
+// English-language household.
+const QUICKSTART_ITEMS: { canonicalName: string; labelKey: string; emoji: string }[] = [
+  { canonicalName: 'Milch', labelKey: 'quickstartItemMilk', emoji: '🥛' },
+  { canonicalName: 'Brot', labelKey: 'quickstartItemBread', emoji: '🍞' },
+  { canonicalName: 'Eier', labelKey: 'quickstartItemEggs', emoji: '🥚' },
+  { canonicalName: 'Butter', labelKey: 'quickstartItemButter', emoji: '🧈' },
+  { canonicalName: 'Kaffee', labelKey: 'quickstartItemCoffee', emoji: '☕' },
+  { canonicalName: 'Toilettenpapier', labelKey: 'quickstartItemToiletPaper', emoji: '🧻' },
+  { canonicalName: 'Nudeln', labelKey: 'quickstartItemPasta', emoji: '🍝' },
+  { canonicalName: 'Bananen', labelKey: 'quickstartItemBananas', emoji: '🍌' },
+  { canonicalName: 'Käse', labelKey: 'quickstartItemCheese', emoji: '🧀' },
+];
+
+// Same loosely-typed dynamic-key pattern as shopping.tsx's categoryLabel() — the generated
+// AppTranslations type only has literal keys, and labelKey here is a plain string at the call site.
+const quickstartLabel = (t: (key: string, opts?: Record<string, unknown>) => string, key: string): string =>
+  t(`onboarding.${key}`);
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { household, setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems, switchHousehold, setUserId, language } = useStore();
+  const { household, setHousehold, setCurrentMember, setMembers, setShoppingLists, setActiveListId, setItems, switchHousehold, setUserId, language, activeListId, addItem, deleteItem } = useStore();
   const [step, setStep] = useState<Step>('welcome');
+  // labelKey -> shopping_items.id of the row this chip created, so tapping it off again can
+  // delete exactly that row instead of re-deriving it from the list.
+  const [quickstartAdded, setQuickstartAdded] = useState<Record<string, string>>({});
+  // Guards against a double-tap firing two inserts before the first addItem() call resolves —
+  // a ref (not state) so checking/updating it never itself triggers a re-render.
+  const quickstartBusyRef = useRef<Set<string>>(new Set());
   const [slideIndex, setSlideIndex] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -424,14 +455,47 @@ export default function OnboardingScreen() {
       await clearPendingInviteCode();
       await clearPendingHouseholdChoice();
 
-      // Freshly created household -> mandatory (but skippable) invite step, never shown when
-      // joining an existing one. household is now set in the store, so the 'invite' render below
-      // can read invite_code/name straight from it.
-      setStep('invite');
+      // Freshly created household -> quick-start step (tap a few staple items straight into the
+      // new shopping list), then the mandatory-but-skippable invite step — neither ever shown
+      // when joining an existing one. household is now set in the store, so both renders below
+      // can read invite_code/name/activeListId straight from it.
+      setStep('quickstart');
     } catch (e: any) {
       setErrorMsg(e.message || JSON.stringify(e));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ─── QUICKSTART (creator-only, before the invite step) ───────────────────
+  // Tapping a chip adds/removes a real shopping_items row in the list the RPC above just
+  // created, via the exact same store.addItem()/deleteItem() the Shopping tab itself uses — no
+  // separate insert path to keep in sync with that screen's own dedup/category logic.
+  const handleToggleQuickstartItem = async (item: typeof QUICKSTART_ITEMS[number]) => {
+    if (quickstartBusyRef.current.has(item.labelKey)) return;
+    quickstartBusyRef.current.add(item.labelKey);
+    try {
+      const existingId = quickstartAdded[item.labelKey];
+      if (existingId) {
+        await deleteItem(existingId);
+        setQuickstartAdded(s => {
+          const next = { ...s };
+          delete next[item.labelKey];
+          return next;
+        });
+        return;
+      }
+      if (!activeListId) return;
+      const label = quickstartLabel(t, item.labelKey);
+      await addItem(activeListId, label, undefined, categoryForItem(item.canonicalName));
+      // addItem() doesn't hand back the inserted row, so read it straight from the store —
+      // it is there synchronously once addItem's own await resolves (see store/useStore.ts).
+      const created = useStore.getState().items.find(
+        i => i.list_id === activeListId && !i.checked && i.name.toLowerCase().trim() === label.toLowerCase().trim()
+      );
+      if (created) setQuickstartAdded(s => ({ ...s, [item.labelKey]: created.id }));
+    } finally {
+      quickstartBusyRef.current.delete(item.labelKey);
     }
   };
 
@@ -754,6 +818,48 @@ export default function OnboardingScreen() {
     </SafeAreaView>
   );
 
+  // ─── QUICKSTART ──────────────────────────────────────────
+  if (step === 'quickstart') return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.stepContent} showsVerticalScrollIndicator={false}>
+        <Text style={styles.stepTitle}>{t('onboarding.quickstartStepTitle')}</Text>
+        <Text style={styles.stepSub}>{t('onboarding.quickstartStepSub')}</Text>
+        <View style={styles.quickstartGrid}>
+          {QUICKSTART_ITEMS.map(item => {
+            const isAdded = !!quickstartAdded[item.labelKey];
+            return (
+              <TouchableOpacity
+                key={item.labelKey}
+                style={[styles.quickstartChip, isAdded && styles.quickstartChipActive]}
+                onPress={() => handleToggleQuickstartItem(item)}
+                activeOpacity={0.8}
+              >
+                {isAdded && (
+                  <View style={styles.quickstartCheck}>
+                    <Text style={styles.quickstartCheckIcon}>✓</Text>
+                  </View>
+                )}
+                <Text style={styles.quickstartChipEmoji}>{item.emoji}</Text>
+                <Text style={[styles.quickstartChipLabel, isAdded && styles.quickstartChipLabelActive]}>
+                  {quickstartLabel(t, item.labelKey)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {/* Always enabled, even with zero taps — this step is a fast path, not a requirement.
+            "Weiter" and "Überspringen" end up in the exact same place, on purpose: whichever one
+            somebody reaches for, neither is a dead end or a wrong choice. */}
+        <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep('invite')}>
+          <Text style={styles.primaryBtnText}>{t('onboarding.continueButton')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.inviteSkipBtn} onPress={() => setStep('invite')}>
+          <Text style={styles.inviteSkipText}>{t('onboarding.slideSkip')}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
+  );
+
   // ─── INVITE ────────────────────────────────────────────────
   if (step === 'invite') return (
     <SafeAreaView style={styles.container}>
@@ -870,4 +976,18 @@ const styles = StyleSheet.create({
   },
   inviteSkipBtn: { alignItems: 'center', padding: spacing.md, marginTop: spacing.sm },
   inviteSkipText: { ...typography.sm, color: colors.textMuted, textDecorationLine: 'underline' },
+  quickstartGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.xl },
+  quickstartChip: {
+    width: '31%', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md,
+    alignItems: 'center', borderWidth: 2, borderColor: colors.border, ...shadow.sm,
+  },
+  quickstartChipActive: { borderColor: colors.brand, backgroundColor: colors.brandPale },
+  quickstartChipEmoji: { fontSize: 28, marginBottom: spacing.xs },
+  quickstartChipLabel: { ...typography.sm, color: colors.text, fontWeight: '600', textAlign: 'center' },
+  quickstartChipLabelActive: { color: colors.brand },
+  quickstartCheck: {
+    position: 'absolute', top: 6, right: 6, width: 20, height: 20, borderRadius: 10,
+    backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center',
+  },
+  quickstartCheckIcon: { color: colors.textInverse, fontSize: 12, fontWeight: '800' },
 });
