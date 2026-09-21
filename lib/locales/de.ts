@@ -302,6 +302,8 @@ export const de: AppTranslations = {
     welcomeBody: 'Du bist jetzt Mitglied von "{{name}}".',
     notFoundTitle: 'Nicht gefunden',
     joinFailed: 'Beitreten fehlgeschlagen.',
+    switchLoadFailedBody: 'Der Haushalt konnte nicht geladen werden. Prüfe deine Internetverbindung und versuche es erneut.',
+    retryButton: 'Erneut versuchen',
     memberLimitTitle: 'Haushalt ist voll',
     memberLimitBody: 'Dieser Haushalt hat die maximale Mitgliederzahl von {{limit}} erreicht.',
     removeMemberTitle: 'Mitglied entfernen',
@@ -762,6 +764,7 @@ export const de: AppTranslations = {
     inviteCodePlaceholder: 'z.B. ABC12345',
     joining: 'Trete bei...',
     joinHouseholdButton: 'Haushalt beitreten 🔑',
+    joinLoadFailedBody: 'Du bist dem Haushalt beigetreten, aber er konnte nicht geladen werden. Prüfe deine Internetverbindung und tippe erneut auf „Beitreten".',
   },
   tasksTab: {
     headerTitle: '📋 Aufgaben',

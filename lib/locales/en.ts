@@ -303,6 +303,8 @@ export const en: AppTranslations = {
     welcomeBody: 'You are now a member of "{{name}}".',
     notFoundTitle: 'Not found',
     joinFailed: 'Failed to join.',
+    switchLoadFailedBody: 'The household could not be loaded. Check your internet connection and try again.',
+    retryButton: 'Try again',
     memberLimitTitle: 'Household is full',
     memberLimitBody: 'This household has reached the maximum of {{limit}} members.',
     removeMemberTitle: 'Remove member',
@@ -765,6 +767,7 @@ export const en: AppTranslations = {
     inviteCodePlaceholder: 'e.g. ABC12345',
     joining: 'Joining...',
     joinHouseholdButton: 'Join household 🔑',
+    joinLoadFailedBody: 'You joined the household, but it could not be loaded. Check your internet connection and tap "Join" again.',
   },
   tasksTab: {
     headerTitle: '📋 Tasks',
