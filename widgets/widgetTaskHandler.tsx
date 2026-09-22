@@ -14,7 +14,10 @@ const WEATHER_ENABLED_KEY = '@heimlig/weatherWidgetEnabled';
 const THEME_ID_KEY = '@heimlig/themeId';
 const DARK_MODE_KEY = '@heimlig/darkMode';
 
-async function readData(): Promise<WidgetData> {
+// Exported so widgets/refreshWidget.tsx (foreground-only, see that file) can reuse the exact
+// same data-gathering instead of duplicating it — this function itself is unchanged and still
+// only ever runs the local AsyncStorage reads it always did.
+export async function readData(): Promise<WidgetData> {
   const fallback: WidgetData = { openTasks: 0, shoppingCount: 0, nextTask: '' };
   try {
     // All three are local AsyncStorage reads (no network), same risk class as the snapshot
@@ -50,7 +53,7 @@ async function readData(): Promise<WidgetData> {
 // the import behind the enabled-check below means a device with the (default-off) switch off
 // never loads that module at all in this path, and even with it on, a failure here can only
 // ever throw into the try/catch a few lines down — never before renderWidget() has already run.
-async function getWeatherLineSafely(): Promise<string | null> {
+export async function getWeatherLineSafely(): Promise<string | null> {
   try {
     const enabled = await AsyncStorage.getItem(WEATHER_ENABLED_KEY);
     if (enabled !== '1') {

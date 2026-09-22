@@ -213,18 +213,24 @@ interface AppState {
   setLanguage: (lang: SupportedLanguage) => void;
   selectLanguage: (lang: SupportedLanguage) => Promise<void>;
 
-  // 🌦️ Widget weather line (device-local, off by default). Coordinates are typed in by hand
-  // in household.tsx — deliberately never read from a location permission, see widgets/weather.ts.
+  // 🌦️ Widget weather line (device-local, off by default). Coordinates come from an Open-Meteo
+  // place search (household.tsx's WeatherLocationPicker) — deliberately never read from a
+  // location permission, see widgets/weather.ts. weatherPlaceName is display-only (shown in the
+  // settings field and, space permitting, in the widget's weather line); lat/lon alone still
+  // drive the actual forecast fetch, unchanged.
   weatherWidgetEnabled: boolean;
   weatherLat: string;
   weatherLon: string;
+  weatherPlaceName: string;
   setWeatherWidgetEnabled: (v: boolean) => void;
   toggleWeatherWidget: () => Promise<void>;
   // Local-only (no AsyncStorage write) — used to hydrate state from a value already read out
   // of AsyncStorage on launch, see app/_layout.tsx. setWeatherCoords is the persisting version,
-  // called from the settings screen.
-  setWeatherCoordsLocal: (lat: string, lon: string) => void;
-  setWeatherCoords: (lat: string, lon: string) => Promise<void>;
+  // called from the settings screen. placeName is optional so existing call sites that only
+  // ever set coordinates (none left after this change, but keeps the signature forgiving) don't
+  // need updating.
+  setWeatherCoordsLocal: (lat: string, lon: string, placeName?: string) => void;
+  setWeatherCoords: (lat: string, lon: string, placeName?: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -1114,15 +1120,21 @@ export const useStore = create<AppState>((set, get) => ({
   weatherWidgetEnabled: false,
   weatherLat: '48.22',
   weatherLon: '10.85',
+  weatherPlaceName: '',
   setWeatherWidgetEnabled: (v) => set({ weatherWidgetEnabled: v }),
   toggleWeatherWidget: async () => {
     const next = !get().weatherWidgetEnabled;
     set({ weatherWidgetEnabled: next });
     await AsyncStorage.setItem('@heimlig/weatherWidgetEnabled', next ? '1' : '0');
   },
-  setWeatherCoordsLocal: (lat, lon) => set({ weatherLat: lat, weatherLon: lon }),
-  setWeatherCoords: async (lat, lon) => {
-    set({ weatherLat: lat, weatherLon: lon });
-    await AsyncStorage.multiSet([['@heimlig/weatherLat', lat], ['@heimlig/weatherLon', lon]]);
+  setWeatherCoordsLocal: (lat, lon, placeName) => set(s => ({ weatherLat: lat, weatherLon: lon, weatherPlaceName: placeName ?? s.weatherPlaceName })),
+  setWeatherCoords: async (lat, lon, placeName) => {
+    const resolvedPlaceName = placeName ?? get().weatherPlaceName;
+    set({ weatherLat: lat, weatherLon: lon, weatherPlaceName: resolvedPlaceName });
+    await AsyncStorage.multiSet([
+      ['@heimlig/weatherLat', lat],
+      ['@heimlig/weatherLon', lon],
+      ['@heimlig/weatherPlaceName', resolvedPlaceName],
+    ]);
   },
 }));

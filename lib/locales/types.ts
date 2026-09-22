@@ -333,9 +333,12 @@ export interface AppTranslations {
     upgradeChip: string;
     darkMode: string;
     weatherWidgetLabel: string;
-    weatherLatLabel: string;
-    weatherLonLabel: string;
     weatherCoordsHint: string;
+    weatherPlacePlaceholder: string;
+    weatherPlaceNoResults: string;
+    weatherPlaceSearchFailed: string;
+    refreshWidgetButton: string;
+    refreshWidgetDone: string;
     designLabel: string;
     scoreboardLabel: string;
     on: string;

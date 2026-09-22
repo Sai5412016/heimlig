@@ -14,8 +14,20 @@ import i18n from '../lib/i18n';
 const ENABLED_KEY = '@heimlig/weatherWidgetEnabled';
 const LAT_KEY = '@heimlig/weatherLat';
 const LON_KEY = '@heimlig/weatherLon';
+const PLACE_NAME_KEY = '@heimlig/weatherPlaceName';
 const LANGUAGE_KEY = '@heimlig/language';
 const CACHE_KEY = '@heimlig/weatherCache';
+
+// The widget line is one row shared with the title (see widgets/HeimligWidget.tsx), already
+// truncated with maxLines={1}/truncate="END" as a last resort — this cap is what keeps a long
+// place name from eating the temperature/condition/high-low that truncation would otherwise cut
+// first, since they come after it in the string.
+const MAX_PLACE_NAME_LENGTH = 16;
+
+function truncatePlaceName(name: string): string {
+  if (name.length <= MAX_PLACE_NAME_LENGTH) return name;
+  return name.slice(0, MAX_PLACE_NAME_LENGTH - 1).trimEnd() + '…';
+}
 
 const DEFAULT_LAT = 48.22;
 const DEFAULT_LON = 10.85;
@@ -98,15 +110,16 @@ async function fetchWeather(lat: number, lon: number): Promise<WeatherCache | nu
   }
 }
 
-function formatLine(cache: WeatherCache, lang: string): string {
+function formatLine(cache: WeatherCache, lang: string, placeName: string | null): string {
   const condition = i18n.t(`system.widgetWeather.${conditionKeyFor(cache.weatherCode)}`, { lng: lang });
-  return i18n.t('system.widgetWeatherLine', {
+  const line = i18n.t('system.widgetWeatherLine', {
     lng: lang,
     temp: Math.round(cache.tempC),
     condition,
     high: Math.round(cache.high),
     low: Math.round(cache.low),
   });
+  return placeName ? `${truncatePlaceName(placeName)} · ${line}` : line;
 }
 
 // Returns the formatted weather line, or null if the setting is off, nothing has ever been
@@ -118,10 +131,11 @@ export async function getWeatherLine(): Promise<string | null> {
     const enabled = await AsyncStorage.getItem(ENABLED_KEY);
     if (enabled !== '1') return null;
 
-    const [rawLat, rawLon, rawLang] = await Promise.all([
+    const [rawLat, rawLon, rawLang, placeName] = await Promise.all([
       AsyncStorage.getItem(LAT_KEY),
       AsyncStorage.getItem(LON_KEY),
       AsyncStorage.getItem(LANGUAGE_KEY),
+      AsyncStorage.getItem(PLACE_NAME_KEY),
     ]);
     const lat = parseCoord(rawLat, DEFAULT_LAT, -90, 90);
     const lon = parseCoord(rawLon, DEFAULT_LON, -180, 180);
@@ -147,7 +161,7 @@ export async function getWeatherLine(): Promise<string | null> {
         result = cached;
       }
     }
-    return result ? formatLine(result, lang) : null;
+    return result ? formatLine(result, lang, placeName) : null;
   } catch {
     // Never let a bug here take the rest of the widget down with it.
     return null;
