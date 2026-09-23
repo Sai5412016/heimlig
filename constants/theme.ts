@@ -287,11 +287,19 @@ export const APP_THEMES: AppTheme[] = [
     // could still be added the same way those six were, later.
     // brandDark (#7A0E14) reads only 1.83:1 against this surface — too close to it to use as a
     // standalone ink anywhere text- or icon-adjacent; kept only as a theme color for internal
-    // shape layering (never alone against the background). brand/brandLight/accent all clear
-    // the 3:1 floor against both this surface and the widget's gradient stop (4.25–15.51:1,
-    // see the report).
+    // shape layering (never alone against the background). One live case of it landing against
+    // the background WAS found (app/(tabs)/household.tsx's invite banner, backgroundColor:
+    // colors.brandDark) — fixed there with a dragon-eye-only override to brandLight instead,
+    // see that file's comment for the numbers, rather than changing the shared token for all
+    // 18 other themes' own (unaffected) brandDark values.
+    // brand started as #E11F2B (4.28:1 vs this surface) — every place `colors.brand` is used as
+    // TEXT (active tab labels, amounts, link/button text — dozens of spots across the app, e.g.
+    // app/(tabs)/index.tsx's statValue, household.tsx's codeText, budget.tsx's currencySymbol)
+    // needs ≥4.5:1, not just the 3:1 floor decorative shapes get. Lightened by blending 8.4%
+    // toward white (hue kept, same red) to #E63A44 — 4.87:1 vs surface, 4.74:1 vs
+    // surfaceElevated, 4.84:1 vs the widget's gradient stop, see the report for the full search.
     id: 'dragon-eye', label: 'Drachenauge', emoji: '👁️',
-    brand: '#E11F2B', brandLight: '#FF6B62', brandDark: '#7A0E14', accent: '#FFD9CF',
+    brand: '#E63A44', brandLight: '#FF6B62', brandDark: '#7A0E14', accent: '#FFD9CF',
     forceDark: true,
     background: '#0A0505', surface: '#0A0505', surfaceElevated: '#150707',
     border: '#3A0709', borderLight: '#2A0505',

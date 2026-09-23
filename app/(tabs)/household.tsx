@@ -723,16 +723,29 @@ export default function HouseholdScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-        {/* Invite Banner */}
-        <TouchableOpacity style={styles.inviteBanner} onPress={() => setShowInvite(true)} activeOpacity={0.85}>
+        {/* Invite Banner — dragon-eye's brandDark (#7A0E14) only reads 1.83:1 against its own
+            near-black surface, so the banner's own shape would nearly vanish; brandLight instead
+            for this one theme (7.26:1), other themes' brandDark stays untouched. */}
+        <TouchableOpacity
+          style={[styles.inviteBanner, themeId === 'dragon-eye' && { backgroundColor: colors.brandLight }]}
+          onPress={() => setShowInvite(true)}
+          activeOpacity={0.85}
+        >
           <View style={styles.inviteBannerLeft}>
             <Text style={styles.inviteBannerEmoji}>📨</Text>
             <View>
               <Text style={styles.inviteBannerTitle}>{t('household.inviteBannerTitle')}</Text>
-              <Text style={styles.inviteBannerSub}>{t('household.inviteBannerSub')}<Text style={styles.inviteBannerCode}>{household?.invite_code}</Text></Text>
+              {/* The translucent-white sub/code/arrow colors below assume a dark banner (every
+                  other theme's brandDark) — against dragon-eye's now-light brandLight banner
+                  they'd wash out (measured: 2.06:1 / 1.00:1 / 1.66:1). Dark overrides instead,
+                  dragon-eye only: 4.74:1 / 7.41:1 / 4.98:1. */}
+              <Text style={[styles.inviteBannerSub, themeId === 'dragon-eye' && { color: 'rgba(5,2,2,0.72)' }]}>
+                {t('household.inviteBannerSub')}
+                <Text style={[styles.inviteBannerCode, themeId === 'dragon-eye' && { color: colors.textInverse }]}>{household?.invite_code}</Text>
+              </Text>
             </View>
           </View>
-          <Text style={styles.inviteBannerArrow}>›</Text>
+          <Text style={[styles.inviteBannerArrow, themeId === 'dragon-eye' && { color: 'rgba(5,2,2,0.72)' }]}>›</Text>
         </TouchableOpacity>
 
         {/* Share banner */}

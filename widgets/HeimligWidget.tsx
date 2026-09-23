@@ -208,8 +208,8 @@ function badgeMotifSvg(themeId: string, colors: ColorPalette, isDark: boolean): 
       // Plain abstract eye — ring, iris, pupil, highlight, two lash rays — no tomoe/comma shapes,
       // same "inspired by a mood, not a specific franchise symbol" rule as every other theme here.
       // brandLight (ring/rays) and brand (iris) both clear the gradient background comfortably
-      // (7.21:1 / 4.25:1); accent (highlight) even more so (15.40:1). brandDark is never used
-      // here — see constants/theme.ts's comment on this theme for why.
+      // (7.21:1 / 4.84:1 — brand was lightened after this theme shipped, see constants/theme.ts's
+      // comment); accent (highlight) even more so (15.40:1). brandDark is never used here.
       return `<svg viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="10" fill="none" stroke="${colors.brandLight}" stroke-width="1.2"/>
         <line x1="3" y1="8" x2="6.5" y2="10.5" stroke="${colors.brandLight}" stroke-width="1.2" stroke-linecap="round"/>
