@@ -183,6 +183,34 @@ export default function ThemeMotif({ size = 26 }: { size?: number }) {
           <View style={[styles.abs, { top: size * 0.28, left: size * 0.14, right: size * 0.14, bottom: 0, backgroundColor: theme.brandLight, borderRadius: size * 0.18 }]} />
         </View>
       );
+    case 'blocky':
+      // Two square, unrounded blocks (borderRadius: 0 on purpose — everything else in this file
+      // rounds its corners, "Blocky" is the one theme whose whole point is that it doesn't) —
+      // same widget-facing shape as widgets/HeimligWidget.tsx's badge for this theme.
+      return (
+        <View style={[styles.wrap, box]}>
+          <View style={[styles.abs, { top: 0, left: 0, width: size * 0.62, height: size * 0.62, backgroundColor: theme.brand }]} />
+          <View style={[styles.abs, { bottom: 0, right: 0, width: size * 0.42, height: size * 0.42, backgroundColor: theme.accent }]} />
+        </View>
+      );
+    case 'alpen':
+      // Two overlapping rotated squares standing in for a simple mountain-range silhouette — no
+      // real triangle primitive is available, and rotation is safe to use here since (unlike the
+      // widget's RemoteViews) this is plain React Native. The widget's own alpen badge stays
+      // axis-aligned instead (see BADGE_SHAPE in widgets/HeimligWidget.tsx) — a rotated shape's
+      // bounds can spill past its layout box there, right next to the title text.
+      return (
+        <View style={[styles.wrap, box]}>
+          <View style={[styles.abs, {
+            bottom: size * 0.1, left: size * 0.06, width: size * 0.46, height: size * 0.46,
+            backgroundColor: theme.brandLight, transform: [{ rotate: '45deg' }],
+          }]} />
+          <View style={[styles.abs, {
+            bottom: size * 0.1, right: size * 0.02, width: size * 0.6, height: size * 0.6,
+            backgroundColor: theme.brand, transform: [{ rotate: '45deg' }],
+          }]} />
+        </View>
+      );
     default:
       return (
         <View style={[styles.wrap, box, { borderRadius: size / 2, backgroundColor: theme.brand, alignItems: 'center', justifyContent: 'center' }]}>
