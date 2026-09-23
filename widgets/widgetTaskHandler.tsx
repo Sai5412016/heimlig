@@ -83,16 +83,17 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
       const data = await readData();
       // Tasks/shopping/pinned task draw FIRST, unconditionally, no matter what weather does —
       // the widget must never sit blank while something else is still loading or a network
-      // call is in flight. widgetInfo.height (dp) is the host's real, current measurement —
-      // threaded through as heightDp so HeimligWidget can gate its decorative row on actual size.
-      props.renderWidget(<HeimligWidget data={data} heightDp={props.widgetInfo.height} />);
+      // call is in flight. widgetInfo.height/width (dp) are the host's real, current measurement
+      // — threaded through as heightDp/widthDp so HeimligWidget can gate its decorative row and
+      // size Alpen's full-width mountain background on the widget's actual current size.
+      props.renderWidget(<HeimligWidget data={data} heightDp={props.widgetInfo.height} widthDp={props.widgetInfo.width} />);
       console.log('[widget] base render done');
 
       const weatherLine = await getWeatherLineSafely();
       if (weatherLine) {
         // Second render, additive: updates the already-visible widget in place once (and only
         // if) a weather line is actually available.
-        props.renderWidget(<HeimligWidget data={{ ...data, weatherLine }} heightDp={props.widgetInfo.height} />);
+        props.renderWidget(<HeimligWidget data={{ ...data, weatherLine }} heightDp={props.widgetInfo.height} widthDp={props.widgetInfo.width} />);
         console.log('[widget] weather render done');
       }
       break;

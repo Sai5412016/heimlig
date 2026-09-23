@@ -194,11 +194,10 @@ export default function ThemeMotif({ size = 26 }: { size?: number }) {
         </View>
       );
     case 'alpen':
-      // Two overlapping rotated squares standing in for a simple mountain-range silhouette — no
-      // real triangle primitive is available, and rotation is safe to use here since (unlike the
-      // widget's RemoteViews) this is plain React Native. The widget's own alpen badge stays
-      // axis-aligned instead (see BADGE_SHAPE in widgets/HeimligWidget.tsx) — a rotated shape's
-      // bounds can spill past its layout box there, right next to the title text.
+      // Two overlapping rotated squares standing in for a simple mountain-range silhouette. The
+      // widget's own alpen mountains (widgets/HeimligWidget.tsx's AlpenMountainRow) use real
+      // triangle SVG paths instead of this rotated-square approximation — react-native-android-
+      // widget's SvgWidget makes an actual triangle available there, no rotation trick needed.
       return (
         <View style={[styles.wrap, box]}>
           <View style={[styles.abs, {
