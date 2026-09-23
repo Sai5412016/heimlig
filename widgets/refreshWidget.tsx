@@ -24,10 +24,10 @@ export async function refreshWidgetNow(): Promise<void> {
     const fullData = weatherLine ? { ...data, weatherLine } : data;
     await requestWidgetUpdate({
       widgetName: WIDGET_NAME,
-      // The callback gets the widget's real current WidgetInfo (height in dp) on every redraw —
-      // forwarded as heightDp so HeimligWidget can gate its decorative row on actual size, same
-      // as the headless path in widgetTaskHandler.tsx.
-      renderWidget: (info) => <HeimligWidget data={fullData} heightDp={info.height} />,
+      // The callback gets the widget's real current WidgetInfo (height/width in dp) on every
+      // redraw — forwarded as heightDp/widthDp so HeimligWidget can gate its decorative row and
+      // size Alpen's mountain background on actual size, same as widgetTaskHandler.tsx.
+      renderWidget: (info) => <HeimligWidget data={fullData} heightDp={info.height} widthDp={info.width} />,
       widgetNotFound: () => {},
     });
   } catch (e) {

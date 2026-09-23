@@ -89,8 +89,8 @@ const MATRIX_ROW_GLYPHS = ['ア', 'ラ', 'ネ', '7', 'ズ'];
 // theme's actual shape in components/ThemeMotif.tsx but simplified down to one or two flat shapes
 // that still read at 18dp (a tiny multi-part illustration just turns to mud that small). Returns
 // null for any theme with no motif simple enough to read there — that theme keeps the 🏡 emoji
-// instead (see ThemeBadge below). "alpen" is one of those: its mountains get their own full-width
-// footer row (see AlpenMountainRow) rather than a badge-sized icon.
+// instead (see ThemeBadge below). "alpen" is one of those: its mountains get their own full-size
+// background layer (see AlpenMountainBackground) rather than a badge-sized icon.
 //
 // Ink colors are picked per theme/mode from a real contrast pass against this badge's actual
 // background (colors.surface for a flat theme, the gradient's `from` stop for the six gradient
@@ -221,9 +221,9 @@ function ThemeBadge({ themeId, colors, isDark }: { themeId: string; colors: Colo
   }
   const svg = badgeMotifSvg(themeId, colors, isDark);
   if (!svg) {
-    // "standard", "alpen" (its mountains live in the footer row instead), and any future theme
-    // with no motif simple enough to read at 18dp — the 🏡 emoji, same as it always was, is a
-    // better badge than another generic shape (see the file header).
+    // "standard", "alpen" (its mountains live in the background layer instead), and any future
+    // theme with no motif simple enough to read at 18dp — the 🏡 emoji, same as it always was, is
+    // a better badge than another generic shape (see the file header).
     return <TextWidget text="🏡" style={{ fontSize: 16 }} />;
   }
   return <SvgWidget svg={svg} style={{ width: BADGE_SIZE, height: BADGE_SIZE }} />;
@@ -318,41 +318,81 @@ function DecorRow({ themeId, colors }: { themeId: string; colors: ColorPalette }
   }
 }
 
-// Alpen's own full-width footer band — three small peak silhouettes, the tallest one with a
-// snow cap, spread across a real flex row rather than one stretched image. SvgWidget is a plain
-// ImageView under the hood with the Android default scaleType (FIT_CENTER, no stretch-to-fill —
-// see the file header) — a single wide image with a fixed aspect ratio would letterbox at some
-// widget widths as the widget gets resized. Three small, individually square-ish icons spread
-// with justifyContent:'space-around' resize cleanly instead, the same trick every other DecorRow
-// case already uses for its own scattered elements (dots, streaks, stars).
+// Alpen's mountains as a full-size BACKGROUND layer, visible at every widget size (not gated
+// behind MIN_HEIGHT_FOR_DECOR_ROW like every other theme's extra decoration) — an earlier version
+// of this put them in a footer row that only appeared once the widget was resized taller, which
+// left the default/minimum size (320×110dp) showing a plain white card. Rendered inside an
+// OverlapWidget (see HeimligWidget below): this is layer 1, docked to the bottom, full-bleed;
+// the header/tiles/pin-line content stacks on top of it as layer 2, with a translucent tile
+// background so the mountains show through underneath the tiles instead of being fully hidden
+// (see ALPEN_TILE_BG's own comment for the contrast math behind that specific opacity).
 //
-// Placement: its own row, appended after the tiles row and before the optional pinned-task line
-// — at the bottom edge, next to where the pin line sits, but never literally behind or overlapping
-// it. That was a deliberate choice, not the only option: overlaying a graphic directly behind
-// running text is exactly the readability risk rule 2 in the file header rules out for the whole
-// widget, and a row that never overlaps the pin-line's text needs no contrast check between the
-// two — the pin-line's own text-vs-surface contrast (MUTED_COLOR, colors.textSecondary, ≥4.5:1
-// against colors.surface in every mode, see the report) is completely unaffected either way.
-// brand (5.15:1) and brandDark (9.33:1) both clear 3:1 against alpen's own fixed white surface.
-function AlpenMountainRow({ colors }: { colors: ColorPalette }) {
-  const backPeak = `<svg viewBox="0 0 24 24"><path d="M12 6L22 20H2Z" fill="${colors.brandDark}"/></svg>`;
-  const frontPeakWithSnow = `<svg viewBox="0 0 24 24"><path d="M12 4L20 20H4Z" fill="${colors.brand}"/><path d="M12 4L15 10.5H9Z" fill="${colors.surface}"/></svg>`;
+// Height: clamp(36, round(heightDp * 0.35), 70) — scales with the widget but never shrinks below
+// a legible sliver or grows tall enough to crowd the tiles at a small widget height. heightDp
+// falls back to 110 (app.json's declared default/minimum) when the host hasn't reported a real
+// size yet, same convention MIN_HEIGHT_FOR_DECOR_ROW's own comment already uses elsewhere in this
+// file. At 110dp: round(110*0.35)=39, inside [36,70] → 39dp. At 180dp: round(180*0.35)=63dp.
+//
+// Width: explicit widthDp (WidgetInfo.width, dp) on both the SvgWidget's own layout style AND the
+// raw <svg width="…">  attribute, with viewBox="0 0 100 20" and preserveAspectRatio="none" on the
+// root <svg> — SvgWidget is a plain ImageView under the hood (see the file header) with Android's
+// default FIT_CENTER scaleType, which does NOT stretch a mismatched aspect ratio to fill, only
+// preserves it (letterboxing at most widget widths otherwise, see the report's Risiken section).
+// Setting the <svg>'s own width/height to the actual current widget width makes AndroidSVG itself
+// do the non-uniform stretch of the 100:20 viewBox into that exact box at render time — the
+// Picture it hands to the ImageView already has the right final size, so FIT_CENTER afterwards is
+// a no-op instead of a second (wrong) fit pass. Falls back to 320dp (app.json's declared default
+// width) on a missing/zero widthDp, same treatment as the height fallback above.
+//
+// Colors: two blue tones, the back ridge (two shorter peaks) lighter and the front ridge (the
+// tallest, snow-capped peak) darker — "hinten heller". Dark mode shifts both one step darker
+// ("im Darkmode dunklere Töne"): the front peak's dark-mode color (#15325A) isn't one of alpen's
+// four defined theme colors (brand/brandLight/brandDark/accent all already spoken for elsewhere,
+// and brandDark is needed as the LIGHT-mode front peak), so this is one hand-picked custom hex, a
+// darker step in the same "Himmel tief" blue family — contrast-checked against alpen's own fixed
+// white surface like everything else here (12.84:1, see the report). brandLight was tried first
+// for the light-mode back peak but only clears 2.69:1 against white — brand/brandDark (which both
+// clear 3:1, 5.15:1 and 9.33:1) are used for the two ridges instead, still lighter-vs-darker
+// relative to each other even though neither is literally "brandLight".
+function alpenMountainSvg(colors: ColorPalette, isDark: boolean, widthDp: number, mountainHeightDp: number): string {
+  const backFill = isDark ? colors.brandDark : colors.brand;
+  const frontFill = isDark ? '#15325A' : colors.brandDark;
+  return `<svg width="${widthDp}" height="${mountainHeightDp}" viewBox="0 0 100 20" preserveAspectRatio="none">
+    <path d="M0 20L20 8L38 18L58 6L78 17L100 12L100 20L0 20Z" fill="${backFill}"/>
+    <path d="M0 20L25 16L50 2L75 16L100 20Z" fill="${frontFill}"/>
+    <path d="M50 2L57 9L43 9Z" fill="${colors.surface}"/>
+  </svg>`;
+}
+
+function AlpenMountainBackground({ colors, isDark, heightDp, widthDp }: { colors: ColorPalette; isDark: boolean; heightDp?: number; widthDp?: number }) {
+  const effectiveHeightDp = heightDp && heightDp > 0 ? heightDp : 110;
+  const effectiveWidthDp = widthDp && widthDp > 0 ? widthDp : 320;
+  const mountainHeightDp = Math.min(70, Math.max(36, Math.round(effectiveHeightDp * 0.35)));
+  const svg = alpenMountainSvg(colors, isDark, effectiveWidthDp, mountainHeightDp);
   return (
-    <FlexWidget style={{ width: 'match_parent', height: 16, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-end' }}>
-      <SvgWidget svg={backPeak} style={{ width: 15, height: 13 }} />
-      <SvgWidget svg={frontPeakWithSnow} style={{ width: 18, height: 16 }} />
-      <SvgWidget svg={backPeak} style={{ width: 15, height: 13 }} />
+    <FlexWidget style={{ width: 'match_parent', height: 'match_parent', flexDirection: 'column', justifyContent: 'flex-end' }}>
+      <SvgWidget svg={svg} style={{ width: effectiveWidthDp, height: mountainHeightDp }} />
     </FlexWidget>
   );
 }
 
-export function HeimligWidget({ data, heightDp }: { data: WidgetData; heightDp?: number }) {
+// Alpen's tile background needs to be translucent so the mountain layer behind it (see
+// AlpenMountainBackground above) actually shows through — but the tile captions use
+// colors.textSecondary, and worst-case (text sitting over the darkest front peak, dark mode:
+// #15325A) that dropped below the required 4.5:1 at the 0.85 opacity first tried: 4.22:1,
+// measured, not assumed. 0.92 clears it in every measured case (light front peak 4.89:1, dark
+// front peak 4.84:1, dark back peak 4.89:1, light back peak 5.01:1, no overlap 5.59:1) — see the
+// report for the full table. The main number text (colors.text) was never at risk (7.39–9.80:1
+// across the same cases) but is included in that same measured pass for completeness.
+const ALPEN_TILE_BG = 'rgba(255, 255, 255, 0.92)';
+
+export function HeimligWidget({ data, heightDp, widthDp }: { data: WidgetData; heightDp?: number; widthDp?: number }) {
   // 'standard' + darkMode=true reproduces exactly the palette this widget always used before
   // theme-awareness (darkColors, unmodified) — so a missing/unknown theme keeps today's look.
   const themeId = data.themeId ?? 'standard';
   const { colors, isDark } = resolveThemeColors(themeId, data.darkMode ?? true);
   const WIDGET_BG = hex(colors.surface);
-  const TILE_BG = hex(colors.surfaceElevated);
+  const TILE_BG = themeId === 'alpen' ? ALPEN_TILE_BG : hex(colors.surfaceElevated);
   const TILE_BORDER = hex(colors.border);
   const TITLE_COLOR = hex(colors.text);
   const MUTED_COLOR = hex(colors.textSecondary);
@@ -361,10 +401,67 @@ export function HeimligWidget({ data, heightDp }: { data: WidgetData; heightDp?:
   const gradient = THEME_GRADIENT[themeId];
   const isGothic = themeId === 'gothic';
   const showDecorRow = !data.nextTask && (heightDp ?? 0) >= MIN_HEIGHT_FOR_DECOR_ROW && (!!gradient || themeId === 'matrix');
-  // Alpen's footer isn't gated on !data.nextTask like showDecorRow above — it sits at the bottom,
-  // next to the pin-line, not competing with it for the same slot near the header (see
-  // AlpenMountainRow's own comment for why the two can never overlap).
-  const showAlpenFooter = themeId === 'alpen' && (heightDp ?? 0) >= MIN_HEIGHT_FOR_DECOR_ROW;
+
+  // Alpen: mountains as a background layer behind the header/tiles/pin-line, visible at every
+  // size — not gated behind MIN_HEIGHT_FOR_DECOR_ROW like showDecorRow above (see
+  // AlpenMountainBackground's own comment for why). This is its own separate render path (the
+  // OverlapWidget structure only applies here) rather than a themeId branch woven into the single
+  // return below, specifically so the other 15 themes' own render path stays byte-for-byte what
+  // it already was.
+  if (themeId === 'alpen') {
+    return (
+      <OverlapWidget
+        clickAction="OPEN_APP"
+        style={{ width: 'match_parent', height: 'match_parent', borderRadius: 16, backgroundColor: WIDGET_BG, overflow: 'hidden' }}
+      >
+        <AlpenMountainBackground colors={colors} isDark={isDark} heightDp={heightDp} widthDp={widthDp} />
+        <FlexWidget style={{ width: 'match_parent', height: 'match_parent', flexDirection: 'column', justifyContent: 'space-between', padding: 16 }}>
+          <FlexWidget style={{ width: 'match_parent', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', flexGap: 6 }}>
+              <ThemeBadge themeId={themeId} colors={colors} isDark={isDark} />
+              <TextWidget text="Heimlig" style={{ fontSize: 16, color: TITLE_COLOR, fontWeight: 'bold' }} />
+            </FlexWidget>
+            {!!data.weatherLine && (
+              <TextWidget text={data.weatherLine} style={{ fontSize: 12, color: MUTED_COLOR }} maxLines={1} truncate="END" />
+            )}
+          </FlexWidget>
+
+          <FlexWidget style={{ width: 'match_parent', flexDirection: 'row', flexGap: 10 }}>
+            <FlexWidget
+              clickAction="OPEN_URI"
+              clickActionData={{ uri: 'heimlig://tasks' }}
+              accessibilityLabel="Aufgaben öffnen"
+              style={{
+                flex: 1, backgroundColor: TILE_BG, borderRadius: 12, padding: 8,
+                borderColor: TILE_BORDER, borderWidth: 1,
+                flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <TextWidget text={String(data.openTasks)} style={{ fontSize: 24, color: NUMBER_COLOR, fontWeight: 'bold' }} />
+              <TextWidget text="Aufgaben" style={{ fontSize: 10, color: MUTED_COLOR }} />
+            </FlexWidget>
+            <FlexWidget
+              clickAction="OPEN_URI"
+              clickActionData={{ uri: 'heimlig://shopping' }}
+              accessibilityLabel="Einkauf öffnen"
+              style={{
+                flex: 1, backgroundColor: TILE_BG, borderRadius: 12, padding: 8,
+                borderColor: TILE_BORDER, borderWidth: 1,
+                flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <TextWidget text={String(data.shoppingCount)} style={{ fontSize: 24, color: NUMBER_COLOR, fontWeight: 'bold' }} />
+              <TextWidget text="Einkauf" style={{ fontSize: 10, color: MUTED_COLOR }} />
+            </FlexWidget>
+          </FlexWidget>
+
+          {!!data.nextTask && (
+            <TextWidget text={`📌 ${data.nextTask}`} style={{ fontSize: 11, color: MUTED_COLOR }} maxLines={1} truncate="END" />
+          )}
+        </FlexWidget>
+      </OverlapWidget>
+    );
+  }
 
   return (
     <FlexWidget
@@ -431,8 +528,6 @@ export function HeimligWidget({ data, heightDp }: { data: WidgetData; heightDp?:
           <TextWidget text="Einkauf" style={{ fontSize: 10, color: MUTED_COLOR }} />
         </FlexWidget>
       </FlexWidget>
-
-      {showAlpenFooter && <AlpenMountainRow colors={colors} />}
 
       {/* Pinned task — omitted entirely when there is none, no "Alles erledigt" filler anymore. */}
       {!!data.nextTask && (
