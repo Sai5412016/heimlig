@@ -6,15 +6,33 @@
 //    and "just update it every few minutes" was explicitly rejected as a battery drain, not a
 //    workaround.
 // 2. Nothing decorative sits behind or beside running text without a precomputed, passing
-//    contrast number — see BADGE_BORDER_FALLBACK and the per-theme gradient stops below, both
-//    chosen from numbers computed against constants/theme.ts's actual palettes, not eyeballed.
-// 3. The extra decorative row (skyline bars, streaks, starfield, matrix glyphs, …) only renders
-//    once the widget has real room for it — see MIN_HEIGHT_FOR_DECOR_ROW. At the app's own
-//    declared default size (320×110dp) it never appears; only a deliberately resized-taller
-//    widget shows it. That is not a bug, it is the fix for the "does it still look fine at the
-//    smallest size" question — see the report for which themes this applies to.
+//    contrast number — see badgeMotifSvg and the per-theme gradient stops below, both chosen
+//    from numbers computed against constants/theme.ts's actual palettes, not eyeballed.
+// 3. The extra decorative row (skyline bars, streaks, starfield, matrix glyphs, mountains, …)
+//    only renders once the widget has real room for it — see MIN_HEIGHT_FOR_DECOR_ROW. At the
+//    app's own declared default size (320×110dp) it never appears; only a deliberately
+//    resized-taller widget shows it. That is not a bug, it is the fix for the "does it still
+//    look fine at the smallest size" question — see the report for which themes this applies to.
+//
+// Header badges are react-native-android-widget's SvgWidget (small inline SVG strings), not
+// image assets. Why that's safe to do at all: this whole widget isn't built from real Android
+// RemoteViews method calls under the hood — RNWidget.java (android/src/main/java/com/
+// reactnativeandroidwidget/RNWidget.java) builds the entire tree as real, plain android.view.View
+// objects off-screen, then rasterizes that view tree to a Bitmap (`rootView.draw(bitmapHolder)`)
+// and ships it as one PNG inside an ImageView — only the clickable tap areas and list adapters go
+// through actual RemoteViews calls (setOnClickPendingIntent, setRemoteAdapter). So `rotation`
+// (BaseWidget.java's setRotation() calls plain `View.setRotation()`, present since API 11) and
+// SvgWidget (AndroidSVG rendered into a PictureDrawable, SvgWidget.java) behave exactly like they
+// would in a normal foreground screen, on every Android version this app supports — neither is
+// constrained by RemoteViews' much smaller @RemotableViewMethod surface. The previous badge
+// design avoided rotation anyway out of caution about exactly that restriction; this file's
+// history is proof it was never actually at risk (racing/tactical-ops/red-light's DecorRow below
+// still use `rotation` unchanged). The real bug that shipped in PR #76 was a design bug, not a
+// rendering one: BADGE_SHAPE only ever chose a shape FAMILY (circle vs. square) filled with
+// `colors.surfaceElevated` and outlined — literally an empty checkbox for every theme, never
+// wired to that theme's actual motif from components/ThemeMotif.tsx.
 import React from 'react';
-import { FlexWidget, TextWidget, OverlapWidget } from 'react-native-android-widget';
+import { FlexWidget, TextWidget, OverlapWidget, SvgWidget } from 'react-native-android-widget';
 import { resolveThemeColors, type ColorPalette } from '../constants/theme';
 
 export interface WidgetData {
@@ -59,32 +77,7 @@ const THEME_GRADIENT: Record<string, { from: `#${string}`; to: `#${string}` }> =
   'tactical-ops': { from: hex('#14171B'), to: hex('#20242A') },
 };
 
-// Header badge shape per theme, replacing the plain 🏡 emoji everywhere except "standard". Circle
-// and square only — no rotated "diamond": a rotated shape's visual bounds can spill past its
-// unrotated layout box, and this badge sits directly next to the "Heimlig" title text with no
-// margin to spare (see rule 2 above). Rotation is only used further down, in the decorative row,
-// which has a full empty row to itself.
-const BADGE_SHAPE: Record<string, 'circle' | 'square'> = {
-  waldgeist: 'circle', inselfreunde: 'circle', blocky: 'square', 'battle-royale': 'square',
-  'red-light': 'square', gothic: 'square', 'comic-hero': 'circle', cinema: 'circle',
-  'sparkle-pop': 'circle', moody: 'circle', 'pitch-gold': 'circle', racing: 'square',
-  'monster-fang': 'circle', 'witch-purple': 'circle', 'tactical-ops': 'square', alpen: 'square',
-};
 const BADGE_SIZE = 18;
-
-// Precomputed exceptions where the theme's own `brand` color, used as the badge's border, would
-// read below the 3:1 non-text contrast floor against that mode's surface color (checked against
-// every theme/mode combination — see the report's table). Falls back to `colors.text` instead,
-// which is already ≥4.5:1 against surface in every theme/mode by construction (same audit as the
-// theme-awareness work). racing and witch-purple are forceDark (only ever run "dark"), so they
-// don't need a light-mode entry at all.
-const BADGE_BORDER_FALLBACK: Record<string, { light?: true; dark?: true }> = {
-  waldgeist: { light: true },
-  moody: { light: true },
-  gothic: { dark: true },
-  racing: { dark: true },
-  'witch-purple': { dark: true },
-};
 
 // One representative glyph from MatrixRain.tsx's own character pool (Katakana + digits) — this
 // widget never imports that file (it's animated and this must stay static), just borrows one
@@ -92,10 +85,127 @@ const BADGE_BORDER_FALLBACK: Record<string, { light?: true; dark?: true }> = {
 const MATRIX_BADGE_GLYPH = 'ワ';
 const MATRIX_ROW_GLYPHS = ['ア', 'ラ', 'ネ', '7', 'ズ'];
 
-function ThemeBadge({ themeId, colors, isDark }: { themeId: string; colors: ColorPalette; isDark: boolean }) {
-  if (themeId === 'standard') {
-    return <TextWidget text="🏡" style={{ fontSize: 16 }} />;
+// Per-theme header badge motif — a small (24×24 viewBox) inline SVG, loosely modelled on that
+// theme's actual shape in components/ThemeMotif.tsx but simplified down to one or two flat shapes
+// that still read at 18dp (a tiny multi-part illustration just turns to mud that small). Returns
+// null for any theme with no motif simple enough to read there — that theme keeps the 🏡 emoji
+// instead (see ThemeBadge below). "alpen" is one of those: its mountains get their own full-width
+// footer row (see AlpenMountainRow) rather than a badge-sized icon.
+//
+// Ink colors are picked per theme/mode from a real contrast pass against this badge's actual
+// background (colors.surface for a flat theme, the gradient's `from` stop for the six gradient
+// themes) — see the report for the full table. A few themes need a DIFFERENT ink in light vs.
+// dark mode: their `brand` clears the 3:1 non-text floor in only one of the two modes, and in
+// every case found here the opposite ink (brandDark, or vice versa) clears the other — same kind
+// of mode-dependent fallback the old badge-border logic used to do. Where neither theme color
+// works reliably, this falls back to `colors.text`, which is ≥4.5:1 against surface in every
+// theme/mode by construction (same invariant the rest of this file already relies on).
+function badgeMotifSvg(themeId: string, colors: ColorPalette, isDark: boolean): string | null {
+  const pickByMode = (whenLight: string, whenDark: string) => (isDark ? whenDark : whenLight);
+  switch (themeId) {
+    case 'waldgeist': {
+      // Leaf silhouette. brand only clears 3:1 in dark mode (2.92:1 in light); brandDark is the
+      // exact mirror image (6.25:1 light, 2.43:1 dark) — pick whichever mode it actually passes.
+      const fill = pickByMode(colors.brandDark, colors.brand);
+      return `<svg viewBox="0 0 24 24"><path d="M12 21C12 21 4 16 4 9C4 5 8 2 12 2C16 2 20 5 20 9C20 16 12 21 12 21Z" fill="${fill}"/></svg>`;
+    }
+    case 'inselfreunde':
+      // Palm tree (trunk + five fronds), one ink — brand clears 3:1 in both modes (3.52 / 4.31).
+      return `<svg viewBox="0 0 24 24">
+        <path d="M11 22V12" stroke="${colors.brand}" stroke-width="2" stroke-linecap="round"/>
+        <path d="M12 12C12 12 6 9 4 11C4 11 8 14 12 12Z" fill="${colors.brand}"/>
+        <path d="M12 12C12 12 18 9 20 11C20 11 16 14 12 12Z" fill="${colors.brand}"/>
+        <path d="M12 12C12 12 8 6 5 6C5 6 8 11 12 12Z" fill="${colors.brand}"/>
+        <path d="M12 12C12 12 16 6 19 6C19 6 16 11 12 12Z" fill="${colors.brand}"/>
+        <path d="M12 12C12 12 10 4 12 2C14 4 12 12 12 12Z" fill="${colors.brand}"/>
+      </svg>`;
+    case 'blocky': {
+      // Two unrounded blocks, same composition as ThemeMotif.tsx's "blocky" case. `accent` only
+      // clears 3:1 in light mode (2.60:1 in dark) — colors.text stands in for the small block
+      // there instead of a second theme color.
+      const second = pickByMode(colors.accent, colors.text);
+      return `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="12" fill="${colors.brand}"/><rect x="13" y="13" width="8" height="8" fill="${second}"/></svg>`;
+    }
+    case 'battle-royale':
+      // Helmet: brand circle, dark visor band, three accent dots — mirrors ThemeMotif.tsx.
+      return `<svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" fill="${colors.brand}"/>
+        <rect x="4" y="14" width="16" height="6" rx="3" fill="#1A1A1A"/>
+        <circle cx="8" cy="17" r="1.3" fill="${colors.accent}"/>
+        <circle cx="12" cy="17" r="1.3" fill="${colors.accent}"/>
+        <circle cx="16" cy="17" r="1.3" fill="${colors.accent}"/>
+      </svg>`;
+    case 'red-light':
+      // The Ampel-Puppe's face — brand circle, two pale eye dots. `accent` as the eye color
+      // measures only 1.98:1 against `brand`; colors.text (pale, near-white) clears it (3.87:1).
+      return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="${colors.brand}"/><circle cx="8.5" cy="11" r="1.6" fill="${colors.text}"/><circle cx="15.5" cy="11" r="1.6" fill="${colors.text}"/></svg>`;
+    case 'gothic': {
+      // Pointed arch. brand clears 3:1 in light (9.90:1) but fails badly in dark (1.53:1) — same
+      // theme/mode pair the old badge-border fallback already had to handle; colors.text again.
+      const fill = pickByMode(colors.brand, colors.text);
+      return `<svg viewBox="0 0 24 24"><path d="M12 2C6 2 4 8 4 13V22H20V13C20 8 18 2 12 2Z" fill="${fill}"/></svg>`;
+    }
+    case 'comic-hero':
+      // Skyline bars — a night skyline reads as lit windows, not a dark cutout, so this uses
+      // colors.text (pale) rather than a dark silhouette; accent measured only 2.85:1 here.
+      return `<svg viewBox="0 0 24 24">
+        <rect x="2" y="14" width="3" height="8" fill="${colors.text}"/>
+        <rect x="6" y="9" width="3" height="13" fill="${colors.text}"/>
+        <rect x="10" y="12" width="3" height="10" fill="${colors.text}"/>
+        <rect x="14" y="6" width="3" height="16" fill="${colors.text}"/>
+        <rect x="18" y="11" width="3" height="11" fill="${colors.text}"/>
+      </svg>`;
+    case 'cinema':
+      // Film reel — brand disc, three surface-colored holes (a same-as-background "cutout",
+      // same trick witch-purple's moon notch already uses, always safe by construction).
+      return `<svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" fill="${colors.brand}"/>
+        <circle cx="12" cy="7" r="2" fill="${colors.surface}"/>
+        <circle cx="7.5" cy="14.5" r="2" fill="${colors.surface}"/>
+        <circle cx="16.5" cy="14.5" r="2" fill="${colors.surface}"/>
+      </svg>`;
+    case 'sparkle-pop':
+      // Four-point sparkle, one ink (brand clears both modes: 3.24 / 4.69) — simpler and more
+      // legible at 18dp than the two-color version ThemeMotif.tsx uses at full app size.
+      return `<svg viewBox="0 0 24 24"><path d="M12 2L14 10L22 12L14 14L12 22L10 14L2 12L10 10Z" fill="${colors.brand}"/></svg>`;
+    case 'moody': {
+      // Sunglasses. brand only clears 3:1 in dark mode (1.88:1 in light); brandDark mirrors it
+      // (6.09:1 light, 2.49:1 dark) — same mode-swap pattern as waldgeist above.
+      const fill = pickByMode(colors.brandDark, colors.brand);
+      return `<svg viewBox="0 0 24 24"><rect x="2" y="9" width="8" height="6" rx="3" fill="${fill}"/><rect x="14" y="9" width="8" height="6" rx="3" fill="${fill}"/><rect x="10" y="11" width="4" height="1.5" fill="${fill}"/></svg>`;
+    }
+    case 'pitch-gold':
+      // Center-circle ring + dot, accent (gold) clears the gradient background comfortably (8.81:1).
+      return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="${colors.accent}" stroke-width="2"/><circle cx="12" cy="12" r="1.6" fill="${colors.accent}"/></svg>`;
+    case 'racing':
+      // Simplified side-profile car — brand clears the gradient background, if narrowly (3.18:1).
+      return `<svg viewBox="0 0 24 24">
+        <rect x="3" y="11" width="18" height="5" rx="2.5" fill="${colors.brand}"/>
+        <path d="M7 11L9 7H15L17 11Z" fill="${colors.brand}"/>
+        <circle cx="7.5" cy="17" r="2.3" fill="#1A1A1A"/>
+        <circle cx="16.5" cy="17" r="2.3" fill="#1A1A1A"/>
+      </svg>`;
+    case 'monster-fang':
+      // Two-tone capsule — brand top arc, surface-colored bottom (blends into the background,
+      // same cutout trick as cinema's reel holes), dark band, accent center dot.
+      return `<svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" fill="${colors.surface}"/>
+        <path d="M2 12A10 10 0 0 1 22 12Z" fill="${colors.brand}"/>
+        <rect x="2" y="10.5" width="20" height="3" fill="#1A1A1A"/>
+        <circle cx="12" cy="12" r="3" fill="${colors.accent}" stroke="#1A1A1A" stroke-width="1"/>
+      </svg>`;
+    case 'witch-purple':
+      // Crescent moon, colors.text (pale) — comfortably clears the gradient background (16.96:1).
+      return `<svg viewBox="0 0 24 24"><path d="M14 2C8 2 4 6.5 4 12C4 17.5 8 22 14 22C10 19 8 16 8 12C8 8 10 5 14 2Z" fill="${colors.text}"/></svg>`;
+    case 'tactical-ops':
+      // Crosshair/reticle, brand clears the gradient background well (6.27:1).
+      return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="${colors.brand}" stroke-width="2"/><path d="M12 1V6M12 18V23M1 12H6M18 12H23" stroke="${colors.brand}" stroke-width="2"/></svg>`;
+    default:
+      return null;
   }
+}
+
+function ThemeBadge({ themeId, colors, isDark }: { themeId: string; colors: ColorPalette; isDark: boolean }) {
   if (themeId === 'matrix') {
     return (
       <FlexWidget
@@ -109,20 +219,14 @@ function ThemeBadge({ themeId, colors, isDark }: { themeId: string; colors: Colo
       </FlexWidget>
     );
   }
-  const shape = BADGE_SHAPE[themeId];
-  if (!shape) return <TextWidget text="🏡" style={{ fontSize: 16 }} />;
-  const fallback = BADGE_BORDER_FALLBACK[themeId];
-  const useFallback = isDark ? fallback?.dark : fallback?.light;
-  const borderColor = hex(useFallback ? colors.text : colors.brand);
-  return (
-    <FlexWidget
-      style={{
-        width: BADGE_SIZE, height: BADGE_SIZE,
-        borderRadius: shape === 'circle' ? BADGE_SIZE / 2 : 4,
-        borderWidth: 1.5, borderColor, backgroundColor: hex(colors.surfaceElevated),
-      }}
-    />
-  );
+  const svg = badgeMotifSvg(themeId, colors, isDark);
+  if (!svg) {
+    // "standard", "alpen" (its mountains live in the footer row instead), and any future theme
+    // with no motif simple enough to read at 18dp — the 🏡 emoji, same as it always was, is a
+    // better badge than another generic shape (see the file header).
+    return <TextWidget text="🏡" style={{ fontSize: 16 }} />;
+  }
+  return <SvgWidget svg={svg} style={{ width: BADGE_SIZE, height: BADGE_SIZE }} />;
 }
 
 // The extra decorative row between the header and the tiles — only for the six gradient themes
@@ -214,6 +318,34 @@ function DecorRow({ themeId, colors }: { themeId: string; colors: ColorPalette }
   }
 }
 
+// Alpen's own full-width footer band — three small peak silhouettes, the tallest one with a
+// snow cap, spread across a real flex row rather than one stretched image. SvgWidget is a plain
+// ImageView under the hood with the Android default scaleType (FIT_CENTER, no stretch-to-fill —
+// see the file header) — a single wide image with a fixed aspect ratio would letterbox at some
+// widget widths as the widget gets resized. Three small, individually square-ish icons spread
+// with justifyContent:'space-around' resize cleanly instead, the same trick every other DecorRow
+// case already uses for its own scattered elements (dots, streaks, stars).
+//
+// Placement: its own row, appended after the tiles row and before the optional pinned-task line
+// — at the bottom edge, next to where the pin line sits, but never literally behind or overlapping
+// it. That was a deliberate choice, not the only option: overlaying a graphic directly behind
+// running text is exactly the readability risk rule 2 in the file header rules out for the whole
+// widget, and a row that never overlaps the pin-line's text needs no contrast check between the
+// two — the pin-line's own text-vs-surface contrast (MUTED_COLOR, colors.textSecondary, ≥4.5:1
+// against colors.surface in every mode, see the report) is completely unaffected either way.
+// brand (5.15:1) and brandDark (9.33:1) both clear 3:1 against alpen's own fixed white surface.
+function AlpenMountainRow({ colors }: { colors: ColorPalette }) {
+  const backPeak = `<svg viewBox="0 0 24 24"><path d="M12 6L22 20H2Z" fill="${colors.brandDark}"/></svg>`;
+  const frontPeakWithSnow = `<svg viewBox="0 0 24 24"><path d="M12 4L20 20H4Z" fill="${colors.brand}"/><path d="M12 4L15 10.5H9Z" fill="${colors.surface}"/></svg>`;
+  return (
+    <FlexWidget style={{ width: 'match_parent', height: 16, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-end' }}>
+      <SvgWidget svg={backPeak} style={{ width: 15, height: 13 }} />
+      <SvgWidget svg={frontPeakWithSnow} style={{ width: 18, height: 16 }} />
+      <SvgWidget svg={backPeak} style={{ width: 15, height: 13 }} />
+    </FlexWidget>
+  );
+}
+
 export function HeimligWidget({ data, heightDp }: { data: WidgetData; heightDp?: number }) {
   // 'standard' + darkMode=true reproduces exactly the palette this widget always used before
   // theme-awareness (darkColors, unmodified) — so a missing/unknown theme keeps today's look.
@@ -229,6 +361,10 @@ export function HeimligWidget({ data, heightDp }: { data: WidgetData; heightDp?:
   const gradient = THEME_GRADIENT[themeId];
   const isGothic = themeId === 'gothic';
   const showDecorRow = !data.nextTask && (heightDp ?? 0) >= MIN_HEIGHT_FOR_DECOR_ROW && (!!gradient || themeId === 'matrix');
+  // Alpen's footer isn't gated on !data.nextTask like showDecorRow above — it sits at the bottom,
+  // next to the pin-line, not competing with it for the same slot near the header (see
+  // AlpenMountainRow's own comment for why the two can never overlap).
+  const showAlpenFooter = themeId === 'alpen' && (heightDp ?? 0) >= MIN_HEIGHT_FOR_DECOR_ROW;
 
   return (
     <FlexWidget
@@ -295,6 +431,8 @@ export function HeimligWidget({ data, heightDp }: { data: WidgetData; heightDp?:
           <TextWidget text="Einkauf" style={{ fontSize: 10, color: MUTED_COLOR }} />
         </FlexWidget>
       </FlexWidget>
+
+      {showAlpenFooter && <AlpenMountainRow colors={colors} />}
 
       {/* Pinned task — omitted entirely when there is none, no "Alles erledigt" filler anymore. */}
       {!!data.nextTask && (
