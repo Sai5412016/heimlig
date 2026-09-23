@@ -275,6 +275,28 @@ export const APP_THEMES: AppTheme[] = [
     border: '#D8D9D4', borderLight: '#ECECEA',
     text: '#2E4A33', textSecondary: '#5C6C5D', textMuted: '#64685E', textInverse: '#FFFFFF',
   },
+  {
+    // 19th theme — an abstract red eye on black, deliberately generic (a lens-shaped outline,
+    // a plain iris/pupil, a couple of thin rays) rather than any specific copyrighted eye
+    // symbol from a particular franchise, same "inspired by a mood, not a 1:1 copy" convention
+    // every other theme here already follows. Same forceDark family as red-light/comic-hero/
+    // pitch-gold/racing/witch-purple/tactical-ops, but background/surface are a SOLID hex, not
+    // 'transparent' — those six pair transparent with a mounted full-screen backdrop component
+    // (MatrixRain, NightSky, …) in app/(tabs)/_layout.tsx; this theme doesn't have one yet, so
+    // 'transparent' here would leave every screen painting nothing behind it. A future backdrop
+    // could still be added the same way those six were, later.
+    // brandDark (#7A0E14) reads only 1.83:1 against this surface — too close to it to use as a
+    // standalone ink anywhere text- or icon-adjacent; kept only as a theme color for internal
+    // shape layering (never alone against the background). brand/brandLight/accent all clear
+    // the 3:1 floor against both this surface and the widget's gradient stop (4.25–15.51:1,
+    // see the report).
+    id: 'dragon-eye', label: 'Drachenauge', emoji: '👁️',
+    brand: '#E11F2B', brandLight: '#FF6B62', brandDark: '#7A0E14', accent: '#FFD9CF',
+    forceDark: true,
+    background: '#0A0505', surface: '#0A0505', surfaceElevated: '#150707',
+    border: '#3A0709', borderLight: '#2A0505',
+    text: '#FBEAEA', textSecondary: '#C98A86', textMuted: '#7A4A46', textInverse: '#050202',
+  },
 ];
 
 // Appends an alpha suffix to a hex color, same convention already used across the app
