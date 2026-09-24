@@ -809,6 +809,7 @@ export const en: AppTranslations = {
     timeLabel: 'TIME',
     timeOn: 'On',
     timeOff: 'Off',
+    addToDeviceCalendar: 'Also add to my calendar',
     reminderActive: 'Reminder active',
     reminderInactive: 'No reminder',
     reminderSubActive: 'At {{time}} on the due date',

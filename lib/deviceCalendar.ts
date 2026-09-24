@@ -1,11 +1,19 @@
-// lib/deviceCalendar.ts — reads events from the OS Calendar app via expo-calendar. READ-ONLY:
-// this module never calls createEventAsync/updateEventAsync/deleteEventAsync, and app.json
-// deliberately blocks the WRITE_CALENDAR permission the plugin would otherwise request (see
-// android.blockedPermissions) — nothing here could write to the device calendar even if asked to.
+// lib/deviceCalendar.ts — reads events from the OS Calendar app via expo-calendar, plus one
+// write-adjacent export (addEventToDeviceCalendar, below). This module still never calls
+// createEventAsync/updateEventAsync/deleteEventAsync, and app.json still deliberately blocks the
+// WRITE_CALENDAR permission the plugin would otherwise request (see android.blockedPermissions)
+// — nothing here writes to the device calendar directly under this app's own permission.
+// addEventToDeviceCalendar instead hands off to createEventInCalendarAsync, which launches the
+// OS Calendar app's OWN "create event" UI (an ACTION_INSERT intent on Android, confirmed against
+// expo-calendar's native source, CalendarModule.kt/CreateEventContract.kt — no permission check
+// before launching it, unlike every read function in this file) — the OS Calendar app saves the
+// event under ITS OWN permission, into whichever calendar (e.g. a Google account) the user picks
+// in that UI. Nothing here ever touches CALENDAR/WRITE_CALENDAR.
 //
-// Counterpart to lib/googleCalendar.ts, but native-only: there is no OS calendar to read on web,
-// so every export here is a no-op on web (see the `!Calendar` guards) — the UI gates the whole
-// feature to native platforms too (see household.tsx), this is just defense in depth.
+// Counterpart to lib/googleCalendar.ts, but native-only: there is no OS calendar to read (or hand
+// an insert-intent to) on web, so every export here is a no-op on web (see the `!Calendar`
+// guards) — the UI gates the whole feature to native platforms too (see household.tsx / the
+// add-task form), this is just defense in depth.
 let Calendar: typeof import('expo-calendar') | null = null;
 
 // Only load in real builds, not Expo Go — same defensive pattern as lib/notifications.ts.
@@ -101,4 +109,43 @@ export async function listDeviceCalendarEvents(calendarIds: string[], days = 60)
       return { id: e.id, title: e.title || 'Termin', date, time, description: e.notes || undefined };
     });
   } catch { return []; }
+}
+
+// Hands a single event off to the OS Calendar app's own "create event" UI (see the file header
+// for why this needs no permission) so the user can save it into their own calendar (e.g. a
+// Google account) with one tap, right after creating a task in Heimlig with a due date. Always
+// best-effort: the task in Heimlig is already saved by the time this is called, so nothing here
+// is allowed to surface as an error to the user, and there is nothing to distinguish "the user
+// canceled the OS dialog" from "the user saved it" — expo-calendar's own docs say Android always
+// reports `action: 'done'` regardless of what actually happened, so this doesn't try to read or
+// return that result at all.
+export async function addEventToDeviceCalendar(event: {
+  title: string;
+  notes?: string | null;
+  date: string;         // yyyy-MM-dd
+  time?: string | null; // HH:MM, device-local — omitted/undefined makes this an all-day event
+}): Promise<void> {
+  if (!Calendar) return;
+  try {
+    const allDay = !event.time;
+    const startDate = allDay ? new Date(`${event.date}T00:00:00`) : new Date(`${event.date}T${event.time}:00`);
+    let endDate: Date;
+    if (allDay) {
+      // Same "end = start + 1 day" convention lib/googleCalendar.ts's createEvent() already uses
+      // for all-day events — how CalendarContract expects an all-day event's span to be expressed.
+      endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1);
+    } else {
+      endDate = new Date(startDate.getTime() + 60 * 60000);
+    }
+    await Calendar.createEventInCalendarAsync({
+      title: event.title,
+      notes: event.notes || undefined,
+      startDate,
+      endDate,
+      allDay,
+    });
+  } catch {
+    // No calendar app to hand the intent to, a malformed date, whatever — best-effort, see above.
+  }
 }
