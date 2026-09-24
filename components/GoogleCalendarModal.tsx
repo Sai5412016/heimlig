@@ -85,12 +85,12 @@ export default function GoogleCalendarModal({ visible, onClose }: { visible: boo
               <Text style={styles.body}>{t('gcal.whatToSync')}</Text>
 
               <TouchableOpacity style={styles.primaryBtn} onPress={handleImport} disabled={busy !== null}>
-                {busy === 'import' ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{t('gcal.importButton')}</Text>}
+                {busy === 'import' ? <ActivityIndicator color={colors.onBrand} /> : <Text style={styles.primaryBtnText}>{t('gcal.importButton')}</Text>}
               </TouchableOpacity>
               <Text style={styles.hint}>{t('gcal.importHint')}</Text>
 
               <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.accent }]} onPress={handleExport} disabled={busy !== null}>
-                {busy === 'export' ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{t('gcal.exportButton')}</Text>}
+                {busy === 'export' ? <ActivityIndicator color={colors.onBrand} /> : <Text style={styles.primaryBtnText}>{t('gcal.exportButton')}</Text>}
               </TouchableOpacity>
               <Text style={styles.hint}>{t('gcal.exportHint')}</Text>
             </>
@@ -113,7 +113,11 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   body: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.md },
   connected: { ...typography.body, color: '#2D9E57', fontWeight: '700', marginBottom: spacing.sm },
   primaryBtn: { backgroundColor: colors.brand, borderRadius: radius.md, padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },
-  primaryBtnText: { ...typography.body, color: '#fff', fontWeight: '700' },
+  // Shared by both the import button (bg=colors.brand) and the export button (bg=colors.accent,
+  // see JSX) — onBrand fixes the import button for dragon-eye (was 4.16:1) and, as a welcome side
+  // effect, also fixes the export button (white on colors.accent measured only 1.31:1 for
+  // dragon-eye; onBrand there is 15.51:1). No change for the other 18 themes either way.
+  primaryBtnText: { ...typography.body, color: colors.onBrand, fontWeight: '700' },
   hint: { ...typography.xs, color: colors.textMuted, marginTop: spacing.xs, marginBottom: spacing.sm },
   closeBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.md },
   closeBtnText: { ...typography.body, color: colors.textSecondary },

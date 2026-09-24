@@ -23,6 +23,12 @@ export const lightColors = {
   textSecondary: '#5A7A65',
   textMuted:     '#9AB5A0',
   textInverse:   '#FFFFFF',
+  // Text/icon color for content placed directly on a solid `brand`-colored surface (primary
+  // buttons, FABs, active chips, checked checkboxes, …) — distinct from `textInverse`, which is
+  // used more broadly on any colored/dark surface. White for every theme except the ones that
+  // override it below (currently only "dragon-eye", whose lightened `brand` no longer clears
+  // 4.5:1 against plain white — see that theme's comment in APP_THEMES).
+  onBrand:       '#FFFFFF',
 
   // Semantic
   success:       '#2D6A4F',
@@ -64,6 +70,7 @@ export const darkColors = {
   textSecondary: '#89B89A',
   textMuted:     '#5A7A65',
   textInverse:   '#0D1F15',
+  onBrand:       '#FFFFFF',
 
   // Semantic
   success:       '#52B788',
@@ -100,7 +107,7 @@ export interface AppTheme {
   forceDark?: boolean;
   background?: string; surface?: string; surfaceElevated?: string;
   border?: string; borderLight?: string;
-  text?: string; textSecondary?: string; textMuted?: string; textInverse?: string;
+  text?: string; textSecondary?: string; textMuted?: string; textInverse?: string; onBrand?: string;
 }
 
 export const APP_THEMES: AppTheme[] = [
@@ -275,6 +282,41 @@ export const APP_THEMES: AppTheme[] = [
     border: '#D8D9D4', borderLight: '#ECECEA',
     text: '#2E4A33', textSecondary: '#5C6C5D', textMuted: '#64685E', textInverse: '#FFFFFF',
   },
+  {
+    // 19th theme — an abstract red eye on black, deliberately generic (a lens-shaped outline,
+    // a plain iris/pupil, a couple of thin rays) rather than any specific copyrighted eye
+    // symbol from a particular franchise, same "inspired by a mood, not a 1:1 copy" convention
+    // every other theme here already follows. Same forceDark family as red-light/comic-hero/
+    // pitch-gold/racing/witch-purple/tactical-ops, but background/surface are a SOLID hex, not
+    // 'transparent' — those six pair transparent with a mounted full-screen backdrop component
+    // (MatrixRain, NightSky, …) in app/(tabs)/_layout.tsx; this theme doesn't have one yet, so
+    // 'transparent' here would leave every screen painting nothing behind it. A future backdrop
+    // could still be added the same way those six were, later.
+    // brandDark (#7A0E14) reads only 1.83:1 against this surface — too close to it to use as a
+    // standalone ink anywhere text- or icon-adjacent; kept only as a theme color for internal
+    // shape layering (never alone against the background). One live case of it landing against
+    // the background WAS found (app/(tabs)/household.tsx's invite banner, backgroundColor:
+    // colors.brandDark) — fixed there with a dragon-eye-only override to brandLight instead,
+    // see that file's comment for the numbers, rather than changing the shared token for all
+    // 18 other themes' own (unaffected) brandDark values.
+    // brand started as #E11F2B (4.28:1 vs this surface) — every place `colors.brand` is used as
+    // TEXT (active tab labels, amounts, link/button text — dozens of spots across the app, e.g.
+    // app/(tabs)/index.tsx's statValue, household.tsx's codeText, budget.tsx's currencySymbol)
+    // needs ≥4.5:1, not just the 3:1 floor decorative shapes get. Lightened by blending 8.4%
+    // toward white (hue kept, same red) to #E63A44 — 4.87:1 vs surface, 4.74:1 vs
+    // surfaceElevated, 4.84:1 vs the widget's gradient stop, see the report for the full search.
+    id: 'dragon-eye', label: 'Drachenauge', emoji: '👁️',
+    brand: '#E63A44', brandLight: '#FF6B62', brandDark: '#7A0E14', accent: '#FFD9CF',
+    forceDark: true,
+    background: '#0A0505', surface: '#0A0505', surfaceElevated: '#150707',
+    border: '#3A0709', borderLight: '#2A0505',
+    text: '#FBEAEA', textSecondary: '#C98A86', textMuted: '#7A4A46', textInverse: '#050202',
+    // Plain white text/icons on the lightened `brand` (#E63A44) measure only 4.16:1 — below the
+    // 4.5:1 text floor (found on primary buttons, FABs, checked checkboxes, active chips across
+    // the app). onBrand reuses this theme's own background hex rather than inventing a new one;
+    // 4.87:1 against brand, see the report.
+    onBrand: '#0A0505',
+  },
 ];
 
 // Appends an alpha suffix to a hex color, same convention already used across the app
@@ -313,6 +355,7 @@ export function resolveThemeColors(themeId: string, darkMode: boolean): { colors
     ...(theme.textSecondary !== undefined ? { textSecondary: theme.textSecondary } : {}),
     ...(theme.textMuted !== undefined ? { textMuted: theme.textMuted } : {}),
     ...(theme.textInverse !== undefined ? { textInverse: theme.textInverse } : {}),
+    ...(theme.onBrand !== undefined ? { onBrand: theme.onBrand } : {}),
   };
   return { colors, isDark: effectiveDark };
 }

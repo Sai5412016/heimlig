@@ -259,7 +259,10 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   scanCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.brand, borderRadius: radius.lg, padding: spacing.lg, ...shadow.md, marginBottom: spacing.lg },
   scanCardEmoji: { fontSize: 32 },
   scanCardTitle: { ...typography.h3, color: colors.textInverse },
-  scanCardSub: { ...typography.sm, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  // Solid colors.onBrand, not a translucent white — a translucent version would need ~0.89 alpha
+  // to still clear 4.5:1 against dragon-eye's lightened brand (measured), which defeats the
+  // point of a "muted" subtitle, so this drops the opacity instead of chasing it.
+  scanCardSub: { ...typography.sm, color: colors.onBrand, marginTop: 2 },
   scanCardArrow: { fontSize: 28, color: 'rgba(255,255,255,0.9)', fontWeight: '300' },
   empty: { alignItems: 'center', paddingVertical: spacing.xxl, gap: spacing.sm },
   emptyEmoji: { fontSize: 44 },

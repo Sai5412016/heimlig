@@ -183,7 +183,10 @@ export default function DeviceCalendarModal({
                     return (
                       <TouchableOpacity key={cal.id} style={styles.calendarRow} onPress={() => toggleCalendar(cal.id)}>
                         <View style={[styles.checkbox, checked && { backgroundColor: cal.color || colors.brand, borderColor: cal.color || colors.brand }]}>
-                          {checked && <Text style={styles.checkmark}>✓</Text>}
+                          {/* onBrand only when the background actually falls back to colors.brand
+                              (no device calendar color) — an arbitrary cal.color was always '#fff'
+                              and stays that way, untouched by dragon-eye's onBrand override. */}
+                          {checked && <Text style={[styles.checkmark, !cal.color && { color: colors.onBrand }]}>✓</Text>}
                         </View>
                         <Text style={styles.calendarTitle} numberOfLines={1}>{cal.title}</Text>
                       </TouchableOpacity>
@@ -238,6 +241,10 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   calendarList: { maxHeight: 260, marginBottom: spacing.sm },
   calendarRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md },
   checkbox: { width: 22, height: 22, borderRadius: radius.sm, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  // Base stays '#fff' — background is `cal.color || colors.brand`. When cal.color is set (an
+  // arbitrary device calendar color, never contrast-checked, unrelated to any theme), the
+  // checkmark stays plain white exactly as before. Only the colors.brand FALLBACK case gets
+  // dragon-eye's onBrand override, applied inline in the JSX (see calendarList map above).
   checkmark: { color: '#fff', fontSize: 14, fontWeight: '700' },
   calendarTitle: { flex: 1, ...typography.body, color: colors.text },
 }); }

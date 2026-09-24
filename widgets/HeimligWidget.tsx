@@ -67,7 +67,10 @@ const MIN_HEIGHT_FOR_DECOR_ROW = 150;
 // etc. all use a 3-stop gradient; backgroundGradient only supports 2, so this keeps the two OUTER
 // stops — the ones that actually carry the visual identity — and drops the middle highlight).
 // Matrix is deliberately absent: its surface color is already near-black, and its identity is the
-// green monospace glyphs, not a gradient (see MatrixRain.tsx).
+// green monospace glyphs, not a gradient (see MatrixRain.tsx). "dragon-eye" doesn't have an
+// in-app full-screen backdrop component yet (see constants/theme.ts's comment on that theme) —
+// its stops here are its own, not derived from one, picked to match the same dark-red glow its
+// badge/decor sit on.
 const THEME_GRADIENT: Record<string, { from: `#${string}`; to: `#${string}` }> = {
   'red-light':    { from: hex('#0F0710'), to: hex('#1A0E14') },
   'comic-hero':   { from: hex('#0B0F1E'), to: hex('#141B33') },
@@ -75,6 +78,7 @@ const THEME_GRADIENT: Record<string, { from: `#${string}`; to: `#${string}` }> =
   racing:         { from: hex('#0A0A0C'), to: hex('#16161A') },
   'witch-purple': { from: hex('#0B0616'), to: hex('#150B24') },
   'tactical-ops': { from: hex('#14171B'), to: hex('#20242A') },
+  'dragon-eye':   { from: hex('#140303'), to: hex('#230808') },
 };
 
 const BADGE_SIZE = 18;
@@ -200,6 +204,20 @@ function badgeMotifSvg(themeId: string, colors: ColorPalette, isDark: boolean): 
     case 'tactical-ops':
       // Crosshair/reticle, brand clears the gradient background well (6.27:1).
       return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="${colors.brand}" stroke-width="2"/><path d="M12 1V6M12 18V23M1 12H6M18 12H23" stroke="${colors.brand}" stroke-width="2"/></svg>`;
+    case 'dragon-eye':
+      // Plain abstract eye — ring, iris, pupil, highlight, two lash rays — no tomoe/comma shapes,
+      // same "inspired by a mood, not a specific franchise symbol" rule as every other theme here.
+      // brandLight (ring/rays) and brand (iris) both clear the gradient background comfortably
+      // (7.21:1 / 4.84:1 — brand was lightened after this theme shipped, see constants/theme.ts's
+      // comment); accent (highlight) even more so (15.40:1). brandDark is never used here.
+      return `<svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" fill="none" stroke="${colors.brandLight}" stroke-width="1.2"/>
+        <line x1="3" y1="8" x2="6.5" y2="10.5" stroke="${colors.brandLight}" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="21" y1="8" x2="17.5" y2="10.5" stroke="${colors.brandLight}" stroke-width="1.2" stroke-linecap="round"/>
+        <circle cx="12" cy="12" r="6" fill="${colors.brand}"/>
+        <circle cx="12" cy="12" r="2.6" fill="#0A0202"/>
+        <circle cx="14.3" cy="9.7" r="1.1" fill="${colors.accent}"/>
+      </svg>`;
     default:
       return null;
   }
@@ -229,7 +247,7 @@ function ThemeBadge({ themeId, colors, isDark }: { themeId: string; colors: Colo
   return <SvgWidget svg={svg} style={{ width: BADGE_SIZE, height: BADGE_SIZE }} />;
 }
 
-// The extra decorative row between the header and the tiles — only for the six gradient themes
+// The extra decorative row between the header and the tiles — only for the seven gradient themes
 // plus Matrix (whose "gradient" is really just its already-near-black surface). Every shape here
 // is purely decorative (no information, nothing a screen reader would need — the tiles and title
 // carry all of that), so the 4.5:1 text bar doesn't apply; the ones that use a theme color rather
@@ -311,6 +329,16 @@ function DecorRow({ themeId, colors }: { themeId: string; colors: ColorPalette }
           {MATRIX_ROW_GLYPHS.map((g, i) => (
             <TextWidget key={i} text={g} style={{ fontSize: 10, color: hex(colors.brand), fontFamily: 'monospace' }} />
           ))}
+        </FlexWidget>
+      );
+    case 'dragon-eye':
+      // Same ring+pupil grammar as PitchGold's center-circle treatment above, just red-tinted —
+      // brandLight (ring) and brand (pupil) both clear the gradient background comfortably.
+      return (
+        <FlexWidget style={{ width: 'match_parent', height: 14, alignItems: 'center', justifyContent: 'center' }}>
+          <FlexWidget style={{ width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: hex(colors.brandLight), alignItems: 'center', justifyContent: 'center' }}>
+            <FlexWidget style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: hex(colors.brand) }} />
+          </FlexWidget>
         </FlexWidget>
       );
     default:

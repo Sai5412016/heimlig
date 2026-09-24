@@ -142,7 +142,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   suggText: { ...typography.body, color: colors.text, fontWeight: '600' },
   suggAmount: { ...typography.sm, color: colors.textSecondary, marginTop: 1 },
   settleBtn: { backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  settleBtnText: { ...typography.sm, color: '#fff', fontWeight: '700' },
+  settleBtnText: { ...typography.sm, color: colors.onBrand, fontWeight: '700' },
   allEven: { ...typography.body, color: colors.textSecondary, textAlign: 'center', paddingVertical: spacing.lg },
   histRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.xs },
   histText: { ...typography.sm, color: colors.text },

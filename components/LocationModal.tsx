@@ -58,7 +58,7 @@ export default function LocationModal({ visible, onClose }: { visible: boolean; 
           <Text style={styles.body}>{t('location.body')}</Text>
 
           <TouchableOpacity style={styles.shareBtn} onPress={handleShare} disabled={busy}>
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.shareBtnText}>📍 {myLoc ? t('location.updateButton') : t('location.shareButton')}</Text>}
+            {busy ? <ActivityIndicator color={colors.onBrand} /> : <Text style={styles.shareBtnText}>📍 {myLoc ? t('location.updateButton') : t('location.shareButton')}</Text>}
           </TouchableOpacity>
           {myLoc && (
             <TouchableOpacity style={styles.stopBtn} onPress={handleStop} disabled={busy}>
@@ -109,7 +109,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   title: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
   body: { ...typography.sm, color: colors.textSecondary, marginBottom: spacing.md },
   shareBtn: { backgroundColor: colors.brand, borderRadius: radius.md, padding: spacing.md, alignItems: 'center' },
-  shareBtnText: { ...typography.body, color: '#fff', fontWeight: '700' },
+  shareBtnText: { ...typography.body, color: colors.onBrand, fontWeight: '700' },
   stopBtn: { padding: spacing.sm, alignItems: 'center', marginTop: spacing.xs },
   stopBtnText: { ...typography.sm, color: colors.error, fontWeight: '600' },
   sectionLabel: { ...typography.label, color: colors.textMuted, marginTop: spacing.lg, marginBottom: spacing.sm, textTransform: 'uppercase' },

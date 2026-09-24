@@ -110,7 +110,7 @@ export default function TimeTreeWebViewModal({ visible, onClose, onEvents }: {
         {loggedIn && (
           <TouchableOpacity style={styles.fetchBtn} onPress={handleFetch} disabled={fetching} activeOpacity={0.85}>
             {fetching
-              ? <ActivityIndicator color="#fff" />
+              ? <ActivityIndicator color={colors.onBrand} />
               : <Text style={styles.fetchBtnText}>{t('timetree.importButton')}</Text>}
           </TouchableOpacity>
         )}
@@ -127,7 +127,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   headerTitle: { ...typography.h3, color: colors.text },
   hint: { ...typography.xs, color: colors.textMuted, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   fetchBtn: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.lg, backgroundColor: colors.brand, borderRadius: radius.full, paddingVertical: spacing.md, alignItems: 'center', ...shadowify() },
-  fetchBtnText: { ...typography.body, color: '#fff', fontWeight: '700' },
+  fetchBtnText: { ...typography.body, color: colors.onBrand, fontWeight: '700' },
 });}
 
 function shadowify() {

@@ -95,7 +95,7 @@ export default function ChatModal({ visible, onClose }: { visible: boolean; onCl
                     {!mine && (
                       <Text style={[styles.author, { color: mem?.avatar_color ?? colors.brand }]}>{m.member_id ? memberName(t, mem) : t('chat.someone')}</Text>
                     )}
-                    <Text style={[styles.msgText, mine && { color: '#fff' }]}>{m.text}</Text>
+                    <Text style={[styles.msgText, mine && { color: colors.onBrand }]}>{m.text}</Text>
                     <Text style={[styles.time, mine && { color: 'rgba(255,255,255,0.7)' }]}>{time}</Text>
                   </TouchableOpacity>
                 </View>
@@ -144,5 +144,5 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, padding: spacing.sm, paddingHorizontal: spacing.md, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   input: { flex: 1, maxHeight: 120, backgroundColor: colors.background, borderRadius: radius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, ...typography.body, color: colors.text, borderWidth: 1, borderColor: colors.border },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
-  sendBtnText: { color: '#fff', fontSize: 18 },
+  sendBtnText: { color: colors.onBrand, fontSize: 18 },
 }); }

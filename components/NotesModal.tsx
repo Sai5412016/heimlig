@@ -126,7 +126,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   input: { backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md, ...typography.body, color: colors.text, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm },
   inputMultiline: { minHeight: 120 },
   btn: { backgroundColor: colors.brand, borderRadius: radius.md, padding: spacing.md, alignItems: 'center' },
-  btnText: { ...typography.body, color: '#fff', fontWeight: '700' },
+  btnText: { ...typography.body, color: colors.onBrand, fontWeight: '700' },
   deleteLink: { padding: spacing.md, alignItems: 'center' },
   deleteLinkText: { ...typography.sm, color: colors.error, fontWeight: '600' },
   closeBtn: { padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },

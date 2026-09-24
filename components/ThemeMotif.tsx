@@ -195,9 +195,10 @@ export default function ThemeMotif({ size = 26 }: { size?: number }) {
       );
     case 'alpen':
       // Two overlapping rotated squares standing in for a simple mountain-range silhouette. The
-      // widget's own alpen mountains (widgets/HeimligWidget.tsx's AlpenMountainRow) use real
-      // triangle SVG paths instead of this rotated-square approximation — react-native-android-
-      // widget's SvgWidget makes an actual triangle available there, no rotation trick needed.
+      // widget's own alpen mountains (widgets/HeimligWidget.tsx's AlpenMountainBackground) use
+      // real triangle SVG paths instead of this rotated-square approximation — react-native-
+      // android-widget's SvgWidget makes an actual triangle available there, no rotation trick
+      // needed.
       return (
         <View style={[styles.wrap, box]}>
           <View style={[styles.abs, {
@@ -207,6 +208,41 @@ export default function ThemeMotif({ size = 26 }: { size?: number }) {
           <View style={[styles.abs, {
             bottom: size * 0.1, right: size * 0.02, width: size * 0.6, height: size * 0.6,
             backgroundColor: theme.brand, transform: [{ rotate: '45deg' }],
+          }]} />
+        </View>
+      );
+    case 'dragon-eye':
+      // A plain, generic eye — outer ring, filled iris, dark pupil, a small highlight, two thin
+      // rays standing in for lashes. Deliberately abstract (no tomoe/comma shapes, no specific
+      // franchise's eye symbol) — same "inspired by a mood, not a 1:1 copy" rule every other
+      // theme here follows (see e.g. pitch-gold/witch-purple/tactical-ops above). brandDark
+      // isn't used here at all — it measures only 1.83:1 against this theme's own background,
+      // too close to read reliably on its own (see constants/theme.ts's comment on this theme).
+      return (
+        <View style={[styles.wrap, box]}>
+          <View style={[styles.abs, {
+            top: size * 0.5 - size * 0.06, left: -size * 0.1, width: size * 0.22, height: size * 0.03,
+            backgroundColor: theme.brandLight, transform: [{ rotate: '-30deg' }],
+          }]} />
+          <View style={[styles.abs, {
+            top: size * 0.5 - size * 0.06, right: -size * 0.1, width: size * 0.22, height: size * 0.03,
+            backgroundColor: theme.brandLight, transform: [{ rotate: '30deg' }],
+          }]} />
+          <View style={[styles.abs, {
+            top: 0, left: 0, width: size, height: size, borderRadius: size / 2,
+            borderWidth: 1.5, borderColor: theme.brandLight,
+          }]} />
+          <View style={[styles.abs, {
+            top: size * 0.5 - size * 0.32, left: size * 0.5 - size * 0.32, width: size * 0.64, height: size * 0.64,
+            borderRadius: size * 0.32, backgroundColor: theme.brand,
+          }]} />
+          <View style={[styles.abs, {
+            top: size * 0.5 - size * 0.16, left: size * 0.5 - size * 0.16, width: size * 0.32, height: size * 0.32,
+            borderRadius: size * 0.16, backgroundColor: '#0A0202',
+          }]} />
+          <View style={[styles.abs, {
+            top: size * 0.32, left: size * 0.58, width: size * 0.1, height: size * 0.1,
+            borderRadius: size * 0.05, backgroundColor: theme.accent, opacity: 0.85,
           }]} />
         </View>
       );

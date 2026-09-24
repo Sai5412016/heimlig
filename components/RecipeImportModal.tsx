@@ -286,7 +286,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   ingQty: { ...typography.sm, color: colors.textSecondary },
   checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   checkboxChecked: { backgroundColor: colors.brand, borderColor: colors.brand },
-  checkmark: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  checkmark: { color: colors.onBrand, fontSize: 14, fontWeight: '800' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
   toggleText: { ...typography.body, color: colors.text, fontWeight: '500' },
   planSection: { backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md, marginTop: spacing.sm },
