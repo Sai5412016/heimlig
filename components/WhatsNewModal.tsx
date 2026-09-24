@@ -72,5 +72,5 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   bullet: { ...typography.body, color: colors.brand, fontWeight: '800' },
   itemText: { ...typography.body, color: colors.text, flex: 1 },
   btn: { backgroundColor: colors.brand, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', marginTop: spacing.sm },
-  btnText: { ...typography.body, color: '#fff', fontWeight: '700' },
+  btnText: { ...typography.body, color: colors.onBrand, fontWeight: '700' },
 }); }

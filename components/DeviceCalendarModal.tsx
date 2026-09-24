@@ -238,6 +238,9 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   calendarList: { maxHeight: 260, marginBottom: spacing.sm },
   calendarRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.md },
   checkbox: { width: 22, height: 22, borderRadius: radius.sm, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  checkmark: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  // Background is `cal.color || colors.brand` (device-provided calendar color, with brand as the
+  // fallback) — colors.onBrand fixes the fallback case for dragon-eye; an arbitrary device color
+  // was never contrast-checked against white either, so this isn't a new risk for that case.
+  checkmark: { color: colors.onBrand, fontSize: 14, fontWeight: '700' },
   calendarTitle: { flex: 1, ...typography.body, color: colors.text },
 }); }

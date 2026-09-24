@@ -329,7 +329,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   headerTitle: { ...typography.h2, color: colors.text },
   headerSub: { ...typography.sm, color: colors.textSecondary, marginTop: 2 },
   addBtn: { backgroundColor: colors.brand, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  addBtnText: { ...typography.sm, color: '#fff', fontWeight: '700' },
+  addBtnText: { ...typography.sm, color: colors.onBrand, fontWeight: '700' },
 
   filterScroll: { maxHeight: 48, paddingVertical: spacing.sm, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   filterChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface, justifyContent: 'center' },
@@ -374,7 +374,7 @@ function makeStyles(colors: ColorPalette) { return StyleSheet.create({
   toggleText: { ...typography.body, color: colors.text, fontWeight: '500' },
   checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   checkboxChecked: { backgroundColor: colors.brand, borderColor: colors.brand },
-  checkmark: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  checkmark: { color: colors.onBrand, fontSize: 14, fontWeight: '800' },
   primaryBtn: { backgroundColor: colors.brand, borderRadius: radius.md, padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },
   primaryBtnText: { ...typography.body, color: colors.textInverse, fontWeight: '700' },
   closeBtn: { padding: spacing.md, alignItems: 'center' },

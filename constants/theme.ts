@@ -23,6 +23,12 @@ export const lightColors = {
   textSecondary: '#5A7A65',
   textMuted:     '#9AB5A0',
   textInverse:   '#FFFFFF',
+  // Text/icon color for content placed directly on a solid `brand`-colored surface (primary
+  // buttons, FABs, active chips, checked checkboxes, …) — distinct from `textInverse`, which is
+  // used more broadly on any colored/dark surface. White for every theme except the ones that
+  // override it below (currently only "dragon-eye", whose lightened `brand` no longer clears
+  // 4.5:1 against plain white — see that theme's comment in APP_THEMES).
+  onBrand:       '#FFFFFF',
 
   // Semantic
   success:       '#2D6A4F',
@@ -64,6 +70,7 @@ export const darkColors = {
   textSecondary: '#89B89A',
   textMuted:     '#5A7A65',
   textInverse:   '#0D1F15',
+  onBrand:       '#FFFFFF',
 
   // Semantic
   success:       '#52B788',
@@ -100,7 +107,7 @@ export interface AppTheme {
   forceDark?: boolean;
   background?: string; surface?: string; surfaceElevated?: string;
   border?: string; borderLight?: string;
-  text?: string; textSecondary?: string; textMuted?: string; textInverse?: string;
+  text?: string; textSecondary?: string; textMuted?: string; textInverse?: string; onBrand?: string;
 }
 
 export const APP_THEMES: AppTheme[] = [
@@ -304,6 +311,11 @@ export const APP_THEMES: AppTheme[] = [
     background: '#0A0505', surface: '#0A0505', surfaceElevated: '#150707',
     border: '#3A0709', borderLight: '#2A0505',
     text: '#FBEAEA', textSecondary: '#C98A86', textMuted: '#7A4A46', textInverse: '#050202',
+    // Plain white text/icons on the lightened `brand` (#E63A44) measure only 4.16:1 — below the
+    // 4.5:1 text floor (found on primary buttons, FABs, checked checkboxes, active chips across
+    // the app). onBrand reuses this theme's own background hex rather than inventing a new one;
+    // 4.87:1 against brand, see the report.
+    onBrand: '#0A0505',
   },
 ];
 
@@ -343,6 +355,7 @@ export function resolveThemeColors(themeId: string, darkMode: boolean): { colors
     ...(theme.textSecondary !== undefined ? { textSecondary: theme.textSecondary } : {}),
     ...(theme.textMuted !== undefined ? { textMuted: theme.textMuted } : {}),
     ...(theme.textInverse !== undefined ? { textInverse: theme.textInverse } : {}),
+    ...(theme.onBrand !== undefined ? { onBrand: theme.onBrand } : {}),
   };
   return { colors, isDark: effectiveDark };
 }
