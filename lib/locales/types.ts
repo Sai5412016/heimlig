@@ -811,6 +811,7 @@ export interface AppTranslations {
     timeLabel: string;
     timeOn: string;
     timeOff: string;
+    addToDeviceCalendar: string;
     reminderActive: string;
     reminderInactive: string;
     reminderSubActive: string;

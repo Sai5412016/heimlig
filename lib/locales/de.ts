@@ -806,6 +806,7 @@ export const de: AppTranslations = {
     timeLabel: 'UHRZEIT',
     timeOn: 'An',
     timeOff: 'Aus',
+    addToDeviceCalendar: 'Auch in meinen Kalender eintragen',
     reminderActive: 'Erinnerung aktiv',
     reminderInactive: 'Keine Erinnerung',
     reminderSubActive: 'Um {{time}} Uhr am Fälligkeitstag',

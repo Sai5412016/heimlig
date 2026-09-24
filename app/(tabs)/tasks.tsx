@@ -39,6 +39,7 @@ import { parseICS, type IcsEvent } from '../../lib/ics';
 import { uploadTaskAttachment, deleteTaskAttachment, getTaskAttachmentUrl, type PickedFile } from '../../lib/taskAttachments';
 import { mapTimeTreeEvents, type RawTimeTreeEvent } from '../../lib/timetreeEvents';
 import { holidayName } from '../../lib/holidays';
+import { addEventToDeviceCalendar } from '../../lib/deviceCalendar';
 import SuggestionCarousel from '../../components/SuggestionCarousel';
 import { TASK_SUGGESTIONS, loadDismissedSuggestions, dismissSuggestion } from '../../lib/suggestions';
 import ThemeMotif from '../../components/ThemeMotif';
@@ -156,6 +157,11 @@ function TimePickerDropdown({ value, onChange }: { value: string; onChange: (t: 
 }
 
 // ─── ADD TASK MODAL ───────────────────────────────────────────
+// Per-device default for the "also add to my calendar" checkbox below — same AsyncStorage-only,
+// never-synced-to-Supabase pattern as darkMode/weatherPlaceName, since it's about THIS device's
+// own OS calendar, not a household-shared setting.
+const ADD_TO_DEVICE_CALENDAR_KEY = '@heimlig/addToDeviceCalendar';
+
 function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, editTask, householdId, prefill }: {
   visible: boolean; onClose: () => void;
   onSave: (task: Partial<Task> & { due_time?: string; notify?: boolean }) => void;
@@ -185,6 +191,22 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
   const [attachment, setAttachment] = useState<{ path: string; name: string } | null>(null);
   const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [locationUrl, setLocationUrl] = useState('');
+  // Only meaningful for a NEW task (see the checkbox's own render guard, !editTask, below) —
+  // loaded once from this device's remembered default, not reset by the visible-false cleanup
+  // effect further down, so the user's last choice carries over to the next task they add.
+  const [addToDeviceCalendar, setAddToDeviceCalendar] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(ADD_TO_DEVICE_CALENDAR_KEY).then(v => { if (v === '1') setAddToDeviceCalendar(true); });
+  }, []);
+
+  const toggleAddToDeviceCalendar = () => {
+    setAddToDeviceCalendar(v => {
+      const next = !v;
+      AsyncStorage.setItem(ADD_TO_DEVICE_CALENDAR_KEY, next ? '1' : '0');
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!visible) {
@@ -283,6 +305,10 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
       attachment_path: attachment?.path || null,
       attachment_name: attachment?.name || null,
       location_url: locationUrl.trim() || null,
+      // Only meaningful for a new task (checkbox is hidden while editing, see its render guard
+      // below) — explicitly left out of an edit's payload so it can never end up spread into the
+      // Supabase .update() call in handleSaveTask, which would reject the unknown column.
+      ...(!editTask ? { add_to_device_calendar: addToDeviceCalendar } : {}),
     } as any);
     onClose();
   };
@@ -325,6 +351,21 @@ function AddTaskModal({ visible, onClose, onSave, members, preselectedDate, edit
 
               {useTime && (
                 <TimePickerDropdown value={dueTime} onChange={setDueTime} />
+              )}
+
+              {/* Auch in den eigenen Gerätekalender übernehmen — nur beim Anlegen (nicht beim
+                  Bearbeiten, siehe handleSave's Kommentar), nur nativ (expo-calendar hat auf Web
+                  keinen Gerätekalender zum Andocken) und nur mit gesetztem Fälligkeitsdatum. */}
+              {!editTask && Platform.OS !== 'web' && dueDate !== '' && (
+                <TouchableOpacity
+                  style={[styles.notifyToggle, addToDeviceCalendar && styles.notifyToggleActive]}
+                  onPress={toggleAddToDeviceCalendar}
+                >
+                  <Text style={styles.notifyToggleEmoji}>{addToDeviceCalendar ? '✅' : '📅'}</Text>
+                  <Text style={[styles.notifyToggleText, addToDeviceCalendar && { color: colors.brand }]}>
+                    {t('tasksTab.addToDeviceCalendar')}
+                  </Text>
+                </TouchableOpacity>
               )}
 
               {/* Erinnerung */}
@@ -1290,14 +1331,23 @@ export default function TasksScreen() {
     await scheduleTaskNotification(taskId, title, dueDate, dueTime, remindTime);
   };
 
-  const handleAddTask = async (taskData: Partial<Task> & { due_time?: string; notify?: boolean }) => {
+  const handleAddTask = async (taskData: Partial<Task> & { due_time?: string; notify?: boolean; add_to_device_calendar?: boolean }) => {
     if (!household || !currentMember) return;
-    const { notify, due_time, ...rest } = taskData as any;
+    // add_to_device_calendar isn't a tasks column — pulled out here for the same reason
+    // notify/due_time already are, so it never reaches the Supabase insert below.
+    const { notify, due_time, add_to_device_calendar, ...rest } = taskData as any;
     const { data } = await supabase.from('tasks').insert({ ...rest, due_time: due_time || null, household_id: household.id, created_by: currentMember.id }).select().single();
     if (data) {
       setTasks([...tasks, data]);
       hapticNotification(Haptics.NotificationFeedbackType.Success);
       if (notify && data.due_date) await scheduleReminderWithPrimer(data.id, data.title, data.due_date, due_time, data.remind_time);
+      // Best-effort, after the task is already safely saved — see addEventToDeviceCalendar's own
+      // comment for why nothing here can turn into a user-facing error or a crash.
+      if (add_to_device_calendar && data.due_date) {
+        try {
+          await addEventToDeviceCalendar({ title: data.title, notes: data.description, date: data.due_date, time: due_time || undefined });
+        } catch { /* best-effort, see above */ }
+      }
     }
   };
 
